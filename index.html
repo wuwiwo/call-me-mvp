@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Call Me</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+        <link href="index.css?2.4" rel="stylesheet" />
+        <link rel="stylesheet" href="history.css" />
+        <script type="module" src="js/main.js"></script>
+    </head>
+
+    <body>
+        <!-- 顶部操作栏 -->
+        <div class="top-bar">
+            <div class="user-info" id="userInfo">
+                <div id="userAvatar" class="emoji-avatar"></div>
+                <span id="userName"></span>
+            </div>
+            <div class="top-controls">
+                <button id="editProfile" class="icon-btn" title="编辑资料">
+                    <i class="fas fa-user-edit"></i>
+                </button>
+
+                <!-- 修改后的编辑按钮 -->
+                <button id="editButtons" class="icon-btn" title="编辑按钮">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+
+                <!-- 改进的语言选择器：下拉菜单 -->
+                <div class="language-dropdown">
+                    <button id="languageToggle" class="language-toggle" title="选择语言">
+                        <span id="currentLanguage">中</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div id="languageMenu" class="language-menu">
+                        <div class="language-option" data-lang="zh">
+                            <span class="flag">🇨🇳</span>
+                            <span class="name">中文</span>
+                        </div>
+                        <div class="language-option" data-lang="en">
+                            <span class="flag">🇺🇸</span>
+                            <span class="name">English</span>
+                        </div>
+                        <div class="language-option" data-lang="ja">
+                            <span class="flag">🇯🇵</span>
+                            <span class="name">日本語</span>
+                        </div>
+                        <div class="language-option" data-lang="ko">
+                            <span class="flag">🇰🇷</span>
+                            <span class="name">한국어</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="header">
+                <div class="dynamic-title" id="title">CALL ME</div>
+
+                <p class="subtitle" id="subtitle">🐟点击下方按钮通知我🐟</p>
+            </div>
+
+            <div class="bubble-container">
+                <!-- 按钮将由JavaScript动态生成 -->
+            </div>
+
+            <div id="countdown" class="countdown">
+                <div class="countdown-info">
+                    <div id="countdownAvatar" class="emoji-avatar"></div>
+                    <div>
+                        <span id="countdownName"></span>
+                        <span id="countdownText"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通知 -->
+        <div id="notification" class="notification"></div>
+
+        <!-- 账号绑定模态框 -->
+        <div id="profileModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">绑定账号</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="nickname">昵称（nickname）</label>
+                        <input
+                            type="text"
+                            id="nickname"
+                            placeholder="输入你的昵称"
+                            maxlength="12"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label>选择头像（avatar）</label>
+                        <div class="emoji-selection">
+                            <div class="emoji-option active" data-emoji="🐶">
+                                🐶
+                            </div>
+                            <div class="emoji-option" data-emoji="🐱">🐱</div>
+                            <div class="emoji-option" data-emoji="🦊">🦊</div>
+                            <div class="emoji-option" data-emoji="🐯">🐯</div>
+                            <div class="emoji-option" data-emoji="🦁">🦁</div>
+                            <div class="emoji-option" data-emoji="🐨">🐨</div>
+                            <div class="emoji-option" data-emoji="🐵">🐵</div>
+                            <div class="emoji-option" data-emoji="🐧">🐧</div>
+                            <div class="emoji-option" data-emoji="🦄">🦄</div>
+                            <div class="emoji-option" data-emoji="🐟">🐟</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveProfile" class="btn save-btn">
+                        保存信息
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="buttonEditModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>自定义按钮</h2>
+                    <button class="close-btn" id="closeButtonEdit">
+                        &times;
+                    </button>
+                </div>
+                <div
+                    class="modal-body"
+                    style="max-height: 60vh; overflow-y: auto"
+                >
+                    <!-- 默认按钮编辑 -->
+                    <div class="form-group">
+                        <label>按钮1</label>
+                        <input
+                            type="text"
+                            id="button1Text"
+                            maxlength="15"
+                            placeholder="按钮文字(15字以内)"
+                        />
+                        <select id="button1Icon" class="icon-selector">
+                            <option value="random">随机图标</option>
+                            <!-- JS动态生成 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>按钮2</label>
+                        <input
+                            type="text"
+                            id="button2Text"
+                            maxlength="15"
+                            placeholder="按钮文字(15字以内)"
+                        />
+                        <select id="button2Icon" class="icon-selector">
+                            <option value="random">随机图标</option>
+                            <!-- JS动态生成 -->
+                        </select>
+                    </div>
+
+                    <!-- 自定义按钮区域（可滚动） -->
+                    <div
+                        id="customButtonsArea"
+                        style="max-height: 40vh; overflow-y: auto"
+                    >
+                        <!-- 动态生成的自定义按钮会出现在这里 -->
+                    </div>
+
+                    <!-- 添加按钮（固定在滚动区域外） -->
+                    <div
+                        style="
+                            padding: 10px 0;
+                            border-top: 1px solid var(--notion-border);
+                        "
+                    >
+                        <button id="addCustomButton" class="btn">
+                            <i class="fas fa-plus"></i> 添加自定义按钮
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 操作按钮（固定在底部） -->
+                <div
+                    class="modal-footer"
+                    style="
+                        position: sticky;
+                        bottom: 0;
+                        background: white;
+                        z-index: 10;
+                    "
+                >
+                    <button id="saveButtons" class="btn save-btn">
+                        保存设置
+                    </button>
+                    <button id="resetButtons" class="btn">恢复默认</button>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

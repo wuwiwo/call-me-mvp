@@ -1,0 +1,558 @@
+:root {
+    --primary: #37352f;
+    --secondary: #f1f1ef;
+    --accent: #337ea9;
+    --light: #ffffff;
+    --notion-gray: #f7f6f3;
+    --notion-dark-gray: #e3e2e0;
+    --notion-text: #37352f;
+    --notion-blue: #337ea9;
+    --notion-orange: #e9a15a;
+    --notion-border: rgba(55, 53, 47, 0.16);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+/* 去除所有元素的点击高亮 */
+* {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+}
+
+/* 针对按钮特别处理（可选） */
+button,
+.bubble-btn {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    user-select: none; /* 防止文字被选中 */
+}
+
+body {
+    font-family:
+        "Montserrat",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    background-color: var(--notion-gray);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--notion-text);
+    padding: 20px;
+    line-height: 1.5;
+}
+
+.top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: var(--light);
+    box-shadow: var(--shadow-sm);
+    z-index: 100;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.emoji-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: rgba(55, 53, 47, 0.08);
+    border: 1px solid var(--notion-border);
+    transition: all 0.2s ease;
+}
+
+.top-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--notion-text);
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(55, 53, 47, 0.08);
+}
+
+.container {
+    background: var(--light);
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--notion-border);
+    margin-top: 60px;
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+.container:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+    margin-bottom: 32px;
+}
+
+/* 动态标题效果 */
+.dynamic-title {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    font-weight: 800;
+    color: var(--notion-text);
+    letter-spacing: -0.5px;
+    position: relative;
+    display: inline-block;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: colorShift 8s infinite alternate;
+}
+
+/* 霓虹文字效果 */
+.dynamic-title::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        var(--notion-blue),
+        #e9a15a,
+        #d35fb0,
+        var(--notion-blue)
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 3s linear infinite;
+    opacity: 0.7;
+    z-index: -1;
+}
+
+/* 颜色变化 */
+@keyframes colorShift {
+    0% {
+        color: var(--notion-text);
+    }
+    25% {
+        color: var(--notion-blue);
+    }
+    50% {
+        color: #e9a15a;
+    }
+    75% {
+        color: #d35fb0;
+    }
+    100% {
+        color: var(--notion-text);
+    }
+}
+
+/* 光晕效果 */
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
+}
+
+p.subtitle {
+    font-size: 1rem;
+    color: rgba(55, 53, 47, 0.65);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.bubble-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+    width: 100%;
+    align-items: center;
+}
+
+.bubble-btn {
+    background: white;
+    color: var(--notion-text);
+    border: 1px solid var(--notion-border);
+    padding: 16px 20px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    width: 100%;
+    min-height: 60px;
+    position: relative;
+    overflow: hidden;
+    gap: 8px;
+}
+
+.bubble-btn:hover {
+    background: rgba(55, 53, 47, 0.03);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.05),
+        0 1px 1px rgba(0, 0, 0, 0.03);
+}
+
+.countdown {
+    background: rgba(55, 53, 47, 0.03);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 20px;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.countdown.active {
+    opacity: 1;
+    height: auto;
+}
+
+.countdown-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    color: rgba(55, 53, 47, 0.7);
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--notion-text);
+    color: white;
+    padding: 14px 24px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    transform: translateX(150%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 1000;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--light);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--notion-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: rgba(55, 53, 47, 0.6);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--notion-text);
+    text-align: left;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--notion-border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    transition: border 0.2s ease;
+}
+
+.emoji-selection {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.emoji-option {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(55, 53, 47, 0.05);
+    border: 2px solid transparent;
+}
+
+.emoji-option.active {
+    border-color: var(--notion-blue);
+    transform: scale(1.15);
+    background: rgba(51, 126, 169, 0.1);
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    background: rgba(55, 53, 47, 0.03);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.save-btn {
+    background: var(--notion-blue);
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+}
+
+/* ===== 改进的语言选择器样式 ===== */
+.language-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.language-toggle {
+    background: rgba(55, 53, 47, 0.08);
+    border: 1px solid var(--notion-border);
+    border-radius: 18px;
+    padding: 8px 16px;
+    color: var(--notion-text);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    min-width: 80px;
+    justify-content: center;
+}
+
+.language-toggle:hover {
+    background: rgba(55, 53, 47, 0.12);
+    transform: translateY(-1px);
+}
+
+.language-toggle.active {
+    background: var(--light);
+    box-shadow: var(--shadow-sm);
+}
+
+.language-toggle i {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.language-toggle.active i {
+    transform: rotate(180deg);
+}
+
+.language-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--light);
+    border: 1px solid var(--notion-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 8px;
+    margin-top: 8px;
+    min-width: 140px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.language-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.language-option:hover {
+    background: rgba(55, 53, 47, 0.05);
+}
+
+.language-option.active {
+    background: rgba(51, 126, 169, 0.1);
+    color: var(--notion-blue);
+}
+
+.language-option .flag {
+    font-size: 1.1rem;
+    width: 20px;
+    text-align: center;
+}
+
+.language-option .name {
+    flex: 1;
+    font-weight: 500;
+}
+
+/* 点击外部关闭下拉菜单 */
+.language-dropdown-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+    display: none;
+}
+
+.language-dropdown.active .language-dropdown-backdrop {
+    display: block;
+}
+
+/* 移动端优化 */
+@media (max-width: 480px) {
+    .language-toggle {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        min-width: 70px;
+    }
+    
+    .language-menu {
+        min-width: 120px;
+        right: -10px;
+    }
+    
+    .language-option {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}
+
+/* 确保顶部控制器的布局适应新设计 */
+.top-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+/* 响应式调整：在小屏幕上调整间距 */
+@media (max-width: 360px) {
+    .top-controls {
+        gap: 8px;
+    }
+    
+    .language-toggle {
+        min-width: 65px;
+        padding: 6px 10px;
+    }
+}
