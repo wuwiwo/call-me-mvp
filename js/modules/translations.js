@@ -42,6 +42,20 @@ export const TRANSLATIONS = {
             title: "历史记录",
             empty: "暂无历史记录",
             timeFormat: "YYYY年MM月DD日 HH:mm:ss"
+        },
+        password: {
+            title: "🔐 访问验证",
+            label: "请输入访问密码",
+            placeholder: "输入密码",
+            hint: "提示：密码每周更新，请联系管理员获取最新密码",
+            verifyBtn: "验证",
+            errorEmpty: "请输入密码",
+            errorWrong: "密码错误，请重试"
+        },
+        onboarding: {
+            skip: "跳过",
+            next: "下一步",
+            start: "开始使用"
         }
     },
     en: {
@@ -82,6 +96,20 @@ export const TRANSLATIONS = {
             title: "History",
             empty: "No history records",
             timeFormat: "MM/DD/YYYY HH:mm:ss"
+        },
+        password: {
+            title: "🔐 Access Verification",
+            label: "Please enter access password",
+            placeholder: "Enter password",
+            hint: "Hint: Password updates weekly, contact admin for latest password",
+            verifyBtn: "Verify",
+            errorEmpty: "Please enter password",
+            errorWrong: "Incorrect password, please try again"
+        },
+        onboarding: {
+            skip: "Skip",
+            next: "Next",
+            start: "Start"
         }
     },
     ja: {
@@ -126,6 +154,20 @@ export const TRANSLATIONS = {
             title: "履歴",
             empty: "履歴がありません",
             timeFormat: "YYYY年MM月DD日 HH:mm:ss"
+        },
+        password: {
+            title: "🔐 アクセス認証",
+            label: "アクセスメールワードを入力してください",
+            placeholder: "パスワードを入力",
+            hint: "ヒント：パスワードは週ごとに更新されます。最新パスワードは管理者にお問い合わせください",
+            verifyBtn: "認証",
+            errorEmpty: "パスワードを入力してください",
+            errorWrong: "パスワードが間違っています。再度お試しください"
+        },
+        onboarding: {
+            skip: "スキップ",
+            next: "次へ",
+            start: "開始"
         }
     },
     ko: {
@@ -170,6 +212,20 @@ export const TRANSLATIONS = {
             title: "기록",
             empty: "기록이 없습니다",
             timeFormat: "YYYY년 MM월 DD일 HH:mm:ss"
+        },
+        password: {
+            title: "🔐 액세스 인증",
+            label: "액세스 비밀번호를 입력하세요",
+            placeholder: "비밀번호 입력",
+            hint: "힌트: 비밀번호는 매주 업데이트됩니다. 최신 비밀번호는 관리자에게 문의하세요",
+            verifyBtn: "인증",
+            errorEmpty: "비밀번호를 입력하세요",
+            errorWrong: "잘못된 비밀번호입니다. 다시 시도하세요"
+        },
+        onboarding: {
+            skip: "건너뛰기",
+            next: "다음",
+            start: "시작"
         }
     }
 };

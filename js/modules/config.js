@@ -5,7 +5,7 @@ export const CONFIG = {
     cooldownTime: 60, // 冷却时间(秒)
     maxHistoryRecords: 100, // 最大历史记录数
     defaultAvatar: "👤", // 默认头像
-defaultName: {
+    defaultName: {
         // 默认昵称
         zh: "玩家",
         en: "Player",
@@ -16,6 +16,19 @@ defaultName: {
     },
     emojiOptions: ["🐶", "🐱", "🦊", "🐯", "🦁", "🐨", "🐵", "🐧", "🦄", "🐟"], // 可选emoji头像
     notificationDuration: 4000, // 通知显示时间(毫秒)
+    
+    // 密码验证配置
+    password: {
+        defaultPassword: "666888", // 默认密码
+        expiryDays: 7 // 密码过期天数
+    },
+    
+    // 新手引导配置
+    onboarding: {
+        enabled: true, // 是否启用新手引导
+        stepDuration: 0 // 自动下一步的时间（0表示不自动）
+    },
+    
     //音效
     soundEffects: {
         avatars: {

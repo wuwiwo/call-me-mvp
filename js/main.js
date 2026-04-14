@@ -31,6 +31,12 @@ import {
 import {
     soundManager
 } from "./modules/sounds.js";
+import {
+    onboarding
+} from "./modules/onboarding.js";
+import {
+    password
+} from "./modules/password.js";
 
 class CallMeApp {
     // /src/main.js
@@ -123,7 +129,11 @@ class CallMeApp {
         try {
             soundManager.preload().catch(e => console.warn("音效预加载失败:", e));
 
-            // 先初始化语言模块（确保最先初始化）
+            // 先初始化密码验证模块（最优先）
+            console.log("初始化密码验证模块...");
+            password.init(this.elements);
+
+            // 初始化语言模块（确保最先初始化）
             console.log("初始化语言模块...");
             language.init(this.elements);
             console.log("当前语言:", language.getCurrentLanguage());
@@ -148,6 +158,10 @@ class CallMeApp {
                 buttonManager.init(this.elements.buttonContainer);
                 window.buttonManagerInitialized = true; // 防止重复初始化
             }
+
+            // 初始化新手引导模块（最后初始化）
+            console.log("初始化新手引导模块...");
+            onboarding.init(this.elements);
 
             // 移除历史记录页面的初始化（已经在history.js中处理）
             // if (window.location.pathname.includes("history.html")) {

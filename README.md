@@ -29,6 +29,10 @@
 - **头像选择** - 10 种可爱 Emoji 可选
 - **图标库** - 8 种 Font Awesome 图标可配置
 
+### 🔐 新增功能
+- **新手引导** - 首次访问时的交互式教程，帮助用户快速上手
+- **密码验证** - 简单访问控制，密码每周自动过期
+
 ---
 
 ## 📸 功能截图
@@ -143,6 +147,37 @@ buttons: {
 }
 ```
 
+### 修改密码
+
+在 `js/modules/password.js` 中修改默认密码：
+
+```javascript
+export const password = {
+    correctPassword: 'YOUR_NEW_PASSWORD', // 修改为你的密码
+    // ...
+};
+```
+
+或者在浏览器控制台执行：
+```javascript
+// 设置新密码
+password.setPassword('new_password_here');
+
+// 清除密码设置（重置）
+password.clearPassword();
+```
+
+### 禁用新手引导
+
+如果需要禁用新手引导，在 `js/modules/config.js` 中修改：
+
+```javascript
+onboarding: {
+    enabled: false, // 改为 false 禁用
+    stepDuration: 0
+}
+```
+
 ### 添加新语言
 
 在 `js/modules/translations.js` 中添加翻译：
@@ -160,6 +195,29 @@ export const TRANSLATIONS = {
 ---
 
 ## 🎯 使用指南
+
+### 🔐 密码验证（首次使用）
+
+1. 打开页面后会显示密码输入框
+2. 输入访问密码（默认：`123456`）
+3. 点击“验证”或按回车键
+4. 验证通过后即可正常使用
+5. **注意**：密码每 7 天自动过期，需要重新输入
+
+### 🎓 新手引导（首次使用）
+
+首次访问时会自动显示新手引导，包含：
+- 欢迎介绍
+- 设置用户资料指引
+- 通知按钮使用说明
+- 自定义按钮功能
+- 多语言切换方法
+- 历史记录查看
+- 冷却时间说明
+
+**跳过/重看**：
+- 引导过程中可随时点击“跳过”
+- 如需重看，打开浏览器控制台执行：`localStorage.removeItem('onboardingCompleted')`，然后刷新页面
 
 ### 首次使用
 
@@ -276,7 +334,16 @@ A: 确保浏览器允许自动播放音频，或检查音频文件路径。
 ### Q: 如何清除冷却状态？
 A: 打开浏览器控制台执行：`localStorage.removeItem('lastClickTime')`，然后刷新页面。
 
+### Q: 密码忘记了怎么办？
+A: 默认密码是 `123456`。如果需要修改，打开浏览器控制台执行：`password.setPassword('新密码')`
 
+### Q: 如何重新显示新手引导？
+A: 打开浏览器控制台执行：`localStorage.removeItem('onboardingCompleted')`，然后刷新页面
+
+### Q: 如何修改密码过期时间？
+A: 在 `js/modules/password.js` 中修改 `PASSWORD_EXPIRY_DAYS` 的值（单位：天）
+
+---
 ---
 
 
