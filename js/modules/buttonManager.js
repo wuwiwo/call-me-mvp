@@ -21,6 +21,7 @@ export const buttonManager = {
     elements: null,
     customButtons: [],
     activeButtonGroup: "default",
+    displayMode: 'default', // 'default' 或 'minimal'
 
     /**
      * 初始化按钮管理系统
@@ -38,13 +39,18 @@ export const buttonManager = {
             saveButtons: document.getElementById("saveButtons"),
             resetButtons: document.getElementById("resetButtons"),
             closeEditModal: document.getElementById("closeButtonEdit"),
-            customButtonsArea: document.getElementById("customButtonsArea")
+            customButtonsArea: document.getElementById("customButtonsArea"),
+            defaultButtonsArea: document.getElementById("defaultButtonsArea"),
+            toggleModeBtn: document.getElementById("toggleMode"),
+            modeIndicator: document.getElementById("modeIndicator"),
+            buttonsEditArea: document.getElementById("buttonsEditArea")
         };
 
         console.log("找到的容器:", !!this.elements.container);
 
         // 加载配置并渲染
         this.loadButtonConfig();
+        this.loadDisplayMode();
         this.setupEventListeners();
         this.renderButtons();
         this.validateButtonCount();
@@ -102,6 +108,11 @@ export const buttonManager = {
         document.getElementById("editButtons")?.addEventListener("click", e => {
             e.stopPropagation();
             this.showEditModal();
+        });
+
+        // 切换显示模式
+        this.elements.toggleModeBtn?.addEventListener("click", () => {
+            this.toggleDisplayMode();
         });
 
         // 添加自定义按钮
@@ -281,7 +292,6 @@ export const buttonManager = {
      */
     showEditModal() {
         if (!this.elements.editModal) {
-            +
             console.error("Edit modal element not found!");
             return;
         }
@@ -289,35 +299,17 @@ export const buttonManager = {
         // 初始化图标选择器
         this.initIconSelectors();
 
-        // 填充默认按钮
+        // 清空区域
+        this.elements.defaultButtonsArea.innerHTML = "";
+        this.elements.customButtonsArea.innerHTML = "";
+
+        // 渲染默认按钮
         CONFIG.buttons.defaultButtons.forEach((defaultBtn, index) => {
             const existingBtn = this.customButtons[index] || defaultBtn;
-            const textInput = document.getElementById(`button${index + 1}Text`);
-            const iconSelect = document.getElementById(
-                `button${index + 1}Icon`
-            );
-
-            if (textInput) textInput.value = existingBtn.message;
-            if (iconSelect) {
-                // 确保使用配置中的图标而非随机
-                iconSelect.value = existingBtn.icon || defaultBtn.icon;
-                // 添加所有图标选项
-                if (iconSelect.options.length <= 1) {
-                    iconSelect.innerHTML = `
-                    <option value="${defaultBtn.icon}">${
-                        defaultBtn.icon
-                    }</option>
-                    <option value="random">${utils.getTranslation(
-                        "profile.randomIcon"
-                    )}</option>
-                    ${this.generateIconOptions()}
-                `;
-                }
-            }
+            this.addDefaultButtonForm(existingBtn, index);
         });
 
-        // 清空并重新渲染自定义按钮
-        this.elements.customButtonsArea.innerHTML = "";
+        // 渲染自定义按钮
         const customButtonCount = Math.max(
             0,
             this.customButtons.length - CONFIG.buttons.defaultButtons.length
@@ -326,6 +318,9 @@ export const buttonManager = {
             const btnIndex = CONFIG.buttons.defaultButtons.length + i;
             this.addCustomButtonForm(this.customButtons[btnIndex]);
         }
+
+        // 更新模式显示
+        this.updateModeDisplay();
 
         // 显示模态框
         this.elements.editModal.classList.add("show");
@@ -345,6 +340,39 @@ export const buttonManager = {
                 select.innerHTML = `<option value="random">随机图标</option>${options}`;
             }
         });
+    },
+
+    /**
+     * 添加默认按钮表单
+     * @param {Object} buttonData - 按钮数据
+     * @param {number} index - 按钮索引
+     */
+    addDefaultButtonForm(buttonData, index) {
+        const form = document.createElement("div");
+        form.className = "button-edit-item";
+        form.innerHTML = `
+            <div class="form-group">
+                <div class="form-header">
+                    <label>按钮 ${index + 1}</label>
+                </div>
+                <input type="text" class="btn-text" 
+                       id="button${index + 1}Text"
+                       value="${buttonData?.message || ""}"
+                       maxlength="${CONFIG.buttons.maxLength}"
+                       placeholder="${utils.formatString(
+                           utils.getTranslation("profile.buttonTextPlaceholder"),
+                           { maxLength: CONFIG.buttons.maxLength }
+                       )}">
+                <select class="icon-selector" id="button${index + 1}Icon">
+                    <option value="random">${utils.getTranslation(
+                        "profile.randomIcon"
+                    )}</option>
+                    ${this.generateIconOptions(buttonData?.icon)}
+                </select>
+            </div>
+        `;
+
+        this.elements.defaultButtonsArea.appendChild(form);
     },
 
     /**
@@ -474,18 +502,5 @@ export const buttonManager = {
         this.renderButtons();
         this.elements.editModal.classList.remove("show");
         notification.show("已恢复默认按钮");
-    },
-
-    /**
-     * 验证按钮数量
-     */
-    validateButtonCount() {
-        const maxAllowed =
-            CONFIG.buttons.defaultButtons.length +
-            CONFIG.buttons.maxCustomButtons;
-        if (this.customButtons.length > maxAllowed) {
-            this.customButtons = this.customButtons.slice(0, maxAllowed);
-            this.saveConfig();
-        }
     }
 };

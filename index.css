@@ -326,6 +326,35 @@ p.subtitle {
     align-items: center;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mode-toggle {
+    background: rgba(55, 53, 47, 0.08);
+    border: 1px solid var(--notion-border);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--notion-text);
+    transition: all 0.2s ease;
+}
+
+.mode-toggle:hover {
+    background: rgba(55, 53, 47, 0.12);
+    transform: rotate(90deg);
+}
+
+.mode-toggle i {
+    font-size: 1rem;
+}
+
 .close-btn {
     background: none;
     border: none;
@@ -343,6 +372,119 @@ p.subtitle {
 
 .modal-body {
     padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* 模式指示器 */
+.mode-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 8px 16px;
+    background: rgba(51, 126, 169, 0.08);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--notion-blue);
+    font-weight: 600;
+}
+
+.mode-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 按钮编辑区域 */
+.buttons-edit-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 默认按钮区域 */
+.default-buttons-area {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* 自定义按钮区域 */
+.custom-buttons-area {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* 简约模式 - 网格布局 */
+.buttons-edit-area.minimal-mode {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.buttons-edit-area.minimal-mode .button-edit-item {
+    background: white;
+    border: 1px solid var(--notion-border);
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.2s ease;
+}
+
+.buttons-edit-area.minimal-mode .button-edit-item:hover {
+    border-color: var(--notion-blue);
+    box-shadow: 0 2px 8px rgba(51, 126, 169, 0.1);
+}
+
+.buttons-edit-area.minimal-mode .button-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.buttons-edit-area.minimal-mode .button-header label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(55, 53, 47, 0.7);
+    margin-bottom: 0;
+}
+
+.buttons-edit-area.minimal-mode .btn-text,
+.buttons-edit-area.minimal-mode .icon-selector {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+/* 添加按钮区域 */
+.add-button-section {
+    padding: 16px 0;
+    border-top: 1px solid var(--notion-border);
+    margin-top: 8px;
+}
+
+.add-btn {
+    width: 100%;
+    background: rgba(51, 126, 169, 0.08);
+    color: var(--notion-blue);
+    border: 1px dashed var(--notion-blue);
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.add-btn:hover {
+    background: rgba(51, 126, 169, 0.15);
+    border-style: solid;
 }
 
 .form-group {
@@ -357,14 +499,80 @@ p.subtitle {
     text-align: left;
 }
 
-.form-group input {
+.form-group input,
+.btn-text {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid var(--notion-border);
     border-radius: 8px;
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.95rem;
     transition: border 0.2s ease;
+}
+
+.form-group input:focus,
+.btn-text:focus {
+    border-color: var(--notion-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(51, 126, 169, 0.1);
+}
+
+.icon-selector {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--notion-border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    background: white;
+    cursor: pointer;
+    transition: border 0.2s ease;
+    margin-top: 8px;
+}
+
+.icon-selector:focus {
+    border-color: var(--notion-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(51, 126, 169, 0.1);
+}
+
+/* 按钮表单头部 */
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.form-header label {
+    margin-bottom: 0;
+}
+
+.remove-btn {
+    background: rgba(229, 80, 80, 0.1);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #e55050;
+    transition: all 0.2s ease;
+}
+
+.remove-btn:hover {
+    background: rgba(229, 80, 80, 0.2);
+    transform: scale(1.1);
+}
+
+/* 自定义按钮表单 */
+.custom-button-form {
+    background: rgba(55, 53, 47, 0.02);
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--notion-border);
 }
 
 .emoji-selection {
@@ -768,5 +976,26 @@ p.subtitle {
     .onboarding-btn-secondary {
         flex: 1;
         padding: 12px;
+    }
+
+    /* 简约模式移动端优化 */
+    .buttons-edit-area.minimal-mode {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .buttons-edit-area.minimal-mode .button-edit-item {
+        padding: 10px;
+    }
+
+    .buttons-edit-area.minimal-mode .btn-text,
+    .buttons-edit-area.minimal-mode .icon-selector {
+        padding: 6px 8px;
+        font-size: 0.85rem;
+    }
+
+    .modal-body {
+        padding: 16px;
+        max-height: 70vh;
     }
 }
