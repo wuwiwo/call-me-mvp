@@ -49,7 +49,7 @@ export const CONFIG = {
     //按钮
     buttons: {
         maxLength: 12, // 最大字数限制
-        maxCustomButtons: 1, // 最多可添加2个自定义按钮
+        maxCustomButtons: 5, // 最多可添加2个自定义按钮
         defaultButtons: [
             {
                 id: "quick_online",
