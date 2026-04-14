@@ -243,11 +243,11 @@ location.reload();
 
 ### LocalStorage 使用
 
-| 键名 | 类型 | 说明 | 示例值 |
-|------|------|------|--------|
-| `onboardingCompleted` | String | 引导完成状态 | `'true'` |
-| `accessPassword` | String | 自定义密码 | `'mypass'` |
-| `passwordSetTime` | Number | 密码设置时间戳 | `'1234567890'` |
+| 键名                  | 类型   | 说明           | 示例值         |
+| --------------------- | ------ | -------------- | -------------- |
+| `onboardingCompleted` | String | 引导完成状态   | `'true'`       |
+| `accessPassword`      | String | 自定义密码     | `'mypass'`     |
+| `passwordSetTime`     | Number | 密码设置时间戳 | `'1234567890'` |
 
 ---
 

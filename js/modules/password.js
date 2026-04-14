@@ -9,8 +9,7 @@ const PASSWORD_EXPIRY_DAYS = 7; // 7天过期
 
 export const password = {
     elements: null,
-    correctPassword: '123456', // 默认密码（简单验证，不要求高安全性）
-
+    correctPassword: '666888', 
     // 初始化
     init(domElements) {
         this.elements = domElements;

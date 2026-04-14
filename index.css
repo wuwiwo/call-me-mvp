@@ -18,6 +18,7 @@
     padding: 0;
     box-sizing: border-box;
 }
+
 /* 去除所有元素的点击高亮 */
 * {
     -webkit-tap-highlight-color: transparent;
@@ -29,7 +30,8 @@ button,
 .bubble-btn {
     -webkit-tap-highlight-color: transparent;
     outline: none;
-    user-select: none; /* 防止文字被选中 */
+    user-select: none;
+    /* 防止文字被选中 */
 }
 
 body {
@@ -154,13 +156,11 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(
-        90deg,
-        var(--notion-blue),
-        #e9a15a,
-        #d35fb0,
-        var(--notion-blue)
-    );
+    background: linear-gradient(90deg,
+            var(--notion-blue),
+            #e9a15a,
+            #d35fb0,
+            var(--notion-blue));
     background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
@@ -175,15 +175,19 @@ body {
     0% {
         color: var(--notion-text);
     }
+
     25% {
         color: var(--notion-blue);
     }
+
     50% {
         color: #e9a15a;
     }
+
     75% {
         color: #d35fb0;
     }
+
     100% {
         color: var(--notion-text);
     }
@@ -236,7 +240,7 @@ p.subtitle {
 .bubble-btn:hover {
     background: rgba(55, 53, 47, 0.03);
     transform: translateY(-2px);
-    box-shadow: 
+    box-shadow:
         0 2px 4px rgba(0, 0, 0, 0.05),
         0 1px 1px rgba(0, 0, 0, 0.03);
 }
@@ -525,12 +529,12 @@ p.subtitle {
         font-size: 0.85rem;
         min-width: 70px;
     }
-    
+
     .language-menu {
         min-width: 120px;
         right: -10px;
     }
-    
+
     .language-option {
         padding: 8px 10px;
         font-size: 0.85rem;
@@ -550,7 +554,7 @@ p.subtitle {
     .top-controls {
         gap: 8px;
     }
-    
+
     .language-toggle {
         min-width: 65px;
         padding: 6px 10px;
@@ -589,6 +593,7 @@ p.subtitle {
         opacity: 0;
         transform: translate(-50%, -40%);
     }
+
     to {
         opacity: 1;
         transform: translate(-50%, -50%);
@@ -687,9 +692,12 @@ p.subtitle {
 }
 
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 0 4px var(--notion-blue), 0 0 20px rgba(51, 126, 169, 0.5);
     }
+
     50% {
         box-shadow: 0 0 0 6px var(--notion-blue), 0 0 30px rgba(51, 126, 169, 0.7);
     }
