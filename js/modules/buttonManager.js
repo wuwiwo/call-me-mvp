@@ -53,6 +53,8 @@ export const buttonManager = {
         this.loadDisplayMode();
         this.setupEventListeners();
         this.renderButtons();
+        
+        // 验证按钮数量（在渲染后）
         this.validateButtonCount();
 
         console.log("Button Manager 初始化完成，按钮数量:", this.customButtons.length);
@@ -105,21 +107,40 @@ export const buttonManager = {
      */
     setupEventListeners() {
         // 编辑按钮点击
-        document.getElementById("editButtons")?.addEventListener("click", e => {
-            e.stopPropagation();
-            this.showEditModal();
-        });
+        const editButton = document.getElementById("editButtons");
+        if (editButton) {
+            // 移除旧的事件监听（防止重复绑定）
+            editButton.replaceWith(editButton.cloneNode(true));
+            // 重新获取元素并绑定事件
+            document.getElementById("editButtons")?.addEventListener("click", e => {
+                e.stopPropagation();
+                this.showEditModal();
+            });
+        }
 
-        // 切换显示模式
-        this.elements.toggleModeBtn?.addEventListener("click", () => {
-            this.toggleDisplayMode();
-        });
+        // 切换显示模式（使用事件委托）
+        const toggleModeBtn = document.getElementById("toggleMode");
+        if (toggleModeBtn) {
+            // 移除旧的事件监听
+            toggleModeBtn.replaceWith(toggleModeBtn.cloneNode(true));
+            // 重新获取元素并绑定事件
+            document.getElementById("toggleMode")?.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('点击切换模式按钮');
+                this.toggleDisplayMode();
+            });
+        }
 
         // 添加自定义按钮
         this.elements.addButton?.addEventListener("click", () => {
+            console.log('点击添加自定义按钮');
             const currentCustomCount =
                 this.customButtons.length -
                 CONFIG.buttons.defaultButtons.length;
+
+            console.log('当前自定义按钮数量:', currentCustomCount);
+            console.log('最大允许数量:', CONFIG.buttons.maxCustomButtons);
 
             // 检查是否超过最大自定义按钮数量
             if (currentCustomCount >= CONFIG.buttons.maxCustomButtons) {
@@ -130,6 +151,7 @@ export const buttonManager = {
                 return;
             }
 
+            console.log('添加新的自定义按钮表单');
             this.addCustomButtonForm();
         });
 
@@ -161,11 +183,6 @@ export const buttonManager = {
     /**
      * 渲染所有按钮到界面
      */
-    // /src/modules/buttonManager.js
-
-    /**
-     * 渲染所有按钮到界面
-     */
     renderButtons() {
         if (!this.elements.container) {
             console.error("按钮容器未找到!");
@@ -175,6 +192,13 @@ export const buttonManager = {
         console.log("开始渲染按钮，数量:", this.customButtons.length);
 
         this.elements.container.innerHTML = "";
+
+        // 根据显示模式应用不同的样式
+        if (this.displayMode === 'minimal') {
+            this.elements.container.classList.add('minimal-mode');
+        } else {
+            this.elements.container.classList.remove('minimal-mode');
+        }
 
         this.customButtons.forEach((button, index) => {
             console.log("渲染按钮:", index, button);
@@ -325,6 +349,11 @@ export const buttonManager = {
         // 显示模态框
         this.elements.editModal.classList.add("show");
         console.log("Edit modal shown");
+        
+        // 更新模式显示
+        setTimeout(() => {
+            this.updateModeDisplay();
+        }, 100);
     },
 
     /**
@@ -492,6 +521,19 @@ export const buttonManager = {
     },
 
     /**
+     * 验证按钮数量
+     */
+    validateButtonCount() {
+        const maxAllowed =
+            CONFIG.buttons.defaultButtons.length +
+            CONFIG.buttons.maxCustomButtons;
+        if (this.customButtons.length > maxAllowed) {
+            this.customButtons = this.customButtons.slice(0, maxAllowed);
+            this.saveConfig();
+        }
+    },
+
+    /**
      * 重置为默认按钮配置
      */
     resetToDefault() {
@@ -502,5 +544,77 @@ export const buttonManager = {
         this.renderButtons();
         this.elements.editModal.classList.remove("show");
         notification.show("已恢复默认按钮");
+    },
+
+    /**
+     * 加载显示模式
+     */
+    loadDisplayMode() {
+        const savedMode = localStorage.getItem('buttonDisplayMode');
+        if (savedMode) {
+            this.displayMode = savedMode;
+        }
+    },
+
+    /**
+     * 保存显示模式
+     */
+    saveDisplayMode() {
+        localStorage.setItem('buttonDisplayMode', this.displayMode);
+    },
+
+    /**
+     * 切换显示模式
+     */
+    toggleDisplayMode() {
+        console.log('切换显示模式，当前模式:', this.displayMode);
+        this.displayMode = this.displayMode === 'default' ? 'minimal' : 'default';
+        console.log('切换到模式:', this.displayMode);
+        this.saveDisplayMode();
+        
+        // 重新渲染首页按钮（应用新的布局）
+        this.renderButtons();
+        
+        // 更新编辑页面的模式显示
+        this.updateModeDisplay();
+    },
+
+    /**
+     * 更新模式显示
+     */
+    updateModeDisplay() {
+        console.log('更新模式显示，当前模式:', this.displayMode);
+        
+        // 每次都重新获取元素，确保元素存在
+        const buttonsArea = document.getElementById('buttonsEditArea');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const modeLabel = modeIndicator?.querySelector('.mode-label');
+        const toggleModeBtn = document.getElementById('toggleMode');
+        const toggleIcon = toggleModeBtn?.querySelector('i');
+
+        console.log('buttonsArea:', buttonsArea);
+        console.log('modeLabel:', modeLabel);
+        console.log('toggleIcon:', toggleIcon);
+
+        if (!buttonsArea) {
+            console.error('buttonsEditArea 元素未找到');
+            return;
+        }
+
+        if (this.displayMode === 'minimal') {
+            buttonsArea.classList.add('minimal-mode');
+            if (modeLabel) modeLabel.textContent = '简约模式 - 首页每行2个按钮';
+            if (toggleIcon) {
+                toggleIcon.className = 'fas fa-list';
+            }
+            console.log('已切换到简约模式');
+        } else {
+            buttonsArea.classList.remove('minimal-mode');
+            if (modeLabel) modeLabel.textContent = '默认模式 - 首页每行1个按钮';
+            if (toggleIcon) {
+                toggleIcon.className = 'fas fa-th-large';
+            }
+            console.log('已切换到默认模式');
+        }
     }
 };
