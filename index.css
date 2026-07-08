@@ -637,6 +637,19 @@ p.subtitle {
     z-index: 10;
 }
 
+/* 确认对话框（替代原生 confirm） */
+.confirm-modal .modal-content {
+    max-width: 400px;
+}
+.confirm-modal .confirm-message {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--primary);
+}
+.confirm-modal .modal-footer {
+    gap: 12px;
+}
+
 .save-btn {
     background: var(--notion-blue);
     padding: 10px 24px;

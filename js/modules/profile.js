@@ -14,7 +14,6 @@ export const profile = {
     // 初始化方法
     init(domElements) {
         this.elements = domElements;
-        console.log('Profile模块初始化，元素:', this.elements);
         if (!this.elements.editProfileBtn) {
             console.error('编辑资料按钮未找到');
             return;
@@ -24,7 +23,6 @@ export const profile = {
             this.selectedEmoji = this.elements.emojiOptions[0].dataset.emoji;
         }
         this.elements.editProfileBtn.addEventListener('click', () => {
-            console.log('编辑资料按钮被点击');
             this.showModal(false);
         });
         
@@ -47,7 +45,6 @@ export const profile = {
                     
                     // 更新选中的emoji
                     this.selectedEmoji = e.currentTarget.dataset.emoji;
-                    console.log('选中头像:', this.selectedEmoji);  // 调试用
                 });
             });
         }
@@ -79,8 +76,7 @@ export const profile = {
     },
     //关闭模块框
     closeModal() {
-        console.log('关闭模态框');
-if (this.elements.profileModal) {
+        if (this.elements.profileModal) {
             this.elements.profileModal.classList.remove('show');
         }
     },

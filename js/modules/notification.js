@@ -65,16 +65,13 @@ export const notification = {
 
 // 发送Webhook通知
     async sendNotification(buttonData) {
-        console.log("sendNotification called with:", buttonData);
 
         // 用户资料检查 - 这是您修改的部分
         if (!state.userProfile) {
             this.show(utils.getTranslation("profile.bindTitle"), false);
-            console.log("未检测到用户资料，显示绑定提示");
 
             // 3秒后刷新页面
             setTimeout(() => {
-                console.log("刷新页面以显示绑定窗口");
                 location.reload();
             }, 3000);
 
@@ -84,7 +81,6 @@ export const notification = {
         state.isRequestPending = true;
         localStorage.setItem("lastClickTime", Date.now());
 
-        console.log("Making fetch request to:", CONFIG.webhookUrl);
 
         try {
             const params = new URLSearchParams({
@@ -94,21 +90,18 @@ export const notification = {
             });
 
             const url = `${CONFIG.webhookUrl}?${params}`;
-            console.log("Full request URL:", url);
 
             const response = await fetch(url, {
                 method: "GET",
                 mode: "cors"
             });
 
-            console.log("Response status:", response.status, response.statusText);
 
             if (!response.ok) {
                 throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
             }
 
             const responseText = await response.text();
-            console.log("Response text:", responseText);
 
             // 确保使用翻译文本而不是翻译键
             this.show(utils.getTranslation("notification.successMsg"));
@@ -127,7 +120,6 @@ export const notification = {
             return false;
         } finally {
             state.isRequestPending = false;
-            console.log("Request completed, isRequestPending set to false");
         }
     }
 };

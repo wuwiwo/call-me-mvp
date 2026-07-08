@@ -29,7 +29,6 @@ export const buttonManager = {
      */
     // 在 buttonManager.js 的 init 方法中添加调试
     init(container) {
-        console.log("buttonManager 初始化开始");
 
         // 初始化DOM引用
         this.elements = {
@@ -46,7 +45,6 @@ export const buttonManager = {
             buttonsEditArea: document.getElementById("buttonsEditArea")
         };
 
-        console.log("找到的容器:", !!this.elements.container);
 
         // 加载配置并渲染
         this.loadButtonConfig();
@@ -57,10 +55,8 @@ export const buttonManager = {
         // 验证按钮数量（在渲染后）
         this.validateButtonCount();
 
-        console.log("Button Manager 初始化完成，按钮数量:", this.customButtons.length);
 
         // 测试方法绑定
-        console.log("handleButtonClick 方法:", typeof this.handleButtonClick);
     },
 
     /**
@@ -127,20 +123,16 @@ export const buttonManager = {
             document.getElementById("toggleMode")?.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('点击切换模式按钮');
                 this.toggleDisplayMode();
             });
         }
 
         // 添加自定义按钮
         this.elements.addButton?.addEventListener("click", () => {
-            console.log('点击添加自定义按钮');
             const currentCustomCount =
                 this.customButtons.length -
                 CONFIG.buttons.defaultButtons.length;
 
-            console.log('当前自定义按钮数量:', currentCustomCount);
-            console.log('最大允许数量:', CONFIG.buttons.maxCustomButtons);
 
             // 检查是否超过最大自定义按钮数量
             if (currentCustomCount >= CONFIG.buttons.maxCustomButtons) {
@@ -151,7 +143,6 @@ export const buttonManager = {
                 return;
             }
 
-            console.log('添加新的自定义按钮表单');
             this.addCustomButtonForm();
         });
 
@@ -162,9 +153,10 @@ export const buttonManager = {
 
         // 重置按钮
         this.elements.resetButtons?.addEventListener("click", () => {
-            if (confirm(utils.getTranslation("profile.confirmReset"))) {
-                this.resetToDefault();
-            }
+            this.showConfirmDialog(
+                utils.getTranslation("profile.confirmReset"),
+                () => this.resetToDefault()
+            );
         });
 
         // 关闭模态框
@@ -189,7 +181,6 @@ export const buttonManager = {
             return;
         }
 
-        console.log("开始渲染按钮，数量:", this.customButtons.length);
 
         this.elements.container.innerHTML = "";
 
@@ -201,17 +192,13 @@ export const buttonManager = {
         }
 
         this.customButtons.forEach((button, index) => {
-            console.log("渲染按钮:", index, button);
             const buttonEl = this.createButtonElement(button, index);
 
             // 检查创建的元素
-            console.log("创建的按钮元素:", buttonEl);
-            console.log("按钮点击监听器数量:", buttonEl.addEventListener ? "已添加" : "未添加");
 
             this.elements.container.appendChild(buttonEl);
         });
 
-        console.log("按钮渲染完成");
     },
 
     // /src/modules/buttonManager.js
@@ -234,13 +221,11 @@ export const buttonManager = {
 
         // 添加详细的点击事件日志
         buttonEl.addEventListener('click', (e) => {
-          //  console.log("=== 按钮点击事件开始 ===");
 
 
             // 确保调用 handleButtonClick
             this.handleButtonClick(button);
 
-          //  console.log("=== 按钮点击事件结束 ===");
         });
 
         return buttonEl;
@@ -252,17 +237,14 @@ export const buttonManager = {
      * @param {Object} button - 按钮配置对象
      */
     handleButtonClick(button) {
-        console.log("handleButtonClick 被调用，按钮:", button);
 
         // 移除这里的用户资料检查，让 notification.sendNotification 来处理
         // if (!state.userProfile) {
-        //     console.log("用户未登录，显示绑定模态框");
         //     notification.show(utils.getTranslation("profile.bindTitle"), false);
         //     return;
         // }
 
         if (!state.canClick) {
-            console.log("点击冷却中，无法操作");
             const lastClickTime = localStorage.getItem('lastClickTime');
             if (lastClickTime) {
                 const remaining = CONFIG.cooldownTime - Math.floor((Date.now() - parseInt(lastClickTime)) / 1000);
@@ -271,7 +253,6 @@ export const buttonManager = {
             return;
         }
 
-        console.log("开始处理按钮点击...");
         
         // 立即更新状态并保存时间
         state.canClick = false;
@@ -282,7 +263,6 @@ export const buttonManager = {
         // 启动倒计时
         countdown.start();
 
-        console.log("调用 notification.sendNotification...");
         
         // 现在会调用 notification.sendNotification，其中的用户资料检查会生效
         notification.sendNotification({
@@ -291,9 +271,7 @@ export const buttonManager = {
             emoji: state.userProfile?.emoji || CONFIG.defaultAvatar
         })
         .then(success => {
-            console.log("通知发送结果:", success);
             if (!success) {
-                console.log("通知发送失败，停止倒计时");
                 countdown.stop();
                 // 失败时恢复点击状态
                 state.canClick = true;
@@ -348,7 +326,6 @@ export const buttonManager = {
 
         // 显示模态框
         this.elements.editModal.classList.add("show");
-        console.log("Edit modal shown");
         
         // 更新模式显示
         setTimeout(() => {
@@ -547,6 +524,42 @@ export const buttonManager = {
     },
 
     /**
+     * 显示确认对话框（Notion 风格模态框，替代原生 confirm）
+     * @param {string} message - 提示消息
+     * @param {Function} onConfirm - 确认回调
+     */
+    showConfirmDialog(message, onConfirm) {
+        const modal = document.createElement('div');
+        modal.className = 'modal show confirm-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>${utils.getTranslation("common.confirm")}</h2>
+                </div>
+                <div class="modal-body">
+                    <p class="confirm-message">${message}</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn confirm-cancel-btn">${utils.getTranslation("common.cancel")}</button>
+                    <button class="btn save-btn confirm-ok-btn">${utils.getTranslation("common.confirm")}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const close = () => modal.remove();
+        modal.querySelector('.confirm-cancel-btn').addEventListener('click', close);
+        modal.querySelector('.confirm-ok-btn').addEventListener('click', () => {
+            close();
+            onConfirm();
+        });
+        // 点击遮罩层取消
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) close();
+        });
+    },
+
+    /**
      * 加载显示模式
      */
     loadDisplayMode() {
@@ -567,9 +580,7 @@ export const buttonManager = {
      * 切换显示模式
      */
     toggleDisplayMode() {
-        console.log('切换显示模式，当前模式:', this.displayMode);
         this.displayMode = this.displayMode === 'default' ? 'minimal' : 'default';
-        console.log('切换到模式:', this.displayMode);
         this.saveDisplayMode();
         
         // 重新渲染首页按钮（应用新的布局）
@@ -583,7 +594,6 @@ export const buttonManager = {
      * 更新模式显示
      */
     updateModeDisplay() {
-        console.log('更新模式显示，当前模式:', this.displayMode);
         
         // 每次都重新获取元素，确保元素存在
         const buttonsArea = document.getElementById('buttonsEditArea');
@@ -592,9 +602,6 @@ export const buttonManager = {
         const toggleModeBtn = document.getElementById('toggleMode');
         const toggleIcon = toggleModeBtn?.querySelector('i');
 
-        console.log('buttonsArea:', buttonsArea);
-        console.log('modeLabel:', modeLabel);
-        console.log('toggleIcon:', toggleIcon);
 
         if (!buttonsArea) {
             console.error('buttonsEditArea 元素未找到');
@@ -607,14 +614,12 @@ export const buttonManager = {
             if (toggleIcon) {
                 toggleIcon.className = 'fas fa-list';
             }
-            console.log('已切换到简约模式');
         } else {
             buttonsArea.classList.remove('minimal-mode');
             if (modeLabel) modeLabel.textContent = '默认模式 - 首页每行1个按钮';
             if (toggleIcon) {
                 toggleIcon.className = 'fas fa-th-large';
             }
-            console.log('已切换到默认模式');
         }
     }
 };

@@ -28,11 +28,6 @@ export const state = {
         // 检查冷却时间状态
         this.checkCooldownStatus();
         
-        console.log("State initialized:", {
-            userProfile: this.userProfile,
-            canClick: this.canClick,
-            currentLang: this.currentLang
-        });
     },
     
     checkCooldownStatus() {
@@ -43,12 +38,10 @@ export const state = {
             
             if (remainingTime > 0) {
                 this.canClick = false;
-                console.log("Cooldown active, remaining:", remainingTime, "seconds");
                 
                 // 如果需要自动恢复，可以设置定时器
                 setTimeout(() => {
                     this.canClick = true;
-                    console.log("Cooldown finished after refresh");
                 }, remainingTime * 1000);
             } else {
                 this.canClick = true;

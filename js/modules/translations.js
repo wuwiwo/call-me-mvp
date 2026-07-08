@@ -5,7 +5,9 @@ export const TRANSLATIONS = {
             title: "CALL ME",
             unregistered: "未绑定用户",
             success: "成功",
-            failure: "失败"
+            failure: "失败",
+            confirm: "确认",
+            cancel: "取消"
         },
         mainPage: {
             subtitle: "点击下方按钮，我会立即收到通知",
@@ -63,7 +65,9 @@ export const TRANSLATIONS = {
             title: "CALL ME",
             unregistered: "Unregistered",
             success: "Success",
-            failure: "Failure"
+            failure: "Failure",
+            confirm: "Confirm",
+            cancel: "Cancel"
         },
         mainPage: {
             subtitle: "Click the button below to notify me immediately",
@@ -121,7 +125,9 @@ export const TRANSLATIONS = {
             title: "コールミー",
             unregistered: "未登録ユーザー",
             success: "成功",
-            failure: "失敗"
+            failure: "失敗",
+            confirm: "確認",
+            cancel: "キャンセル"
         },
         mainPage: {
             subtitle: "下のボタンをクリックすると、すぐに通知が届きます",
@@ -179,7 +185,9 @@ export const TRANSLATIONS = {
             title: "콜 미",
             unregistered: "미등록 사용자",
             success: "성공",
-            failure: "실패"
+            failure: "실패",
+            confirm: "확인",
+            cancel: "취소"
         },
         mainPage: {
             subtitle: "아래 버튼을 클릭하면 즉시 알림이 전송됩니다",

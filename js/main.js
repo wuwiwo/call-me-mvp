@@ -41,37 +41,11 @@ import {
 class CallMeApp {
     // /src/main.js
     constructor() {
-        //console.log("CallMeApp 构造函数调用");
-        console.log("初始状态:", {
-            userProfile: state.userProfile,
-            canClick: state.canClick,
-            isRequestPending: state.isRequestPending,
-            currentLang: state.currentLang
-        });
 
         this.initElements();
         this.initModules();
         this.checkCooldown();
         this.addHistoryButton();
-        // /src/main.js
-
-
-        console.log("Initial state after cooldown check:", {
-            canClick: state.canClick,
-            lastClickTime: localStorage.getItem('lastClickTime'),
-            currentLang: state.currentLang
-        });
-        // 添加全局点击监听器用于调试
-        this.addDebugListeners();
-    }
-
-    addDebugListeners() {
-        
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.bubble-btn')) {
-               // console.log('捕获到气泡按钮点击');
-            }
-        });
     }
 
     // /src/main.js
@@ -115,13 +89,6 @@ class CallMeApp {
             addCustomButton: document.getElementById("addCustomButton")
         };
 
-        console.log("Edit Profile Button found:", !!this.elements.editProfileBtn);
-        console.log("Profile Modal found:", !!this.elements.profileModal);
-        console.log("Language dropdown elements found:", {
-            toggle: !!this.elements.languageToggle,
-            menu: !!this.elements.languageMenu,
-            current: !!this.elements.currentLanguage
-        });
     }
 
 
@@ -130,20 +97,16 @@ class CallMeApp {
             soundManager.preload().catch(e => console.warn("音效预加载失败:", e));
 
             // 先初始化密码验证模块（最优先）
-            console.log("初始化密码验证模块...");
             password.init(this.elements);
 
             // 初始化语言模块（确保最先初始化）
-            console.log("初始化语言模块...");
             language.init(this.elements);
-            console.log("当前语言:", language.getCurrentLanguage());
 
             // 然后初始化profile模块
             profile.init(this.elements);
 
             // 检查用户资料
             if (!state.userProfile) {
-                console.log("未检测到用户资料，显示绑定窗口");
                 profile.showModal(true);
             } else {
                 profile.loadProfile();
@@ -159,7 +122,6 @@ class CallMeApp {
             }
 
             // 初始化新手引导模块（最后初始化）
-            console.log("初始化新手引导模块...");
             onboarding.init(this.elements);
 
             // 移除历史记录页面的初始化（已经在history.js中处理）
@@ -192,7 +154,6 @@ class CallMeApp {
             const elapsedTime = Math.floor((Date.now() - parseInt(lastClickTime)) / 1000);
             const remainingTime = Math.max(0, CONFIG.cooldownTime - elapsedTime);
 
-            console.log("Cooldown check - elapsed:", elapsedTime, "remaining:", remainingTime);
 
             if (remainingTime > 0) {
                 // 更新状态
@@ -204,7 +165,6 @@ class CallMeApp {
                 // 设置自动恢复
                 setTimeout(() => {
                     state.canClick = true;
-                    console.log("Cooldown automatically finished");
                 }, remainingTime * 1000);
             }
         }

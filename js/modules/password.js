@@ -125,7 +125,6 @@ export const password = {
     onSuccess() {
         // 记录密码设置时间
         localStorage.setItem(PASSWORD_TIMESTAMP_KEY, Date.now().toString());
-        console.log('密码验证成功');
     },
 
     // 显示错误信息

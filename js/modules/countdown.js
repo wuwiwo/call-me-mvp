@@ -10,7 +10,6 @@ export const countdown = {
 
     init(elements) {
         this.elements = elements;
-        console.log("Countdown module initialized");
     },
 
     // /src/modules/countdown.js
@@ -19,7 +18,6 @@ start(initialTime = CONFIG.cooldownTime) {
     this.stop();
     this.remainingTime = initialTime;
     
-    console.log("Starting countdown with:", this.remainingTime, "seconds");
     
     // 确保状态同步
     state.canClick = false;
@@ -35,7 +33,6 @@ start(initialTime = CONFIG.cooldownTime) {
             this.stop();
             state.canClick = true;
             localStorage.removeItem('lastClickTime');
-            console.log("Countdown finished, canClick set to true");
         }
     }, 1000);
 },
@@ -54,7 +51,6 @@ stop() {
         // this.elements.countdownEl.style.height = '0';
     // }
     
-    console.log("Countdown stopped");
 },
     // /src/modules/countdown.js
 updateDisplay() {
@@ -78,6 +74,5 @@ updateDisplay() {
         this.elements.countdownTextEl.textContent = '';
     }
     
-    console.log("Countdown updated:", this.remainingTime, "seconds remaining");
 }
 };

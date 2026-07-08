@@ -31,13 +31,11 @@ export const language = {
         const savedLang = localStorage.getItem('appLanguage');
         if (savedLang && TRANSLATIONS[savedLang]) {
             state.currentLang = savedLang;
-            console.log(`加载保存的语言: ${savedLang}`);
         } else {
             // 浏览器语言检测
             const browserLang = navigator.language.split('-')[0];
             const supportedLangs = ['zh', 'en', 'ja', 'ko'];
             state.currentLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
-            console.log(`使用浏览器语言: ${browserLang}, 最终语言: ${state.currentLang}`);
         }
     },
     
@@ -142,7 +140,6 @@ export const language = {
         
         // 保存到localStorage实现持久化
         localStorage.setItem('appLanguage', lang);
-        console.log(`语言已更新为: ${lang}, 已保存到本地存储`);
 
         // 更新界面
         this.updateUI();
