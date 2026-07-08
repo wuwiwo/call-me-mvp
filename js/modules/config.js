@@ -1,4 +1,3 @@
-const basePath = location.pathname.includes("github.io") ? "/call-me/" : "/";
 export const CONFIG = {
     webhookUrl:
         "https://trigger.macrodroid.com/6eafac25-d8ec-4aff-b139-ca213fa50423/MVP",
@@ -47,7 +46,7 @@ export const CONFIG = {
     //按钮
     buttons: {
         maxLength: 12, // 最大字数限制
-        maxCustomButtons: 5, // 最多可添加2个自定义按钮
+        maxCustomButtons: 5, // 最多可添加5个自定义按钮
         defaultButtons: [
             {
                 id: "quick_online",

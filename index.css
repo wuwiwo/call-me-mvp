@@ -629,6 +629,14 @@ p.subtitle {
     justify-content: flex-end;
 }
 
+/* 按钮编辑模态框：底部操作栏固定吸底 */
+#buttonEditModal .modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    z-index: 10;
+}
+
 .save-btn {
     background: var(--notion-blue);
     padding: 10px 24px;
