@@ -58,6 +58,26 @@ export const TRANSLATIONS = {
             skip: "跳过",
             next: "下一步",
             start: "开始使用"
+        },
+        icons: {
+            "bolt": "闪电",
+            "bell": "铃铛",
+            "exclamation-triangle": "警告",
+            "shield-alt": "护盾",
+            "fire": "火焰",
+            "clock": "时钟",
+            "running": "奔跑",
+            "heartbeat": "心跳",
+            "phone": "电话",
+            "comment-dots": "消息",
+            "envelope": "邮件",
+            "bullhorn": "广播",
+            "hand-paper": "举手",
+            "star": "星标",
+            "flag": "旗帜",
+            "gift": "礼物",
+            "mug-hot": "热饮",
+            "utensils": "用餐"
         }
     },
     en: {
@@ -118,6 +138,26 @@ export const TRANSLATIONS = {
             skip: "Skip",
             next: "Next",
             start: "Start"
+        },
+        icons: {
+            "bolt": "Lightning",
+            "bell": "Bell",
+            "exclamation-triangle": "Warning",
+            "shield-alt": "Shield",
+            "fire": "Fire",
+            "clock": "Clock",
+            "running": "Running",
+            "heartbeat": "Heartbeat",
+            "phone": "Phone",
+            "comment-dots": "Message",
+            "envelope": "Email",
+            "bullhorn": "Broadcast",
+            "hand-paper": "Raise Hand",
+            "star": "Star",
+            "flag": "Flag",
+            "gift": "Gift",
+            "mug-hot": "Hot Drink",
+            "utensils": "Meal"
         }
     },
     ja: {
@@ -178,6 +218,26 @@ export const TRANSLATIONS = {
             skip: "スキップ",
             next: "次へ",
             start: "開始"
+        },
+        icons: {
+            "bolt": "雷",
+            "bell": "ベル",
+            "exclamation-triangle": "警告",
+            "shield-alt": "シールド",
+            "fire": "炎",
+            "clock": "時計",
+            "running": "走る",
+            "heartbeat": "鼓動",
+            "phone": "電話",
+            "comment-dots": "メッセージ",
+            "envelope": "メール",
+            "bullhorn": "放送",
+            "hand-paper": "挙手",
+            "star": "スター",
+            "flag": "旗",
+            "gift": "ギフト",
+            "mug-hot": "ホットドリンク",
+            "utensils": "食事"
         }
     },
     ko: {
@@ -238,6 +298,26 @@ export const TRANSLATIONS = {
             skip: "건너뛰기",
             next: "다음",
             start: "시작"
+        },
+        icons: {
+            "bolt": "번개",
+            "bell": "종",
+            "exclamation-triangle": "경고",
+            "shield-alt": "방패",
+            "fire": "불",
+            "clock": "시계",
+            "running": "달리기",
+            "heartbeat": "심장",
+            "phone": "전화",
+            "comment-dots": "메시지",
+            "envelope": "이메일",
+            "bullhorn": "방송",
+            "hand-paper": "손들기",
+            "star": "별",
+            "flag": "깃발",
+            "gift": "선물",
+            "mug-hot": "뜨거운 음료",
+            "utensils": "식사"
         }
     }
 };

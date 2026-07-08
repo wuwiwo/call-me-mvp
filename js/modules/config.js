@@ -62,13 +62,23 @@ export const CONFIG = {
         // 可选图标列表（Font Awesome
         availableIcons: [
             "bolt",
-            "exclamation-triangle",
             "bell",
-            "running",
-            "clock",
-            "heartbeat",
+            "exclamation-triangle",
+            "shield-alt",
             "fire",
-            "shield-alt"
+            "clock",
+            "running",
+            "heartbeat",
+            "phone",
+            "comment-dots",
+            "envelope",
+            "bullhorn",
+            "hand-paper",
+            "star",
+            "flag",
+            "gift",
+            "mug-hot",
+            "utensils"
         ]
     }
 };

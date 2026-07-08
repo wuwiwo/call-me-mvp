@@ -167,6 +167,60 @@ export const buttonManager = {
                 this.elements.editModal.classList.remove("show");
             }
         });
+
+        // 图标选择器：事件委托（表单每次打开都会重建）
+        const editModal = this.elements.editModal;
+        if (editModal && !editModal.dataset.iconPickerBound) {
+            editModal.dataset.iconPickerBound = "1";
+
+            editModal.addEventListener("click", e => {
+                // 点击触发器：切换菜单
+                const trigger = e.target.closest(".icon-picker-trigger");
+                if (trigger) {
+                    const picker = trigger.closest(".icon-picker");
+                    const menu = picker.querySelector(".icon-picker-menu");
+                    const isOpen = menu.classList.contains("show");
+                    editModal.querySelectorAll(".icon-picker.open").forEach(p => {
+                        if (p !== picker) {
+                            p.classList.remove("open");
+                            p.querySelector(".icon-picker-menu")?.classList.remove("show");
+                        }
+                    });
+                    menu.classList.toggle("show", !isOpen);
+                    picker.classList.toggle("open", !isOpen);
+                    return;
+                }
+
+                // 点击选项：选中并关闭
+                const option = e.target.closest(".icon-picker-option");
+                if (option) {
+                    const picker = option.closest(".icon-picker");
+                    const value = option.dataset.value;
+                    const iconClass = option.querySelector("i").className;
+                    const label = option.querySelector("span").textContent;
+
+                    picker.dataset.value = value;
+                    const triggerEl = picker.querySelector(".icon-picker-trigger");
+                    triggerEl.querySelector("i").className = iconClass;
+                    triggerEl.querySelector(".icon-picker-label").textContent = label;
+                    picker.querySelectorAll(".icon-picker-option").forEach(o =>
+                        o.classList.toggle("selected", o === option)
+                    );
+                    picker.classList.remove("open");
+                    picker.querySelector(".icon-picker-menu")?.classList.remove("show");
+                }
+            });
+
+            // 点击外部关闭所有菜单
+            document.addEventListener("click", e => {
+                if (!e.target.closest(".icon-picker")) {
+                    editModal.querySelectorAll(".icon-picker.open").forEach(p => {
+                        p.classList.remove("open");
+                        p.querySelector(".icon-picker-menu")?.classList.remove("show");
+                    });
+                }
+            });
+        }
     },
 
     /**
@@ -290,9 +344,6 @@ export const buttonManager = {
             return;
         }
 
-        // 初始化图标选择器
-        this.initIconSelectors();
-
         // 清空区域
         this.elements.defaultButtonsArea.innerHTML = "";
         this.elements.customButtonsArea.innerHTML = "";
@@ -326,18 +377,45 @@ export const buttonManager = {
     },
 
     /**
-     * 初始化图标选择器
+     * 创建图标选择器 HTML（带预览的网格弹出）
+     * @param {string} [selectedIcon] - 当前选中的图标
+     * @param {string} [id] - 选择器 ID（默认按钮用）
      */
-    initIconSelectors() {
-        const options = CONFIG.buttons.availableIcons
-            .map(icon => `<option value="${icon}">${icon}</option>`)
+    createIconPicker(selectedIcon, id) {
+        const current = selectedIcon && selectedIcon !== "random" ? selectedIcon : "random";
+        const randomLabel = utils.getTranslation("profile.randomIcon");
+
+        const optionsHtml = CONFIG.buttons.availableIcons
+            .map(icon => {
+                const name = utils.getTranslation("icons." + icon);
+                return `<button type="button" class="icon-picker-option${
+                    icon === selectedIcon ? " selected" : ""
+                }" data-value="${icon}">
+                    <i class="fas fa-${icon}"></i>
+                    <span>${name}</span>
+                </button>`;
+            })
             .join("");
 
-        document.querySelectorAll(".icon-selector").forEach(select => {
-            if (!select.innerHTML.includes("option")) {
-                select.innerHTML = `<option value="random">随机图标</option>${options}`;
-            }
-        });
+        const triggerIcon = current === "random" ? "shuffle" : current;
+        const triggerLabel = current === "random" ? randomLabel : utils.getTranslation("icons." + current);
+
+        return `<div class="icon-picker" data-value="${current}"${id ? ` id="${id}"` : ""}>
+            <button type="button" class="icon-picker-trigger">
+                <i class="fas fa-${triggerIcon}"></i>
+                <span class="icon-picker-label">${triggerLabel}</span>
+                <i class="fas fa-chevron-down icon-picker-caret"></i>
+            </button>
+            <div class="icon-picker-menu">
+                <button type="button" class="icon-picker-option${
+                    current === "random" ? " selected" : ""
+                }" data-value="random">
+                    <i class="fas fa-shuffle"></i>
+                    <span>${randomLabel}</span>
+                </button>
+                ${optionsHtml}
+            </div>
+        </div>`;
     },
 
     /**
@@ -361,12 +439,7 @@ export const buttonManager = {
                            utils.getTranslation("profile.buttonTextPlaceholder"),
                            { maxLength: CONFIG.buttons.maxLength }
                        )}">
-                <select class="icon-selector" id="button${index + 1}Icon">
-                    <option value="random">${utils.getTranslation(
-                        "profile.randomIcon"
-                    )}</option>
-                    ${this.generateIconOptions(buttonData?.icon)}
-                </select>
+                ${this.createIconPicker(buttonData?.icon, `button${index + 1}Icon`)}
             </div>
         `;
 
@@ -395,12 +468,7 @@ export const buttonManager = {
                        utils.getTranslation("profile.buttonTextPlaceholder"),
                        { maxLength: CONFIG.buttons.maxLength }
                    )}">
-            <select class="icon-selector">
-                <option value="random">${utils.getTranslation(
-                    "profile.randomIcon"
-                )}</option>
-                ${this.generateIconOptions(buttonData?.icon)}
-            </select>
+            ${this.createIconPicker(buttonData?.icon)}
         </div>
     `;
 
@@ -418,21 +486,6 @@ export const buttonManager = {
     },
 
     /**
-     * 生成图标选项HTML
-     * @param {string} [selectedIcon] - 当前选中的图标
-     */
-    generateIconOptions(selectedIcon) {
-        return CONFIG.buttons.availableIcons
-            .map(
-                icon =>
-                `<option value="${icon}" ${
-                        selectedIcon === icon ? "selected" : ""
-                    }>${icon}</option>`
-            )
-            .join("");
-    },
-
-    /**
      * 保存按钮配置
      */
     saveButtonConfig() {
@@ -441,15 +494,13 @@ export const buttonManager = {
         // 收集默认按钮
         CONFIG.buttons.defaultButtons.forEach((_, index) => {
             const textInput = document.getElementById(`button${index + 1}Text`);
-            const iconSelect = document.getElementById(
-                `button${index + 1}Icon`
-            );
+            const iconPicker = document.getElementById(`button${index + 1}Icon`);
 
             newButtons.push({
                 id: `default_${index + 1}`,
                 message: textInput?.value.trim() ||
                     CONFIG.buttons.defaultButtons[index].message,
-                icon: iconSelect?.value ||
+                icon: iconPicker?.dataset.value ||
                     CONFIG.buttons.defaultButtons[index].icon
             });
         });
@@ -457,7 +508,7 @@ export const buttonManager = {
         // 收集自定义按钮
         document.querySelectorAll(".custom-button-form").forEach(form => {
             const text = form.querySelector(".btn-text")?.value.trim();
-            const icon = form.querySelector(".icon-selector")?.value;
+            const icon = form.querySelector(".icon-picker")?.dataset.value;
 
             if (text) {
                 newButtons.push({
