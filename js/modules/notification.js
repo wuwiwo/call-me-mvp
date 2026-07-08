@@ -83,10 +83,12 @@ export const notification = {
 
 
         try {
+            const msgId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const params = new URLSearchParams({
                 message: buttonData.message,
                 nickname: state.userProfile.nickname,
-                emoji: state.userProfile.emoji
+                emoji: state.userProfile.emoji,
+                msgId: msgId
             });
 
             const url = `${CONFIG.webhookUrl}?${params}`;
@@ -104,6 +106,9 @@ export const notification = {
             // 确保使用翻译文本而不是翻译键
             this.show(utils.getTranslation("notification.successMsg"));
             this.addHistoryRecord(buttonData.message, true);
+            // 启动已读回执轮询
+            this.setReceiptStatus("sent");
+            this.pollReadStatus(msgId);
             return true;
         } catch (error) {
             console.error("Fetch error:", error);
@@ -119,5 +124,53 @@ export const notification = {
         } finally {
             state.isRequestPending = false;
         }
+    },
+
+    // 设置回执状态条
+    setReceiptStatus(state) {
+        const el = document.getElementById("receiptStatus");
+        if (!el) return;
+        const t = utils.getTranslation;
+        if (state === "read") {
+            el.className = "receipt-status read";
+            el.innerHTML = `<i class="fas fa-check-double"></i> ${t("receipt.read")}`;
+        } else if (state === "timeout") {
+            el.className = "receipt-status timeout";
+            el.innerHTML = `<i class="fas fa-hourglass-half"></i> ${t("receipt.timeout")}`;
+        } else {
+            el.className = "receipt-status sent";
+            el.innerHTML = `<i class="fas fa-check"></i> ${t("receipt.sent")}<span class="dots-loader"><span></span><span></span><span></span></span>`;
+        }
+    },
+
+    // 轮询 JSONBin 等待已读回执
+    pollReadStatus(msgId) {
+        const binUrl = CONFIG.jsonBin?.binUrl;
+        if (!binUrl || !msgId) return;
+        const maxAttempts = 15; // ~30s（每 2s 一次）
+        let attempts = 0;
+
+        const poll = async () => {
+            attempts++;
+            if (attempts > maxAttempts) {
+                this.setReceiptStatus("timeout");
+                return;
+            }
+            try {
+                const res = await fetch(binUrl, { cache: "no-store" });
+                if (res.ok) {
+                    const data = await res.json();
+                    const record = data.record || data;
+                    if (record.msgId === msgId && record.status === "read") {
+                        this.setReceiptStatus("read");
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("已读回执轮询失败:", e);
+            }
+            setTimeout(poll, 2000);
+        };
+        setTimeout(poll, 2000);
     }
 };

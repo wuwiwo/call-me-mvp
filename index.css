@@ -102,7 +102,12 @@ body {
     font-size: 24px;
     background: rgba(55, 53, 47, 0.08);
     border: 1px solid var(--notion-border);
-    transition: all 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+}
+
+.emoji-avatar:active {
+    transform: scale(0.88);
 }
 
 .top-controls {
@@ -224,7 +229,9 @@ p.subtitle {
     font-size: 0.9rem;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.25s var(--ease-premium);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.2s ease,
+        box-shadow 0.3s var(--ease-premium);
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -239,8 +246,46 @@ p.subtitle {
 
 .bubble-btn:hover {
     background: var(--notion-gray);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-md);
+}
+
+.bubble-btn:active {
+    transform: scale(0.94);
+}
+
+.bubble-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.bubble-btn .bubble-content i {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bubble-btn:hover .bubble-content i {
+    transform: rotate(-8deg) scale(1.08);
+}
+
+/* 色彩点缀：按钮图标交替蓝/金 */
+.bubble-btn:nth-child(2n+1) .bubble-content i {
+    background: rgba(51, 126, 169, 0.12);
+    color: var(--notion-blue);
+}
+
+.bubble-btn:nth-child(2n) .bubble-content i {
+    background: var(--accent-gold-soft);
+    color: #b8932f;
 }
 
 .countdown {
@@ -265,6 +310,94 @@ p.subtitle {
     gap: 12px;
     font-size: 0.9rem;
     color: rgba(55, 53, 47, 0.7);
+}
+
+/* 已读回执状态条（药丸徽章，醒目） */
+.receipt-status {
+    margin: 12px auto 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: fit-content;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: rgba(55, 53, 47, 0.06);
+    color: rgba(55, 53, 47, 0.65);
+    transition: all 0.3s var(--ease-premium);
+}
+
+.receipt-status i {
+    font-size: 0.8rem;
+}
+
+/* 等待已读：省略号跳动 loading */
+.dots-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 2px;
+}
+
+.dots-loader span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: dotsBounce 1.2s infinite ease-in-out;
+}
+
+.dots-loader span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.dots-loader span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes dotsBounce {
+    0%,
+    80%,
+    100% {
+        transform: scale(0.5);
+        opacity: 0.4;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 已读：蓝色 + 弹出 */
+.receipt-status.read {
+    background: rgba(51, 126, 169, 0.13);
+    color: var(--notion-blue);
+    animation: receiptPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.receipt-status.read i {
+    color: var(--notion-blue);
+}
+
+@keyframes receiptPop {
+    from {
+        transform: scale(0.8);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
+/* 超时：可能不在，琥珀色 */
+.receipt-status.timeout {
+    background: rgba(212, 175, 55, 0.14);
+    color: #9a7d1f;
+}
+
+.receipt-status.timeout i {
+    color: #b8932f;
 }
 
 .notification {
@@ -293,6 +426,22 @@ p.subtitle {
     transform: translateX(0);
 }
 
+.notification.sent {
+    border-left: 4px solid #4caf50;
+}
+
+.notification.sent i {
+    color: #6cd47e;
+}
+
+.notification.error {
+    border-left: 4px solid #e55050;
+}
+
+.notification.error i {
+    color: #ff7b7b;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -310,6 +459,21 @@ p.subtitle {
 
 .modal.show {
     display: flex;
+}
+
+.modal.show .modal-content {
+    animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+    from {
+        transform: scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .modal-content {

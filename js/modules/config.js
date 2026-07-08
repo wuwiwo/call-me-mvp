@@ -3,6 +3,10 @@ export const CONFIG = {
         "https://trigger.macrodroid.com/6eafac25-d8ec-4aff-b139-ca213fa50423/MVP",
     cooldownTime: 60, // 冷却时间(秒)
     maxHistoryRecords: 100, // 最大历史记录数
+    // 已读回执：JSONBin 公开读（Master Key 仅在 MacroDroid 侧，不入网页）
+    jsonBin: {
+        binUrl: "https://api.jsonbin.io/v3/b/6a4e36bdda38895dfe40054e/latest"
+    },
     defaultAvatar: "👤", // 默认头像
     defaultName: {
         // 默认昵称

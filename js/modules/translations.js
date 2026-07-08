@@ -22,6 +22,11 @@ export const TRANSLATIONS = {
             successMsg: "已发送！",
             errorMsg: "发送失败: {error}"
         },
+        receipt: {
+            sent: "已发送，等待回执~",
+            read: "已读",
+            timeout: "可能不在"
+        },
         profile: {
             bindTitle: "绑定账号",
             editTitle: "编辑资料",
@@ -101,6 +106,11 @@ export const TRANSLATIONS = {
         notification: {
             successMsg: "Sent！",
             errorMsg: "Failed to send: {error}"
+        },
+        receipt: {
+            sent: "Sent, waiting for reply~",
+            read: "Read",
+            timeout: "Might be away"
         },
         profile: {
             bindTitle: "Bind Account",
@@ -182,6 +192,11 @@ export const TRANSLATIONS = {
             successMsg: "送信しました！",
             errorMsg: "送信失敗: {error}"
         },
+        receipt: {
+            sent: "送信済み、返信待ち~",
+            read: "既読",
+            timeout: "不在の可能性"
+        },
         profile: {
             bindTitle: "アカウント登録",
             editTitle: "プロフィール編集",
@@ -261,6 +276,11 @@ export const TRANSLATIONS = {
         notification: {
             successMsg: "전송 완료！",
             errorMsg: "전송 실패: {error}"
+        },
+        receipt: {
+            sent: "전송됨, 응답 대기~",
+            read: "읽음",
+            timeout: "자리 비움"
         },
         profile: {
             bindTitle: "계정 등록",
