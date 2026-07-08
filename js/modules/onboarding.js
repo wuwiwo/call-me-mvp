@@ -1,7 +1,6 @@
 // /src/modules/onboarding.js
 // 新手引导模块
 import { utils } from './utils.js';
-import { profile } from './profile.js';
 import { state } from './state.js';
 
 const ONBOARDING_KEY = 'onboardingCompleted';
@@ -176,7 +175,7 @@ export const onboarding = {
 
         if (!elementId) return;
 
-        let targetElement = null;
+        let targetElement;
         
         // 特殊处理动态添加的历史按钮
         if (elementId === 'history') {

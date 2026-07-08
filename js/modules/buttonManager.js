@@ -13,9 +13,6 @@ import {
 import {
     countdown
 } from "./countdown.js";
-import {
-    soundManager
-} from "./sounds.js";
 
 export const buttonManager = {
     elements: null,
@@ -219,13 +216,8 @@ export const buttonManager = {
         </div>
     `;
 
-        // 添加详细的点击事件日志
-        buttonEl.addEventListener('click', (e) => {
-
-
-            // 确保调用 handleButtonClick
+        buttonEl.addEventListener('click', () => {
             this.handleButtonClick(button);
-
         });
 
         return buttonEl;

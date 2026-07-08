@@ -2,9 +2,6 @@ import {
     CONFIG
 } from "./modules/config.js";
 import {
-    TRANSLATIONS
-} from "./modules/translations.js";
-import {
     state
 } from "./modules/state.js";
 import {
@@ -25,9 +22,6 @@ import {
 import {
     buttonManager
 } from "./modules/buttonManager.js";
-import {
-    history
-} from "./modules/history.js";
 import {
     soundManager
 } from "./modules/sounds.js";

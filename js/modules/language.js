@@ -1,6 +1,5 @@
 // /src/modules/language.js
 import { TRANSLATIONS } from './translations.js';
-import { utils } from './utils.js';
 import { state } from './state.js';
 
 // 多语言管理
@@ -77,8 +76,7 @@ export const language = {
     // 切换语言菜单显示/隐藏
     toggleLanguageMenu() {
         const menu = this.elements.languageMenu;
-        const toggle = this.elements.languageToggle;
-        
+
         if (menu.classList.contains('show')) {
             this.hideLanguageMenu();
         } else {

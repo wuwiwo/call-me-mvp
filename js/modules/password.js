@@ -1,7 +1,6 @@
 // /src/modules/password.js
 // 密码验证模块（简单访问控制）
 import { utils } from './utils.js';
-import { state } from './state.js';
 
 const PASSWORD_KEY = 'accessPassword';
 const PASSWORD_TIMESTAMP_KEY = 'passwordSetTime';

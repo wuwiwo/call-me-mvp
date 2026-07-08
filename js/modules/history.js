@@ -1,7 +1,6 @@
 // history.js - 修改后的完整代码
 // /src/modules/history.js
 import { utils } from './utils.js';
-import { state } from './state.js';
 
 // 历史记录管理
 export const history = {

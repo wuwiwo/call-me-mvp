@@ -1,10 +1,7 @@
 // /src/modules/profile.js
-import { CONFIG } from './config.js';
 import { utils } from './utils.js';
 import { state } from './state.js';
-
-// DOM元素缓存
-let elements = {};
+import { notification } from './notification.js';
 
 // 用户资料管理
 export const profile = {

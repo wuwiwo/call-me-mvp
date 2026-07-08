@@ -101,8 +101,6 @@ export const notification = {
                 throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
             }
 
-            const responseText = await response.text();
-
             // 确保使用翻译文本而不是翻译键
             this.show(utils.getTranslation("notification.successMsg"));
             this.addHistoryRecord(buttonData.message, true);
