@@ -34,7 +34,6 @@ export const CONFIG = {
         avatars: {
             "🐶": "sounds/dog-bark.mp3",
             "🐱": "sounds/cat-meow.mp3",
-            "🦊": "sounds/fox-sound.mp3",
             "🐯": "sounds/tiger-roar.wav",
             "🦁": "sounds/lion-roaring.mp3",
             "🐵": "sounds/monkey-sound.wav",
@@ -42,8 +41,7 @@ export const CONFIG = {
         },
         // 操作反馈音效
         notifications: {
-            success: "sounds/success-notification.wav",
-            error: "sounds/error-alert.mp3"
+            success: "sounds/success-notification.wav"
         }
     },
     //按钮

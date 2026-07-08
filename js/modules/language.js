@@ -2,7 +2,6 @@
 import { TRANSLATIONS } from './translations.js';
 import { utils } from './utils.js';
 import { state } from './state.js';
-import { buttonManager } from './buttonManager.js';
 
 // 多语言管理
 export const language = {
@@ -144,15 +143,10 @@ export const language = {
         // 保存到localStorage实现持久化
         localStorage.setItem('appLanguage', lang);
         console.log(`语言已更新为: ${lang}, 已保存到本地存储`);
-        
+
         // 更新界面
         this.updateUI();
-        
-        // 刷新按钮文本
-        if (buttonManager && typeof buttonManager.refreshButtonTexts === 'function') {
-            buttonManager.refreshButtonTexts();
-        }
-        
+
         // 隐藏菜单
         this.hideLanguageMenu();
     },

@@ -75,7 +75,7 @@ export const notification = {
             // 3秒后刷新页面
             setTimeout(() => {
                 console.log("刷新页面以显示绑定窗口");
-                location.reload(true);
+                location.reload();
             }, 3000);
 
             return false;

@@ -83,7 +83,11 @@ export const TRANSLATIONS = {
             editTitle: "Edit Profile",
             nicknamePlaceholder: "Enter your nickname",
             saveBtn: "Save Profile",
-            avatarLabel: "Choose Avatar"
+            avatarLabel: "Choose Avatar",
+            customButton: "Custom Button",
+            buttonTextPlaceholder: "Button text (max {maxLength} chars)",
+            randomIcon: "Random icon",
+            confirmReset: "Reset to default buttons?"
         },
         time: {
             justNow: "just now",

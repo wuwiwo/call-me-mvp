@@ -153,10 +153,9 @@ class CallMeApp {
             notification.init(this.elements.notificationEl);
             countdown.init(this.elements);
 
-            // 只在按钮容器存在时初始化按钮管理器（移除重复初始化）
-            if (this.elements.buttonContainer && !window.buttonManagerInitialized) {
+            // 初始化按钮管理器（仅此处初始化一次）
+            if (this.elements.buttonContainer) {
                 buttonManager.init(this.elements.buttonContainer);
-                window.buttonManagerInitialized = true; // 防止重复初始化
             }
 
             // 初始化新手引导模块（最后初始化）
@@ -227,24 +226,9 @@ class CallMeApp {
 }
 
 
-// 修改 main.js 中的按钮管理器初始化部分
-// 确保在DOM完全加载后初始化
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM已加载，启动应用");
     try {
-        const app = new CallMeApp();
-
-        // 确保按钮容器存在后再初始化按钮管理器
-        const buttonContainer = document.querySelector(".bubble-container");
-        if (buttonContainer) {
-            // 延迟初始化以确保所有依赖项都已加载
-            setTimeout(() => {
-                buttonManager.init(buttonContainer);
-                console.log("按钮管理器初始化完成");
-            }, 100);
-        } else {
-            console.error("按钮容器未找到!");
-        }
+        new CallMeApp();
     } catch (error) {
         console.error("应用启动失败:", error);
     }
