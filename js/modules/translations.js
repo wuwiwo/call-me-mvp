@@ -24,8 +24,8 @@ export const TRANSLATIONS = {
         },
         receipt: {
             sent: "已发送，等待回执~",
-            read: "已读",
-            timeout: "可能不在"
+            read: "ok~收到啦👌",
+            timeout: "可能不在线Q-Q"
         },
         profile: {
             bindTitle: "绑定账号",
@@ -109,8 +109,8 @@ export const TRANSLATIONS = {
         },
         receipt: {
             sent: "Sent, waiting for reply~",
-            read: "Read",
-            timeout: "Might be away"
+            read: "ok~Got it👌",
+            timeout: "Might be offline Q-Q"
         },
         profile: {
             bindTitle: "Bind Account",
@@ -194,8 +194,8 @@ export const TRANSLATIONS = {
         },
         receipt: {
             sent: "送信済み、返信待ち~",
-            read: "既読",
-            timeout: "不在の可能性"
+            read: "ok~受け取った👌",
+            timeout: "オフラインかも Q-Q"
         },
         profile: {
             bindTitle: "アカウント登録",
@@ -279,8 +279,8 @@ export const TRANSLATIONS = {
         },
         receipt: {
             sent: "전송됨, 응답 대기~",
-            read: "읽음",
-            timeout: "자리 비움"
+            read: "ok~받았어👌",
+            timeout: "오프라인일수도 Q-Q"
         },
         profile: {
             bindTitle: "계정 등록",
