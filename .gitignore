@@ -13,6 +13,9 @@ desktop.ini
 .project
 .settings/
 
+# opencode 本地配置（仅本地，不提交）
+.opencode/
+
 # 日志文件
 *.log
 npm-debug.log*
