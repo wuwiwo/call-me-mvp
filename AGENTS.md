@@ -136,6 +136,7 @@ NEXT ACTION
 - 新任务开始时，主 AI 更新同一个 `docs/AI_HANDOFF.md`，不再为同一轮任务要求 Human 转发独立长报告。
 - 历史任务的完整验收证据可以保留在 `tools/` 或其他归档文档，但当前协作状态只以 `docs/AI_HANDOFF.md` 为准。
 - 如果该文件没有待执行任务，外部 AI 必须保持待命，不得自行修改代码。
+- 共享工作区是实时状态：主 AI 正在写入或提交交接文档时，外部 AI 可能短暂看到 `M`、已暂存或尚未同步的状态。发现这种瞬时状态时，先重新读取 `git status`、实际 `HEAD` 和 `docs/AI_HANDOFF.md`；不得把一次快照当成冲突、覆盖或要求 Human 做基线选择。若第二次读取仍有未归属改动，保留原状并报告，不得 reset、checkout、clean 或覆盖。
 
 ### 外部 AI 任务交接协议
 
@@ -144,13 +145,15 @@ NEXT ACTION
 1. 将完整任务卡写入 `docs/AI_HANDOFF.md` 的 `CURRENT TASK`。
 2. 在该区域写明分支、Scope、Non-Goals、Acceptance Criteria 和 Verification。
 3. 告诉 Human 只需让外部 AI“读取并执行 `docs/AI_HANDOFF.md`”，不需要复制任务正文。
+4. 完成任务卡提交后，再通知 Human 激活外部 AI；任务卡中的分支基线必须填写该提交后的实际 `HEAD`，避免出现“任务卡写在 A、提交后 HEAD 变成 B”的歧义。
 
 外部 AI 完成任务时必须：
 
 1. 读取 `AGENTS.md` 和任务文件。
-2. 不直接修改 `main`，除非 Human 明确授权。
-3. 将结果写入 `docs/AI_HANDOFF.md` 的 `EXECUTION REPORT`，包括修改文件、测试命令、完整结果、退出码、已知问题和 commit。
-4. 保留长期有价值的测试脚本；删除证据或复现脚本前必须先报告。
+2. 先确认任务卡指定的基线与实际稳定 `HEAD`；若只是主 AI 提交交接文档造成的瞬时 `M`/暂存状态，重新读取后继续，不向 Human 提出无意义的 A/B 选择。
+3. 不直接修改 `main`，除非 Human 明确授权。
+4. 将结果写入 `docs/AI_HANDOFF.md` 的 `EXECUTION REPORT`，包括修改文件、测试命令、完整结果、退出码、已知问题和 commit。
+5. 保留长期有价值的测试脚本；删除证据或复现脚本前必须先报告。
 
 主 AI 验收时必须：
 
