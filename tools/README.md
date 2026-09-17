@@ -37,11 +37,13 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-storage.mjs` | CM-003：反向验证（纯文件备份还原） |
 | `button-ids.mjs` | CM-004：按钮 ID 兼容规则，52 项断言 |
 | `negative-button-ids.mjs` | CM-004：反向验证 |
-| `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 的完整验收报告 |
+| `input-safety.mjs` | CM-005：动态用户输入注入防护，64 项断言 |
+| `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
+| `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
 
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
 > 它们是**运行时证据**，脚本自身（含全部断言清单）才是可追溯的复核依据。
-> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` 可指定落盘路径。
+> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` 可指定落盘路径。
 
 ## 可配置项（环境变量）
 
@@ -75,7 +77,24 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `CM004_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
 | `CM004_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
 
-> 三个脚本默认都用 8899 端口，**不要并行运行**；如需并行，用各自的 `*_PORT` 错开。
+> 各脚本默认都用 8899 端口，**不要并行运行**；如需并行，用各自的 `*_PORT` 错开。
+
+### CM-005
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `CM005_PORT` | `8899` | 自带服务器端口 |
+| `CM005_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
+| `CM005_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
+| `CM005_CDP_PORT` | `9447` | Chrome 调试端口 |
+| `CM005_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
+| `CM005_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
+| `CM005_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"修复前版本" |
+
+> `tools/input-safety.mjs` 会启动真实浏览器并注入 `<script>` / `<img onerror>` 等载荷。
+> 它只操作被测页面的 LocalStorage，不写仓库文件。
+> `negative-input-safety.mjs` 会临时改写 `js/modules/` 下两个被测文件，
+> 属**手工反向验证工具，不纳入普通 CI**；它用 `try/finally` + 文件快照保证还原。
 
 ## 覆盖的验收路径
 
@@ -176,6 +195,60 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 **这正是原缺陷的真实危害**：同一毫秒内新增多个按钮会**共用一个 ID**，
 而每次保存都会重写所有未编辑按钮的 ID —— 身份不稳定，跨刷新无法对应。
 
+### CM-005（`input-safety.mjs`）
+
+对齐 CM-005 验收标准，共 **64** 项断言，分 8 个用例：
+
+| 用例 | 覆盖内容 |
+|---|---|
+| 1 | 首页按钮渲染：恶意 `message`（`<script>` / `<img onerror>`）与恶意 `icon` |
+| 2 | 按钮编辑表单：恶意 `message` 经 `value` **完整回显**，不产生额外属性 |
+| 3 | 图标选择器：恶意 `icon` 回退为安全值，不进入 class / `dataset.value`；保存后不落库原始载荷 |
+| 4 | 自定义按钮表单：结构注入载荷（`</span><b id="inj">`）只作文本 |
+| 5 | 历史渲染：恶意 `nickname` / `message` / `emoji` / `webhook` |
+| 6 | 历史 `_status`：未知值不产生状态 class；`success` / `error` / 缺失三种情形不回归 |
+| 7 | 合法数据不回归：`fire` / `random` / `star` 渲染、文案、`data-button-index`、选择器回显 |
+| 8 | 全流程无未捕获异常 / `console.error` |
+
+**判定"注入未发生"的四类独立证据**（每类都单独断言，不靠单一信号）：
+
+1. `window.__pwned` 未被设置 —— 脚本或事件属性**确实没有执行**
+2. 容器内不存在 `SCRIPT` / `IMG` / `SVG` / `IFRAME` 等注入元素
+3. 容器内不存在任何 `on*` 事件属性
+4. 恶意串以**字面文本**出现在 `textContent` 中 —— 证明是被当作文本渲染，
+   而不是被过滤掉或当作 HTML 解析
+
+> 第 4 条是刻意设计的：只断言"没有报错/没有 pwned"会把"把内容整个过滤掉"
+> 也算成通过，而那会破坏功能。文本必须在，且必须仍是文本。
+
+**反向验证**（`negative-input-safety.mjs`）不同于前几个任务的做法：
+它**不手写回退片段**，而是用 `git show <ref>:<file>` 取出**基线分支的原文**覆盖
+当前文件 —— 回退的就是真正的缺陷版本，避免"手写回退与真实历史有偏差"造成的假结论。
+
+```text
+修复版本退出码 : 0 (预期 0)          断言：64 passed, 0 failed
+回退版本退出码 : 1 (预期非 0)        断言：36 passed, 28 failed
+回退版本注入类失败项 : 17 条 (预期 > 0)
+源码已还原     : true (预期 true)
+```
+
+回退版本的关键证据：
+
+```text
+FAIL  首页按钮容器：无元素注入（无 SCRIPT/IMG/SVG 等） -> ["IMG","SCRIPT","IMG"]
+FAIL  首页按钮容器：无事件属性注入（无 on* 属性）      -> ["IMG@onerror","IMG@onerror"]
+FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置）  -> true     ← 脚本真的执行了
+FAIL  表单 value 完整回显恶意 message（未被截断/逃逸） -> ""        ← value 属性被突破
+FAIL  首页：恶意 icon 被替换为安全值（非原样拼接）      -> fas fa-bolt
+```
+
+`__pwned = true` 是**真实执行**的直接证据（不是"可能被注入"的推断）；
+`value -> ""` 则说明 `value="${message}"` 的属性突破路径在修复前是可达的。
+
+> **为什么反向验证还要求"失败项必须是注入类"**：只比较退出码会把
+> 端口占用、Chrome 起不来等基础设施抖动误读成"测试有效"。
+> 脚本因此额外断言失败项中包含注入类关键字，并要求修复版汇总为 `0 failed`。
+
 ## 环境注意事项
 
 **代理会劫持回环请求。** 若本机设置了 `HTTP_PROXY` / `HTTPS_PROXY`，
@@ -190,9 +263,16 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 不要改成 `detached` 外部启动——子进程会随 shell 会话结束被回收，下条命令里端口就没了。
 
 **服务器必须与浏览器同进程。** 单独一条命令后台起
-`server.mjs`，下一条命令里端口就没了（子进程被回收）。CM-003 / CM-004 / CM-002
-三个脚本因此都把静态服务器内联在同进程启动，避免这个陷阱。
+`server.mjs`，下一条命令里端口就没了（子进程被回收）。CM-002 / CM-003 / CM-004 / CM-005
+四个脚本因此都把静态服务器内联在同进程启动，避免这个陷阱。
 不要改回"先起服务器再跑脚本"的三段式 —— 在本机会稳定失败。
+
+**反向验证脚本要写"完整 FAIL 清单"，不能只有退出码。**
+若被测代码在缺陷版本下直接抛异常中断，脚本会带着一个笼统的退出码 1 结束，
+报告里看不到失败明细 —— **崩溃是钝的信号，可读的失败清单才是有效证据**。
+CM-003 / CM-005 的修正方式相同：给可能缺失的元素查询加哨兵返回值
+（如 `if (!el) return "(missing)"`），把"结构崩了"变成一条可读的 FAIL。
+CM-005 加固前后对比：回退版本从"(无汇总)"变为 `36 passed, 28 failed` 的完整清单。
 
 **CDP 下必须先导航到同源页面再写 localStorage。** 在 `about:blank`
 上执行 `localStorage.setItem` 会抛 `SecurityError`。若导航失败（如服务器没起），

@@ -787,3 +787,347 @@ Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
 1. 反向验证依赖本机 Chrome 路径，可用 `CM004_CHROME` 覆盖。
 2. 旧 `default_N` 映射表是**硬编码**的两个位置。若未来 `defaultButtons` 增删条目，
    映射表需同步维护 —— 这是刻意的显式依赖，好过隐式位置推断。
+
+---
+---
+
+# CM-005 验收报告（可复核版）
+
+**TASK-ID**: CM-005 — 消除动态用户输入 HTML 注入
+**状态**: READY_FOR_REVIEW
+**报告时间**: 2026-09-17
+**执行分支**: `codex/cm005-input-safety`（基线 `ddff168`，未修改、未合并 `main`）
+
+---
+
+## 零、任务背景
+
+`docs/TECH_DEBT.md` 与 `AGENTS.md:225-236` 均记录：按钮渲染/编辑表单与历史列表
+通过模板字符串把用户可控字段放进 `innerHTML`。
+
+审计后确认的注入点**比任务卡提示的更多**，且分四类（不只是"拼字符串"）：
+
+| 类 | 位置 | 载体 |
+|---|---|---|
+| A. 元素注入 | `buttonManager.createButtonElement` 的 `<span>${message}</span>` | 用户可控文本 |
+| B. **属性突破** | `addDefaultButtonForm` / `addCustomButtonForm` 的 `value="${message}"` | 一个双引号即可逃逸 |
+| C. **class 注入** | `createButtonElement` 的 `fa-${button.icon}`、`createIconPicker` 的 `data-value="${current}"` | LocalStorage 中的 icon |
+| D. 元素注入 | `history.render()` 的 `${record.emoji/nickname/message/webhook}` | 历史记录字段 |
+| E. **class 注入** | `history.render()` 的 `class="history-item ${record._status}"` | LocalStorage 中的 `_status` |
+
+**B 与 C/E 是任务卡特别警告的"同类路径"**：如果只做"加一个转义函数"，
+属性突破与 class 注入会被完整保留 —— 因为转义不会让 `class="a b"` 里的
+空格、`value="x"` 外的引号停止生效。本任务因此按**载体**分类处理，
+而不是统一套一个 escape。
+
+---
+
+## 一、代码改动
+
+| 文件 | 性质 | 改动 |
+|---|---|---|
+| `js/modules/history.js` | 修改 | `render()` 改为 `createElement` + `textContent` 构建；新增 `HISTORY_STATUSES` 白名单与 `safeStatus()` |
+| `js/modules/buttonManager.js` | 修改 | `createButtonElement` / `createIconPicker` / `addDefaultButtonForm` / `addCustomButtonForm` / `showConfirmDialog` 改为 DOM API；新增图标双闸门 `SAFE_ICON_NAMES` + `ICON_TOKEN_RE` + `isSafeIconName()` + `UNUSABLE_ICON` |
+| `tools/input-safety.mjs` | 新增 | CM-005 主回归脚本，**64 项断言**，进程内自建服务器（CDP 9447） |
+| `tools/negative-input-safety.mjs` | 新增 | 反向验证（从基线 ref 取原文覆盖，`try/finally` 还原） |
+| `tools/README.md` | 修改 | 补充 CM-005 用例表、环境变量、反向验证证据、四类注入证据说明 |
+| `tools/ACCEPTANCE.md` | 修改 | 本报告 |
+
+**改动规模**：`buttonManager.js +259/-?`、`history.js +95/-?`、`tools/README.md +90`，
+新增脚本 919 + 202 行。
+
+---
+
+## 二、实现摘要
+
+### 2.1 文本：走 textContent / value，不再拼模板
+
+`history.render()` 由 `records.map(...).join('')` 的模板字符串
+改为逐节点 `createElement` + `textContent`：
+
+```js
+const nameEl = document.createElement('span');
+nameEl.className = 'history-name';
+nameEl.textContent = item.nickname ?? '';
+```
+
+按钮与表单同理；`addDefaultButtonForm` / `addCustomButtonForm` 的模板里
+**不再含任何用户数据**，`message` 通过 `input.value` 赋值：
+
+```js
+const textInput = form.querySelector(".btn-text");
+textInput.value = buttonData?.message || "";
+textInput.placeholder = utils.formatString(...);
+formGroup.appendChild(this.createIconPicker(buttonData?.icon, `button${index + 1}Icon`));
+```
+
+> 图标选择器现在是 **DOM 节点**，所以用 `appendChild` 插入，而不是塞进模板字符串。
+
+### 2.2 图标：两道闸门（**本任务最关键的设计取舍**）
+
+`button.icon` 会被拼进 `class="fas fa-<icon>"`，是 class 注入的入口。原实现直接拼接。
+
+第一版实现我用了**纯白名单**（`availableIcons` + `random` + `circle`），
+结果被自己的回归测试打回：
+
+```text
+FAIL  迁移后图标不丢 -> [...{"icon":"random"}]     （原值 "heart" 被改写）
+```
+
+**原因是设计缺陷，不是测试问题**：白名单会把白名单外的值一律改写为 fallback，
+于是 ——
+① 渲染结果变化（原本有图标，变成占位图标）；
+② **保存时把用户原值静默改写成 fallback，属数据丢失**。
+②比原缺陷更糟：原缺陷是"可能被注入"，新缺陷是"确定会丢数据"。
+
+最终改为**两道闸门**：
+
+```js
+const SAFE_ICON_NAMES = new Set([
+    ...(CONFIG.buttons.availableIcons || []),   // 闸门 1：UI 能产生的全部取值
+    "random",   // 图标选择器的"随机"语义，会持久化
+    "circle",   // saveButtonConfig() 未取到图标时的保存默认值
+]);
+
+const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/;   // 闸门 2：语法安全的 token
+
+function isSafeIconName(name) {
+    if (typeof name !== "string") return false;
+    if (SAFE_ICON_NAMES.has(name)) return true;
+    return ICON_TOKEN_RE.test(name);
+}
+```
+
+闸门 2 存在的理由：icon 取自 LocalStorage，可能存在白名单外的历史值。
+`/^[a-z0-9][a-z0-9-]{0,49}$/` 只放行"在 class 属性里不可能越界"的字符集
+（无引号、空格、尖括号、等号、斜杠），因此**既不改变合法旧数据的显示与存储，
+也不给注入留任何入口**。
+
+**支撑这个判断的证据**（不是猜的）：
+
+```text
+git log -S'"heart"' -- js/modules/config.js     → 无结果
+git show 7ce02f2:js/modules/config.js           → 最初 8 个图标
+git show b5c77ed:js/modules/config.js           → 扩充为 18 个
+```
+
+`availableIcons` 从最初 8 个**只增不减**，历史版本从未产生过列表外的值。
+所以白名单外的值不属于"合法旧数据"；但**"把它改写成别的值"仍然是数据丢失**，
+两道闸门的做法对两类值都安全。
+
+### 2.3 fallback 必须唯一
+
+第一版还有第二处不一致：`createButtonElement` 回退到 `"circle"`，
+而 `createIconPicker` 回退到 `"random"` —— 同一个按钮的**渲染**与**编辑回显**结论不同，
+用户一保存又变成第三个值。已统一为单一常量：
+
+```js
+const UNUSABLE_ICON = "random";
+```
+
+取 `"random"` 而非另造占位值，因为它本来就是图标选择器**原有的**回退语义
+（图标缺失/非法时的既有分支），所以这条路径的行为没有变化。
+注意区分：`saveButtonConfig()` 对"**新增**按钮未选图标"写入 `"circle"` ——
+那是"用户还没选"，与"存储里的值不可用"不是同一件事。
+
+### 2.4 历史状态：只有两种合法值
+
+```js
+const HISTORY_STATUSES = new Set(['success', 'error']);
+function safeStatus(status) {
+    return HISTORY_STATUSES.has(status) ? status : '';
+}
+```
+
+未知/缺失的 `_status` → **不产生状态 class**（`class="history-item"`）。
+选择"空"而不是"success"，是因为未知值在修复前的渲染结果是
+`class="history-item <原值>"`（无状态样式），空串与之最接近，
+不会让一条损坏记录突然获得成功态样式。
+
+### 2.5 顺带加固的同文件 sink
+
+`showConfirmDialog(message)` 也是拼 `innerHTML` 的入口。它当前只被
+`utils.getTranslation(...)` 调用（应用自带文案），**不是用户可控路径**，
+但仍是同文件、同类的动态 sink。已把 `message` 改为 `textContent` 写入，
+模板中只保留应用自带的多语言文案。此项在报告中单列，属**同文件同类加固**，
+非范围扩张。
+
+### 2.6 审计过但**未**修改的路径
+
+| 路径 | 结论 |
+|---|---|
+| `notification.js:40` `/json/version`… 实为 `notification.show()` 的 `innerHTML` | **未改**。逐一核对全部 8 个调用点，实参均为内部字符串或 `utils.getTranslation()`，**没有任何用户输入到达这里**，因此不构成注入路径。且该文件不在 Scope。已在 `Known issues` 记录。 |
+| `main.js:172` | 静态字符串 `<i class="fas fa-history">`，无插值 |
+| `onboarding.js:102` / `password.js:45` | 引导与密码提示模板，插值为应用自带文案 |
+| `countdown.js:64` | 已使用 `textContent` |
+
+---
+
+## 三、验证结果
+
+| 检查项 | 命令 | 结果 | 退出码 |
+|---|---|---|---|
+| CM-005 主回归 | `node tools/input-safety.mjs` | **64 passed, 0 failed** | **0** |
+| CM-005 反向验证 | `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
+| CM-004 不回归 | `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
+| CM-003 不回归 | `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
+| CM-002 不回归 | `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
+| ESLint | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| 空白检查 | `git diff --check` | clean | **0** |
+
+环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP **9447**，
+脚本进程内自建静态服务器，零 npm 依赖。
+
+### 3.1 主回归用例分配（64 项）
+
+| # | 用例 | 断言数 |
+|---|---|---|
+| 1 | 首页按钮渲染：恶意 message 与恶意 icon | 9 |
+| 2 | 按钮编辑表单：恶意 message 经 `value` 回显 | 7 |
+| 3 | 图标选择器：恶意 icon 不注入任意 class / 属性 | 11 |
+| 4 | 自定义按钮表单：恶意 message 与 icon | 6 |
+| 5 | 历史渲染：恶意 nickname / message / emoji / webhook | 9 |
+| 6 | 历史 `_status`：未知值不突破 class，success/error 不回归 | 10 |
+| 7 | 合法数据不回归：图标渲染 / 文本 / 随机图标 | 11 |
+| 8 | 页面异常检查 | 1 |
+| **合计** | | **64** |
+
+### 3.2 判定"注入未发生"的四类独立证据
+
+每类都单独断言，不依赖单一信号：
+
+1. `window.__pwned` 未被设置 —— 脚本或事件属性**确实没有执行**
+2. 容器内不存在 `SCRIPT` / `IMG` / `SVG` / `IFRAME` 等注入元素
+3. 容器内不存在任何 `on*` 事件属性
+4. 恶意串以**字面文本**出现在 `textContent` 中
+
+> 第 4 条是刻意设计的。只断言"没有报错 / 没有 pwned"会把
+> "把内容整个过滤掉"也算成通过 —— 而那是功能破坏，不是安全修复。
+> **文本必须在，且必须仍然是文本。**
+
+### 3.3 注入载荷
+
+```js
+const P = {
+    scriptTag: "<script>window.__pwned=1</script>",
+    imgOnerror: '<img src=x onerror="window.__pwned=1">',
+    attrBreak: '"><img src=x onerror="window.__pwned=1">',      // 属性突破
+    eventAttr: '" onmouseover="window.__pwned=1',                // 双引号逃逸
+    eventAttrSingle: "' onfocus='window.__pwned=1",              // 单引号逃逸
+    svgOnload: "<svg/onload=window.__pwned=1>",
+    structBreak: '</span><b id="inj">INJECTED</b>',               // 结构注入
+};
+const ICON_P = {
+    attrBreak: 'bolt"><img src=x onerror="window.__pwned=1">',
+    withSpace: "bolt onmouseover=window.__pwned=1",
+    quoteOnly: 'bolt"',
+    slash: "bolt/onload",
+};
+```
+
+---
+
+## 四、反向验证（证明测试对缺陷有区分力）
+
+`tools/negative-input-safety.mjs` 与 CM-003/004 的做法**不同**：
+它**不手写回退片段**，而是用 `git show <ref>:<file>` 取出**基线分支的原文**
+覆盖当前文件。
+
+**为什么换做法**：手写回退容易与真实历史版本产生偏差，
+得到"看起来能区分"的假结论。直接从 ref 取原文，回退的就是真正的缺陷版本。
+
+```text
+回退来源 ref : main
+被测文件     : js/modules/buttonManager.js, js/modules/history.js
+
+修复版本退出码 : 0    汇总：64 passed, 0 failed
+回退版本退出码 : 1    汇总：36 passed, 28 failed
+回退版本注入类失败项 : 17 条
+源码已还原     : true
+结果           : 通过——测试对注入缺陷有区分力（失败确由注入类断言触发）
+```
+
+**回退版本的关键证据**：
+
+```text
+FAIL  首页按钮容器：无元素注入（无 SCRIPT/IMG/SVG 等） -> ["IMG","SCRIPT","IMG"]
+FAIL  首页按钮容器：无事件属性注入（无 on* 属性）      -> ["IMG@onerror","IMG@onerror"]
+FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置）  -> true
+FAIL  恶意 message（script 标签）以字面文本显示        -> （空，说明被当 HTML 解析了）
+FAIL  编辑弹窗：无元素注入（无 SCRIPT/IMG/SVG 等）      -> ["IMG"]
+FAIL  表单 value 完整回显恶意 message（未被截断/逃逸）  -> ""
+FAIL  首页：恶意 icon 被替换为安全值（非原样拼接）      -> fas fa-bolt
+```
+
+三个最有说服力的：
+
+- **`__pwned -> true`** —— 不是"可能被注入"的推断，是**脚本真的执行了**。
+- **`value -> ""`** —— `value="${message}"` 的属性突破路径在修复前**可达**，
+  且结果是输入框内容被破坏（功能损坏，不只是安全问题）。
+- **`fas fa-bolt`** —— 恶意 icon 的载荷片段确实进入了 class 属性。
+
+**为什么结论还要额外要求"失败项属注入类"**：只比较退出码，
+会把端口占用、Chrome 起不来等基础设施抖动误读成"测试有效"。
+脚本因此额外断言：修复版汇总必须为 `0 failed`，且回退版的失败项中
+必须包含注入类关键字。**这一条是排除假阳性证据的关键。**
+
+### 4.1 反向验证脚本自身的一个真实缺陷（已修）
+
+首次运行时，回退版本的输出是 `(无汇总)` —— 它在用例 3 因
+`document.getElementById("button1Icon")` 返回 `null` 而抛异常，
+脚本中断，**报告里只剩一个笼统的退出码 1**。
+
+这与 CM-003 记录的教训完全同源：**崩溃是钝的信号，可读的失败清单才是有效证据。**
+修法相同：给可能缺失的元素查询加哨兵返回值。
+
+```js
+const p = document.getElementById("button1Icon");
+if (!p) return JSON.stringify(["(no picker)"]);   // 把"结构崩了"变成一条可读 FAIL
+```
+
+加固后回退版本输出**完整清单**（`36 passed, 28 failed`），而不是中断。
+
+---
+
+## 五、已知问题与边界
+
+1. **`notification.js` 的 `innerHTML` 未修改**（不在 Scope，且经审计无用户输入到达）。
+   逐一核对了 `notification.show()` 的**全部 8 个调用点**，
+   实参均为内部字符串或 `utils.getTranslation()`。
+   若未来某处把用户文本传给 `notification.show`，它会立即成为注入点 ——
+   建议纳入后续任务的观察项。
+2. **`npm run lint` 本机不可用**（shim 依赖被裁剪的 `dirname`/`sed`），与代码无关；
+   改用 `node node_modules/eslint/bin/eslint.js .` 得 exit 0。同 CM-002/003/004 记录。
+3. **`npm run format:check` 仍为既有 FAIL**（39 文件基线），不混入本次改动。
+4. **`icon` 白名单外但语法安全的值会被保留并原样渲染**（如 `heart` → `fas fa-heart`）。
+   这是刻意的：改为 fallback 会同时造成渲染变化与保存时的数据丢失。
+   注入不可能经由该路径发生（字符集受限）。
+5. **本次未改动 `index.html` / `history.html`**，DOM 结构、class 名与层级保持原样；
+   四套既有测试的断言数（52/51/29）与改动前完全一致，无回归。
+6. **`showConfirmDialog` 属顺带加固**：同文件、同类的动态 sink，
+   但当前调用方只传应用自带文案。已在报告中单列，供 Review 判断是否可接受。
+
+---
+
+## 六、建议状态
+
+```text
+CM-005 代码实现：PASS
+主回归：PASS（64/64，脚本可复跑）
+反向验证：PASS（回退基线原文后 28 项失败，其中 17 项属注入类，__pwned 实测为 true）
+CM-002/003/004 不回归：PASS（29 / 51 / 52 全部 0 failed）
+Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
+空白检查：PASS（git diff --check clean）
+范围检查：PASS（仅 Scope 内文件 + 测试工具文档）
+任务整体：READY_FOR_REVIEW，待主指挥 AI 验收
+```
+
+**遗留风险**：
+
+1. 反向验证依赖本机 Chrome 路径，可用 `CM005_CHROME` 覆盖。
+2. `negative-input-safety.mjs` 会临时改写 `js/modules/` 下两个被测文件，
+   属**手工反向验证工具，不纳入普通 CI**；用 `try/finally` + 文件快照保证还原
+   （刻意不用 `git stash` —— 本机曾因它损坏 `.git/refs`）。
+3. 反向验证的"回退来源 ref"默认 `main`。若将来 `main` 已包含本修复，
+   该脚本会因"没有可回退的修复"而主动 `exit 2`（而非给出假通过）——
+   此时应改用 `CM005_BASE_REF` 指定修复前的提交。

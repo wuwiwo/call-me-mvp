@@ -76,15 +76,34 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — CM-005 已派发，等待外部 AI 接受
-当前分支：main（本地 + 远端同步，执行分支已删除）
-分支基线：外部 AI 开工前以实际稳定 `HEAD` 为准
-当前 commit：外部 AI 开工前以 `git rev-parse --short HEAD` 为准
+状态：READY_FOR_REVIEW — CM-005 已实施完毕，等待主指挥 AI 验收
+当前分支：codex/cm005-input-safety（未修改、未合并 main）
+分支基线：ddff168（git rev-parse --short HEAD 实测，已含本任务卡）
+当前 commit：业务提交 906f27a / c081fc7；docs 提交 hash 属自引用，以 `git log --oneline -3 codex/cm005-input-safety` 为准
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3、CM-004 分支均已合并
 当前任务：CM-005
-最近状态更新：2026-09-17 22:36
+最近状态更新：2026-09-17 23:15
 ```
+
+### 外部 AI 接受 CM-005（2026-09-17）
+
+任务卡要求「从当前本地 `main` 的实际稳定 `HEAD` 创建」。外部 AI 按此执行：
+
+```text
+git rev-parse --short HEAD  →  ddff168
+（ddff168 = docs: 派发 CM-005 输入安全任务，已含 CM-005 任务卡）
+git switch -c codex/cm005-input-safety
+```
+
+**未使用过期报告 hash，未要求 Human 选基线。**
+未修改 `main`，未合并任何 PR，未创建 `docs/tasks/`、`docs/reports/`。
+
+> **提请主指挥 AI 留意（CURRENT TASK 内的一处笔误）**：
+> CM-005 任务卡的 `BRANCH:` 段落**出现了两次** —— 第二段是 CM-004 的残留，
+> 写着 `codex/cm004-button-ids`。两段对分支名的指示**互相矛盾**。
+> 外部 AI 依据 OBJECTIVE 与第一段的 `codex/cm005-input-safety` 执行，
+> 并**未擅自修改任务卡**（该区域属主指挥 AI）。请确认是否需要清理。
 
 ### 外部 AI 接受 CM-004（2026-09-17）
 
@@ -111,9 +130,217 @@ git switch -c codex/cm004-button-ids
 
 ## EXECUTION REPORT
 
-### CM-005 — 消除动态用户输入 HTML 注入（待外部 AI 回填）
+### CM-005 — 消除动态用户输入 HTML 注入（2026-09-17，外部 AI 执行）
 
-外部 AI 接受任务后，在本节顶部追加执行状态、修改文件、实现摘要、测试命令与完整结果、已知问题和 commit；不要覆盖 CM-002 至 CM-004 历史报告。
+**Files changed**
+
+| 文件 | 性质 | 改动 |
+|---|---|---|
+| `js/modules/history.js` | 修改 | `render()` 改为 `createElement` + `textContent`；新增 `HISTORY_STATUSES` + `safeStatus()` |
+| `js/modules/buttonManager.js` | 修改 | `createButtonElement` / `createIconPicker` / `addDefaultButtonForm` / `addCustomButtonForm` / `showConfirmDialog` 改 DOM API；新增图标双闸门 `SAFE_ICON_NAMES` + `ICON_TOKEN_RE` + `isSafeIconName()` + `UNUSABLE_ICON` |
+| `tools/input-safety.mjs` | 新增 | CM-005 主回归脚本，**64 项断言**，进程内自建服务器（CDP 9447） |
+| `tools/negative-input-safety.mjs` | 新增 | 反向验证（从基线 ref 取原文覆盖，`try/finally` 还原） |
+| `tools/README.md` | 修改 | 补充 CM-005 用例表、环境变量、反向验证证据、四类注入证据说明 |
+| `tools/ACCEPTANCE.md` | 修改 | 追加 CM-005 验收报告（可复核版） |
+
+**Summary**
+
+审计出的注入点**比任务卡提示的更多**，且分四类 —— 不是"加一个转义函数"能覆盖的：
+
+| 类 | 位置 | 载体 |
+|---|---|---|
+| A. 元素注入 | `createButtonElement` 的 `<span>${message}</span>` | 用户可控文本 |
+| B. **属性突破** | `addDefaultButtonForm` / `addCustomButtonForm` 的 `value="${message}"` | 一个双引号即可逃逸 |
+| C. **class 注入** | `fa-${button.icon}`、`data-value="${current}"` | LocalStorage 中的 icon |
+| D. 元素注入 | `history.render()` 的 emoji / nickname / message / webhook | 历史记录字段 |
+| E. **class 注入** | `class="history-item ${record._status}"` | LocalStorage 中的 `_status` |
+
+**B / C / E 正是任务卡警告的"同类路径"**：转义不会让 `class="a b"` 中的空格
+或 `value="x"` 外的引号停止生效。因此按**载体**分类处理。
+
+```js
+// 文本：textContent / value
+nameEl.textContent = item.nickname ?? '';
+textInput.value = buttonData?.message || "";
+
+// 历史状态：只有两种合法值，未知值不产生状态 class
+const HISTORY_STATUSES = new Set(['success', 'error']);
+function safeStatus(status) {
+    return HISTORY_STATUSES.has(status) ? status : '';
+}
+```
+
+**关键设计取舍 1 —— 图标用两道闸门，而不是纯白名单**
+
+我第一版用了纯白名单（`availableIcons` + `random` + `circle`），结果被自己的
+回归测试打回：`icon:"heart"` 被改写为 `"random"`。
+
+**这是设计缺陷，不是测试问题**：白名单会把白名单外的值一律改写为 fallback，于是
+① 渲染结果变化；② **保存时把用户原值静默改写，属数据丢失** ——
+②比原缺陷更糟（原缺陷是"可能被注入"，新缺陷是"确定会丢数据"）。
+
+最终改为两道闸门：
+
+```js
+const SAFE_ICON_NAMES = new Set([
+    ...(CONFIG.buttons.availableIcons || []),   // 闸门 1：UI 能产生的全部取值
+    "random",   // 图标选择器的"随机"语义，会持久化
+    "circle",   // saveButtonConfig() 未取到图标时的保存默认值
+]);
+const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/;   // 闸门 2：语法安全的 token
+
+function isSafeIconName(name) {
+    if (typeof name !== "string") return false;
+    if (SAFE_ICON_NAMES.has(name)) return true;
+    return ICON_TOKEN_RE.test(name);   // 历史值兜底，字符集内不可能越界
+}
+```
+
+**支撑判断的证据**（不是推测）：
+
+```text
+git log -S'"heart"' -- js/modules/config.js   → 无结果（命中的其实是 heartbeat）
+git show 7ce02f2:js/modules/config.js         → 最初 8 个图标
+git show b5c77ed:js/modules/config.js         → 扩充为 18 个
+```
+
+`availableIcons` 从最初 8 个**只增不减**，历史版本从未产生列表外的值。
+所以白名单外的值不属于"合法旧数据"；但**"改写成别的值"仍然是数据丢失**，
+两道闸门对两类值都安全。
+
+**关键设计取舍 2 —— fallback 必须唯一**
+
+第一版还有第二处不一致：`createButtonElement` 回退 `"circle"`，
+而 `createIconPicker` 回退 `"random"` —— 同一按钮的**渲染**与**编辑回显**结论不同，
+用户一保存又变成第三个值。已统一为单一常量 `UNUSABLE_ICON = "random"`；
+取 `"random"` 是因为它本就是图标选择器**原有的**回退语义，
+这条路径的行为没有变化。注意区分：`saveButtonConfig()` 对"**新增**按钮未选图标"
+写入 `"circle"` —— 那是"用户还没选"，与"存储里的值不可用"不是同一件事。
+
+**历史状态为什么回退到"空"而不是 `success`**：未知值在修复前渲染为
+`class="history-item <原值>"`（无状态样式），空串与之最接近，
+不会让一条损坏记录突然获得成功态样式。
+
+**审计过但未修改的路径**
+
+- `notification.js:40` 的 `innerHTML`：逐一核对 `notification.show()` 的**全部 8 个调用点**，
+  实参均为内部字符串或 `utils.getTranslation()`，**没有用户输入到达**，不构成注入路径；
+  且该文件不在 Scope。已列入 Known issues 作为观察项。
+- `main.js:172`（静态字符串）、`onboarding.js:102`、`password.js:45`（应用自带文案）：
+  无用户可控插值。`countdown.js:64` 已使用 `textContent`。
+
+**Tests**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/input-safety.mjs` | **64 passed, 0 failed** | **0** |
+| `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1（测试对缺陷有区分力） | **0** |
+| `node tools/button-ids.mjs` | **52 passed, 0 failed**（CM-004 不回归） | **0** |
+| `node tools/storage-resilience.mjs` | **51 passed, 0 failed**（CM-003 不回归） | **0** |
+| `node tools/e2e.mjs` | **29 passed, 0 failed**（CM-002 不回归） | **0** |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| `git diff --check` | clean | **0** |
+
+环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP **9447**，
+脚本进程内自建静态服务器，零 npm 依赖。
+
+64 项断言分配：用例 1（首页按钮渲染）9、用例 2（编辑表单 value 回显）7、
+用例 3（图标选择器）11、用例 4（自定义表单）6、用例 5（历史渲染）9、
+用例 6（历史 `_status`）10、用例 7（合法数据不回归）11、用例 8（异常检查）1。
+
+**判定"注入未发生"的四类独立证据**（每类单独断言，不靠单一信号）：
+
+1. `window.__pwned` 未被设置 —— 脚本或事件属性**确实没有执行**
+2. 容器内不存在 `SCRIPT` / `IMG` / `SVG` / `IFRAME` 等注入元素
+3. 容器内不存在任何 `on*` 事件属性
+4. 恶意串以**字面文本**出现在 `textContent` 中
+
+> 第 4 条是刻意设计的：只断言"没有报错 / 没有 pwned"会把
+> **"把内容整个过滤掉"也算成通过** —— 而那是功能破坏，不是安全修复。
+> **文本必须在，且必须仍然是文本。**
+
+**反向验证的真实缺陷证据**（`negative-input-safety.mjs`）：
+
+与前几个任务**做法不同**：不手写回退片段，而是用 `git show <ref>:<file>`
+取**基线分支的原文**覆盖当前文件 —— 回退的就是真正的缺陷版本，
+避免"手写回退与真实历史有偏差"造成假结论。
+
+```text
+回退来源 ref : main
+修复版本退出码 : 0    汇总：64 passed, 0 failed
+回退版本退出码 : 1    汇总：36 passed, 28 failed
+回退版本注入类失败项 : 17 条
+源码已还原     : true
+结果           : 通过——测试对注入缺陷有区分力（失败确由注入类断言触发）
+```
+
+回退版本的关键证据：
+
+```text
+FAIL  首页按钮容器：无元素注入（无 SCRIPT/IMG/SVG 等） -> ["IMG","SCRIPT","IMG"]
+FAIL  首页按钮容器：无事件属性注入（无 on* 属性）      -> ["IMG@onerror","IMG@onerror"]
+FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置）  -> true
+FAIL  表单 value 完整回显恶意 message（未被截断/逃逸）  -> ""
+FAIL  首页：恶意 icon 被替换为安全值（非原样拼接）      -> fas fa-bolt
+```
+
+三条最有说服力的：
+
+- **`__pwned -> true`** —— 不是"可能被注入"的推断，**脚本真的执行了**。
+- **`value -> ""`** —— `value="${message}"` 的属性突破路径修复前**可达**，
+  且结果是输入框内容被破坏（功能损坏，不只是安全问题）。
+- **`fas fa-bolt`** —— 恶意 icon 的载荷片段确实进入了 class 属性。
+
+**为什么结论还额外要求"失败项属注入类"**：只比较退出码，会把端口占用、
+Chrome 起不来等基础设施抖动误读成"测试有效"。脚本因此额外断言：
+修复版汇总必须为 `0 failed`，且回退版失败项中必须包含注入类关键字。
+**这一条是排除假阳性证据的关键。**
+
+**Known issues**
+
+1. **`notification.js` 的 `innerHTML` 未修改**（不在 Scope，且经审计无用户输入到达）。
+   若将来某处把用户文本传给 `notification.show`，它会立即成为注入点 ——
+   建议列为后续任务的观察项。
+2. `npm run lint` 本机 exit 1（shim 依赖被裁剪的 `dirname`/`sed`），与代码无关；
+   改用 `node node_modules/eslint/bin/eslint.js .` 得 exit 0。同 CM-002/003/004 记录。
+3. `npm run format:check` 仍为既有 FAIL（39 文件基线），不混入本次改动。
+4. **白名单外但语法安全的 icon（如 `heart`）会被保留并原样渲染**。
+   这是刻意的：改为 fallback 会同时造成渲染变化与保存时的数据丢失；
+   注入不可能经由该路径发生（字符集受限）。
+5. **本次未改动 `index.html` / `history.html`**，DOM 结构、class 名与层级保持原样；
+   三套既有测试断言数（52 / 51 / 29）与改动前完全一致。
+6. **`showConfirmDialog` 属顺带加固**：同文件、同类的动态 sink，
+   但当前调用方只传应用自带文案。已单列，供 Review 判断是否可接受。
+7. **反向验证脚本首次运行时不产生完整清单**（回退版本在用例 3 因元素缺失抛异常中断，
+   只剩一个笼统的退出码 1）。已按 CM-003 的同一教训加固 ——
+   给可能缺失的元素查询加哨兵返回值，把"结构崩了"变成可读 FAIL；
+   加固后回退版本输出完整 `36 passed, 28 failed`。
+   **崩溃是钝的信号，可读的失败清单才是有效证据。**
+
+**Commit**
+
+见下方「提交记录（CM-005）」小节。
+
+### 提交记录（CM-005）
+
+```text
+906f27a  fix: 消除动态用户输入 HTML 注入                       (+275/-79)
+c081fc7  test: 补充 CM-005 注入防护回归与反向验证工具            (+1119)
+（docs commit）docs: 记录 CM-005 验收报告与执行状态
+```
+
+分支：`codex/cm005-input-safety`，基线 `ddff168`。
+未修改 `main`，未合并任何 PR。
+
+**关于 docs commit 的 hash**：本文件被修改 → 提交 → hash 必变（**自引用**），
+因此这里**不写死自身 hash**，权威来源始终是：
+
+```text
+git log --oneline -3 codex/cm005-input-safety
+```
+
+（CM-004 曾因反复 amend 追平自身 hash 而被判定报告不一致；
+本次改用"不写死 + 指向 git log"，两个业务提交的 hash 保持稳定且已在上方列出。）
 
 ### CM-004 — 固化按钮 ID 兼容规则（2026-09-17，外部 AI 执行）
 
