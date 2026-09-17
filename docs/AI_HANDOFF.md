@@ -64,11 +64,6 @@ BRANCH:
 从当前本地 `main` 的实际稳定 `HEAD` 创建并使用：
 `codex/cm005-input-safety`。外部 AI 开工前必须读取实际 `HEAD` 并确认本任务卡已在其中；不要使用过期报告 hash，不要直接修改或合并 `main`。
 
-BRANCH:
-
-从当前本地 `main` 的实际稳定 `HEAD` 创建并使用：
-`codex/cm004-button-ids`。不要直接修改或合并 `main`。
-
 外部 AI 开工前必须用 `git rev-parse --short HEAD` 确认实际稳定基线，并确认该 `HEAD` 已包含本任务卡；不要使用过期报告中的 hash。若读取时看到暂存区或工作区瞬时变化，先重新读取 `git status` 和本文件，不要据此要求 Human 在两个基线之间选择，也不要覆盖、回退或清理其他 AI 的改动。
 
 外部 AI 完成后，必须把状态和完整报告写回本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，不要创建平行任务/报告通信目录。
@@ -76,7 +71,7 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — CM-005 已实施完毕，等待主指挥 AI 验收
+状态：NEEDS_REWORK — CM-005 代码验证大体通过，但 icon 白名单约束未满足
 当前分支：codex/cm005-input-safety（未修改、未合并 main）
 分支基线：ddff168（git rev-parse --short HEAD 实测，已含本任务卡）
 当前 commit：业务提交 906f27a / c081fc7；docs 提交 hash 属自引用，以 `git log --oneline -3 codex/cm005-input-safety` 为准
@@ -129,6 +124,24 @@ git switch -c codex/cm004-button-ids
 - 未创建 `docs/tasks/`、`docs/reports/`（遵循已收敛的单文档机制）。
 
 ## EXECUTION REPORT
+
+### CM-005 — 主指挥 AI 初审（NEEDS_REWORK）
+
+独立复验结果：
+
+- `node tools/input-safety.mjs`：64 passed / 0 failed，退出码 0。
+- `node tools/button-ids.mjs`：52 passed / 0 failed，退出码 0。
+- `node tools/storage-resilience.mjs`：51 passed / 0 failed，退出码 0。
+- `node tools/e2e.mjs`：29 passed / 0 failed，退出码 0。
+- `npm run lint`：通过，退出码 0。
+- `git diff --check`：通过，反向验证后源码已还原。
+
+阻塞项：
+
+1. `js/modules/buttonManager.js` 的 `isSafeIconName()` 在白名单不命中时仍以 `ICON_TOKEN_RE` 放行任意安全 token；例如不在 `CONFIG.buttons.availableIcons` 中的 `not-configured` 会被渲染为 `fa-not-configured`。这解决了 class 注入，但不符合本任务卡“icon 值仍受允许列表约束”的验收标准。
+2. 请改为严格的允许列表策略，并明确未知历史 icon 的显示与保存兼容行为：不得注入任意 class，也不得在用户未主动修改 icon 时静默丢失原始数据。补充对应回归断言后，更新本节与 `EXECUTION STATUS`，等待重新验收。
+
+其他代码路径和既有回归目前通过；不需要扩大到 `notification.js` 或无关格式化。
 
 ### CM-005 — 消除动态用户输入 HTML 注入（2026-09-17，外部 AI 执行）
 
@@ -775,7 +788,7 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-CM-005 已派发。外部 AI 请读取本文件的 `CURRENT TASK`，在指定分支实施，完成后回填 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主指挥 AI 独立验收。
+CM-005 当前为 NEEDS_REWORK。外部 AI 请读取本文件的最新主指挥初审，处理 icon 白名单与未知历史值兼容问题，完成后更新同一文档并等待重新验收。
 
 ### Human 决定：合并 CM-004 分支（2026-09-17 22:36）— 已执行完毕
 
