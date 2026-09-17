@@ -4,7 +4,7 @@
 
 ## CURRENT TASK
 
-CM-003 — LocalStorage JSON 容错与启动可靠性
+当前无进行中任务。CM-003 已完成并合并。
 
 PHASE: BugFix / Engineering
 PRIORITY: P1
@@ -43,13 +43,13 @@ IMPLEMENTATION REQUIREMENTS:
 
 ACCEPTANCE CRITERIA:
 
-- [ ] `userProfile` 为非法 JSON 时，首页可以加载，用户状态回退为未注册，不出现未捕获异常。
-- [ ] `notificationHistory` 为非法 JSON 时，历史页可以加载并显示空状态，不出现未捕获异常。
-- [ ] `buttonConfig` 为非法 JSON 或错误顶层类型时，按钮管理器回退到可用默认按钮，不出现未捕获异常。
-- [ ] 合法的现有资料、历史和按钮配置行为不回归。
-- [ ] 回归验证可复跑，并报告准确命令、退出码和结果。
-- [ ] `npm run lint` 通过。
-- [ ] 只修改 Scope 内文件，无无关格式化或功能扩展。
+- [x] `userProfile` 为非法 JSON 时，首页可以加载，用户状态回退为未注册，不出现未捕获异常。
+- [x] `notificationHistory` 为非法 JSON 时，历史页可以加载并显示空状态，不出现未捕获异常。
+- [x] `buttonConfig` 为非法 JSON 或错误顶层类型时，按钮管理器回退到可用默认按钮，不出现未捕获异常。
+- [x] 合法的现有资料、历史和按钮配置行为不回归。
+- [x] 回归验证可复跑，并报告准确命令、退出码和结果。
+- [x] `npm run lint` 通过。
+- [x] 只修改 Scope 内文件，无无关格式化或功能扩展。
 
 VERIFICATION:
 
@@ -63,13 +63,13 @@ VERIFICATION:
 ## EXECUTION STATUS
 
 ```text
-状态：PASS — CM-003 第二轮返工已通过主指挥 AI 独立验收
-当前分支：codex/cm003-storage-resilience
+状态：COMPLETED / MERGED — CM-003 已通过验收并合并
+当前分支：main
 分支基线：9989138（docs: clean CM-003 handoff formatting）= origin/main
-当前 commit：1217af7
+当前 commit：4e5b346
 CM-002 基线：已含（ffad349 / PR #1）
-PR：#3 已更新，停在待 Review 状态，未合并
-当前任务：CM-003
+PR：#3 已合并（merge commit：6ff3db4）
+当前任务：无；等待 Human 指定下一任务
 最近状态更新：2026-09-17
 ```
 
