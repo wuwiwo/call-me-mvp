@@ -290,6 +290,19 @@ function check(name, cond, extra = "") {
     }
 }
 
+/**
+ * 与 evalJs 相同，但把页面内异常转成可断言的结果而不是抛出。
+ * 用于"写入路径"用例：修复缺失时页面会抛 SyntaxError，
+ * 我们希望在报告里看到 FAIL 及其异常文本，而不是整个脚本崩掉。
+ */
+async function evalJsSafe(expr) {
+    try {
+        return { ok: true, value: await evalJs(expr) };
+    } catch (e) {
+        return { ok: false, error: String(e.message || e) };
+    }
+}
+
 /** 注入原始 storage 值后加载页面，返回快照 */
 async function injectAndLoad(page, pairs) {
     pageErrors = [];
@@ -517,6 +530,202 @@ await injectAndLoad("index.html", {
     const d = JSON.parse(r);
     check("合法昵称正确回显", d.hasName === true, JSON.stringify(d));
     check("合法资料路径无未捕获异常", pageErrors.length === 0, pageErrors.join(" | "));
+}
+
+// ─────────────────────────────────────────────────────────
+// 用例 5：notificationHistory 损坏后的**写入路径**（notification.addHistoryRecord）
+//
+// 背景：readJsonSafe 在只读路径上刻意保留损坏的原始值（供排查）。
+// 但 addHistoryRecord 是写入路径，若沿用直接 JSON.parse，
+// 用户一旦历史损坏，每次发通知（成功和失败两条分支）都会抛 SyntaxError。
+// 本用例断言：损坏后仍能发起通知、不抛异常，并写入新记录（自我修复）。
+//
+// fetch 被替换为可控桩，避免真实网络请求，同时能分别覆盖成功/失败分支。
+
+/** 注入 storage 并替换 fetch 桩，然后加载首页 */
+async function injectWithFetchStub(status, { brokenHistory }) {
+    // 先导航到同源页面，才能访问 localStorage
+    await goto(BASE + "/index.html");
+
+    await evalJs(`(() => {
+        localStorage.setItem(${JSON.stringify(ONB)}, "true");
+        localStorage.setItem("userProfile", ${JSON.stringify(
+            JSON.stringify({ nickname: "发送测试", emoji: "🍙" })
+        )});
+        localStorage.setItem("notificationHistory", ${JSON.stringify(
+            brokenHistory
+        )});
+        localStorage.removeItem("lastClickTime");
+        return true;
+    })()`);
+
+    // 重载页面，让模块在损坏数据下完成初始化；随后在同源 window 上装 fetch 桩
+    pageErrors = [];
+    await goto(BASE + "/index.html");
+    await evalJs(`(() => {
+        window.__fetchCalls = 0;
+        window.fetch = function () {
+            window.__fetchCalls++;
+            return Promise.resolve({
+                ok: ${status < 400},
+                status: ${status},
+                statusText: "stub",
+                json: () => Promise.resolve({}),
+            });
+        };
+        return true;
+    })()`);
+}
+
+/** 调用真实模块的 addHistoryRecord（写入路径），返回结果快照 */
+async function callAddHistoryRecord(message, isSuccess) {
+    return evalJsSafe(`(async () => {
+        const mod = await import("/js/modules/notification.js");
+        mod.notification.addHistoryRecord(${JSON.stringify(message)}, ${isSuccess});
+        const raw = localStorage.getItem("notificationHistory");
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+        return JSON.stringify({
+            raw,
+            isArray: Array.isArray(parsed),
+            count: Array.isArray(parsed) ? parsed.length : -1,
+            first: Array.isArray(parsed) ? parsed[0] : null,
+        });
+    })()`);
+}
+
+log("");
+log("[用例5] notificationHistory 损坏后写入路径（addHistoryRecord）");
+for (const [label, broken] of [
+    ["非法 JSON", "[[[broken"],
+    ["错误顶层类型（对象）", '{"a":1}'],
+    ["错误顶层类型（字符串）", '"abc"'],
+]) {
+    await injectAndLoad("index.html", {
+        [ONB]: "true",
+        userProfile: JSON.stringify({ nickname: "发送测试", emoji: "🍙" }),
+        notificationHistory: broken,
+    });
+    const res = await callAddHistoryRecord("损坏后写入", true);
+    check(
+        `history=${label} 时 addHistoryRecord 不抛异常`,
+        res.ok === true,
+        res.ok ? "" : res.error
+    );
+    if (!res.ok) {
+        // 已抛异常，后续断言必然失败，直接记录以免掩盖原因
+        check(`history=${label} 时新记录写入成功（自我修复）`, false, "上一步已抛异常");
+        check(`history=${label} 时新记录内容正确`, false, "上一步已抛异常");
+        continue;
+    }
+    const d = JSON.parse(res.value);
+    check(
+        `history=${label} 时新记录写入成功（自我修复）`,
+        d.isArray === true && d.count === 1,
+        JSON.stringify({ count: d.count, raw: String(d.raw).slice(0, 80) })
+    );
+    check(
+        `history=${label} 时新记录内容正确`,
+        d.first && d.first.message === "损坏后写入" && d.first._status === "success",
+        JSON.stringify(d.first)
+    );
+}
+
+log("");
+log("[用例5b] 损坏 history 后，发送成功/失败通知全流程均不抛异常");
+
+for (const [label, status, expectStatus] of [
+    ["成功（HTTP 200）", 200, "success"],
+    ["失败（HTTP 500）", 500, "error"],
+]) {
+    await injectWithFetchStub(status, { brokenHistory: "[[[broken" });
+    const res = await evalJsSafe(`(async () => {
+        const mod = await import("/js/modules/notification.js");
+        const ok = await mod.notification.sendNotification({ message: "全流程测试" });
+        const raw = localStorage.getItem("notificationHistory");
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+        return JSON.stringify({
+            ok,
+            fetchCalls: window.__fetchCalls,
+            isArray: Array.isArray(parsed),
+            count: Array.isArray(parsed) ? parsed.length : -1,
+            firstStatus: Array.isArray(parsed) && parsed[0] ? parsed[0]._status : null,
+            firstMessage: Array.isArray(parsed) && parsed[0] ? parsed[0].message : null,
+        });
+    })()`);
+    check(
+        `通知${label}：sendNotification 全流程不抛异常`,
+        res.ok === true,
+        res.ok ? "" : res.error
+    );
+    if (!res.ok) {
+        check(`通知${label}：fetch 被实际调用`, false, "上一步已抛异常");
+        check(`通知${label}：历史写入成功且状态为 ${expectStatus}`, false, "上一步已抛异常");
+        continue;
+    }
+    const d = JSON.parse(res.value);
+    check(
+        `通知${label}：fetch 被实际调用`,
+        d.fetchCalls >= 1,
+        JSON.stringify({ fetchCalls: d.fetchCalls })
+    );
+    check(
+        `通知${label}：无未捕获异常 / console.error`,
+        // 失败分支本身会 console.error("Fetch error: ...")，属预期行为，需过滤
+        pageErrors.filter(e => !e.includes("Fetch error")).length === 0,
+        pageErrors.join(" | ")
+    );
+    check(
+        `通知${label}：历史写入成功且状态为 ${expectStatus}`,
+        d.isArray === true && d.count === 1 && d.firstStatus === expectStatus,
+        JSON.stringify(d)
+    );
+}
+
+log("");
+log("[用例5c] 合法 history 在写入路径上不被吞掉");
+await injectAndLoad("index.html", {
+    [ONB]: "true",
+    userProfile: JSON.stringify({ nickname: "发送测试", emoji: "🍙" }),
+    notificationHistory: JSON.stringify([
+        {
+            timestamp: "2026-01-01T00:00:00.000Z",
+            message: "既有记录",
+            nickname: "旧用户",
+            emoji: "🐱",
+            _status: "success",
+            webhook: "http://example.invalid/hook",
+        },
+    ]),
+});
+{
+    const res = await callAddHistoryRecord("新增记录", false);
+    check("合法 history 写入路径可执行", res.ok === true, res.ok ? "" : res.error);
+    if (res.ok) {
+        const d = JSON.parse(res.value);
+        check(
+            "合法 history 写入后保留既有记录（2 条）",
+            d.count === 2,
+            JSON.stringify({ count: d.count })
+        );
+        check(
+            "新增记录在队首且不失真",
+            d.first && d.first.message === "新增记录" && d.first._status === "error",
+            JSON.stringify(d.first)
+        );
+        check(
+            "既有记录仍在（未被静默覆盖）",
+            Array.isArray(d.raw ? JSON.parse(d.raw) : null) &&
+                JSON.parse(d.raw).some(x => x.message === "既有记录"),
+            "既有记录丢失"
+        );
+    } else {
+        check("合法 history 写入后保留既有记录（2 条）", false, "上一步已抛异常");
+        check("新增记录在队首且不失真", false, "上一步已抛异常");
+        check("既有记录仍在（未被静默覆盖）", false, "上一步已抛异常");
+    }
+    check("合法 history 写入路径无未捕获异常", pageErrors.length === 0, pageErrors.join(" | "));
 }
 
 // ─────────────────────────────────────────────────────────

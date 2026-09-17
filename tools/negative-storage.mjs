@@ -20,7 +20,7 @@ const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "js", "modules");
 const BACKUP = path.join(ROOT, ".workbuddy", "cm003_backup");
 const NODE = process.execPath;
-const FILES = ["state.js", "history.js", "buttonManager.js"];
+const FILES = ["state.js", "history.js", "buttonManager.js", "notification.js"];
 
 fs.mkdirSync(BACKUP, { recursive: true });
 
@@ -144,6 +144,45 @@ function revertFix() {
         s = s.slice(0, start) + original + s.slice(end);
         writeCRLF(p, s);
         console.log("[回退] buttonManager.js -> 原始 try/catch");
+    }
+
+    // notification.js：移除 helper 导入，改回直接 JSON.parse（写入路径缺陷）
+    {
+        const p = path.join(SRC, "notification.js");
+        let s = readNorm(p);
+        s = s.replace(
+            `import {
+    state,
+    readJsonSafe
+} from './state.js';`,
+            `import {
+    state
+} from './state.js';`
+        );
+        const start = s.indexOf("    // 添加历史记录\n    //\n    // 这是写入路径");
+        const end = s.indexOf("// 发送Webhook通知");
+        if (start === -1 || end === -1) throw new Error("notification.js 结构不符合预期");
+        const original = `    // 添加历史记录
+    addHistoryRecord(message, isSuccess) {
+        const history = JSON.parse(localStorage.getItem("notificationHistory")) || [];
+        history.unshift({
+            timestamp: new Date().toISOString(),
+            message,
+            nickname: state.userProfile?.nickname || utils.getTranslation("common.unregistered"),
+            emoji: state.userProfile?.emoji || CONFIG.defaultAvatar,
+            _status: isSuccess ? "success" : "error",
+            webhook: CONFIG.webhookUrl
+        });
+        localStorage.setItem(
+            "notificationHistory",
+            JSON.stringify(history.slice(0, CONFIG.maxHistoryRecords))
+        );
+    },
+
+`;
+        s = s.slice(0, start) + original + s.slice(end);
+        writeCRLF(p, s);
+        console.log("[回退] notification.js -> 直接 JSON.parse");
     }
 }
 

@@ -34,7 +34,7 @@ node tools/negative-storage.mjs
 | `server.mjs` | 零依赖静态服务器，服务仓库根目录（CM-002 用） |
 | `e2e.mjs` | CM-002：CDP 驱动真实浏览器，29 项断言 |
 | `negative.mjs` | CM-002：回退修复 → 重跑 → 自动还原，验证测试有效性 |
-| `storage-resilience.mjs` | CM-003：存储容错，29 项断言（自带服务器） |
+| `storage-resilience.mjs` | CM-003：存储容错，51 项断言（自带服务器） |
 | `negative-storage.mjs` | CM-003：反向验证（自带服务器，纯文件备份还原） |
 | `ACCEPTANCE.md` | CM-002 与 CM-003 的完整验收报告 |
 
@@ -82,7 +82,9 @@ node tools/negative-storage.mjs
 
 ### CM-003（`storage-resilience.mjs`）
 
-对齐 CM-003 验收标准，对三个 key 分别注入非法 JSON 与错误顶层类型：
+对齐 CM-003 验收标准，对三个 key 分别注入非法 JSON 与错误顶层类型（共 **51** 项断言）：
+
+**只读路径（用例 1–4c）**
 
 1. `userProfile` 非法 JSON → 首页可加载、回退未注册、无未捕获异常
 2. `userProfile` 错误类型（数组 / 字符串 / 数字）
@@ -92,6 +94,24 @@ node tools/negative-storage.mjs
 6. `buttonConfig` 错误类型（数组 / 字符串 / 数字）
 7. `buttonConfig` 合法但 `buttons` 非数组 → 回退默认
 8. 合法旧数据不回归（按钮配置 / 历史记录 / 用户昵称）
+
+**写入路径（用例 5–5c，返工补充）**
+
+9. `notificationHistory` 损坏（非法 JSON / 对象 / 字符串）后调用
+   `notification.addHistoryRecord()` → 不抛异常、新记录写入成功、内容正确
+10. 损坏 history 后走完整 `sendNotification()` 流程（**fetch 用桩控制状态码**）
+    → HTTP 200 与 HTTP 500 两条分支都不抛异常，且历史写入状态分别为 `success` / `error`
+11. 合法 history 在写入路径上未被吞掉 → 既有记录保留、新记录入队首
+
+> **为什么补写入路径**：`readJsonSafe` 在只读路径上刻意保留损坏的原始值（供排查），
+> 但 `addHistoryRecord` 是**写入**路径。返工前它仍是直接 `JSON.parse`，
+> 用户一旦历史损坏，每次发通知（成功和失败两条分支）都会抛 `SyntaxError` ——
+> 尤其 `notification.js:122` 那条是**记录失败时**抛的，等于错误上报机制本身失效。
+> 现改为复用 `readJsonSafe` 并用新记录覆盖损坏值，让历史功能自我修复。
+
+**fetch 桩的必要性**：用例 10 必须能分别走到成功与失败分支，
+所以脚本在页面内替换 `window.fetch`，而不是真的打 webhook。
+注意页面每次导航后 `window` 是新的，桩必须重新装。
 
 ## 环境注意事项
 
