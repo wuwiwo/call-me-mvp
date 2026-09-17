@@ -232,8 +232,72 @@ Lint：PASS（0 error / 0 warning）
 # CM-003 验收报告（可复核版）
 
 **TASK-ID**: CM-003 — LocalStorage JSON 容错与启动可靠性
-**状态**: READY_FOR_REVIEW
+**状态**: READY_FOR_REVIEW（第二轮，含返工）
 **报告时间**: 2026-09-17
+
+---
+
+## 零、返工说明（第二轮）
+
+### 主指挥 AI 验收结论：NEEDS_REWORK
+
+第一轮实现与测试均通过，但主指挥 AI 独立验收发现**同一运行路径上仍有未防护的直接解析**：
+
+> `js/modules/notification.js:51` 仍直接执行
+> `JSON.parse(localStorage.getItem("notificationHistory"))`。当前 `readJsonSafe` 会保留损坏的原始值，
+> 因此用户在 `notificationHistory` 已损坏时执行一次通知，`addHistoryRecord()` 仍可能抛出 `SyntaxError`。
+
+**这个判断是对的，而且比我第一轮的自我报告更准确。** 我第一轮把它归类为
+"范围外观察，建议另开任务"，理由是它不在 `CURRENT TASK` 的 Scope 文件清单里。
+但主指挥 AI 的论证更强：**它是同一条运行路径**（都是 `notificationHistory` 的容错），
+不是相邻的独立问题。任务卡 OBJECTIVE 写的是"让损坏或非法的 LocalStorage JSON
+不再阻断首页或历史页启动"——而这条路径会导致**错误上报机制本身失效**。
+
+### 返工改动
+
+| 文件 | 改动 |
+|---|---|
+| `js/modules/notification.js` | `addHistoryRecord()` 改用 `readJsonSafe`，并用新记录覆盖损坏值 |
+| `tools/storage-resilience.mjs` | 新增用例 5 / 5b / 5c（22 项断言），覆盖写入路径 |
+| `tools/negative-storage.mjs` | 反向验证扩展为 4 个文件，含 `notification.js` |
+| `tools/README.md` | 补充写入路径用例说明与 fetch 桩的必要性 |
+
+### 关键设计权衡：写入路径为什么能覆盖损坏值
+
+`readJsonSafe` 在**只读**路径上刻意保留损坏的原始值（供用户排查）。
+但 `addHistoryRecord` 是**写入**路径，语义不同：
+
+- 只读路径：保留损坏值 → 用户能在 DevTools 里看到"我的数据坏了"，且不丢证据
+- 写入路径：**用新记录覆盖损坏值** → 让历史功能自我修复，
+  否则用户会永久停在"每次发通知都抛异常"的状态，且没有任何恢复路径
+
+注意区分：**只在数据不可用（非法 JSON / 非数组）时才覆盖**。
+合法数据（含未知字段）一律保留，这正是用例 5c 所保护的。
+
+### 返工后的真实缺陷证据（反向验证）
+
+回退 `notification.js` 修复后，测试以**真实异常**失败，堆栈精确定位到缺陷：
+
+```
+- 通知成功（HTTP 200）：sendNotification 全流程不抛异常
+    -> 页面内异常: SyntaxError: Unexpected token 'b', "[[[broken" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at Object.addHistoryRecord (js/modules/notification.js:51:30)
+    at Object.sendNotification (js/modules/notification.js:122:18)
+```
+
+**`notification.js:122` 是失败分支** —— 也就是说原缺陷的危害是：
+当通知发送失败、系统正要把这次失败记入历史时，它自己抛了异常。
+**错误上报路径的静默失效，比功能不可用更隐蔽。**
+
+### 测试可用性的改进
+
+首次返工试验中，回退版本会在用例 5 **直接崩溃退出**（异常从 `evalJs` 抛出），
+导致后续用例与最终汇总都不执行，报告里看不到 FAIL 明细。
+
+已把写入路径用例改为 `evalJsSafe`（捕获页面异常并转为可断言结果），
+现在回退版本会输出**完整的 FAIL 清单 + 异常文本 + 堆栈**，而不是一个笼统的退出码 1。
+**崩溃是钝的信号，可读的失败清单才是有效证据。**
 
 ---
 
@@ -256,6 +320,7 @@ Lint：PASS（0 error / 0 warning）
 | `js/modules/state.js` | 新增导出 `readJsonSafe(key, fallback, isValid)`；`init()` 改用它读取 `userProfile`；`checkCooldownStatus()` 对非数字时间戳做清理 |
 | `js/modules/history.js` | `render()` 改用 `readJsonSafe('notificationHistory', [], Array.isArray)` |
 | `js/modules/buttonManager.js` | `loadButtonConfig()` 重写，用 `readJsonSafe` + `Array.isArray` / `typeof` 校验，废弃原 `try/catch` |
+| `js/modules/notification.js` | `addHistoryRecord()` 改用 `readJsonSafe`，损坏时用新记录覆盖（**返工新增**） |
 
 **设计要点**：解析规则集中在 `state.js` 一处，另两个模块复用，
 满足任务卡"回退逻辑应集中在最小必要范围内，避免复制多套解析规则"的要求。
@@ -279,9 +344,9 @@ Lint：PASS（0 error / 0 warning）
 | 检查项 | 命令 | 结果 |
 |---|---|---|
 | ESLint | `node node_modules/eslint/bin/eslint.js .` | **PASS**（0 error / 0 warning，exit 0） |
-| 浏览器端到端 | `node tools/storage-resilience.mjs` | **PASS**（29 passed / 0 failed，exit 0） |
-| 反向验证 | `node tools/negative-storage.mjs` | **PASS**（回退修复后 exit 1） |
-| 范围检查 | `git diff --stat` | **PASS**（仅 4 个在范围内文件） |
+| 浏览器端到端 | `node tools/storage-resilience.mjs` | **PASS**（51 passed / 0 failed，exit 0） |
+| 反向验证 | `node tools/negative-storage.mjs` | **PASS**（回退 4 个文件后 exit 1） |
+| 范围检查 | `git diff --stat` | **PASS**（仅 4 个源码文件 + 3 个工具/文档文件） |
 
 ### 关于 `npm run lint` 的退出码（**本机环境问题，非 lint 失败**）
 
@@ -350,16 +415,21 @@ node tools/negative-storage.mjs     # 反向验证（手工工具，非常规 CI
 | 4 | 合法 `buttonConfig` 不回归 | 4 |
 | 4b | 合法 `notificationHistory` 正常渲染 | 3 |
 | 4c | 合法 `userProfile` 正常回显 | 2 |
-| **合计** | | **29** |
+| **5** | **`notificationHistory` 损坏后 `addHistoryRecord`（写入路径）** | **9** |
+| **5b** | **损坏 history 后完整 `sendNotification` 流程（200/500 两分支）** | **8** |
+| **5c** | **合法 history 在写入路径上不被吞掉** | **5** |
+| **合计** | | **51** |
+
+粗体为**返工新增**（22 项）。用例 1–4c 覆盖只读路径，用例 5–5c 覆盖写入路径。
 
 每组同时断言两件事：**损坏数据下页面仍能初始化** + **回退到预期默认值**。
-用例 4 / 4b / 4c 是反向保护：确保加容错后没有把**正常数据**也一起吞掉，
+用例 4 / 4b / 4c / 5c 是反向保护：确保加容错后没有把**正常数据**也一起吞掉，
 即"不静默改写可解析的数据"这条设计约束有实测覆盖。
 
 ### 逐项结果
 
 完整输出见 `tools/RUN_storage_resilience.log`（`*.log` 已被 `.gitignore:20` 忽略，
-属运行时证据，不纳入版本控制；可用第十节命令重新生成）：
+属运行时证据，不纳入版本控制；可用文末命令重新生成）：
 
 ```
 === CM-003 存储容错回归验证 ===
@@ -375,48 +445,59 @@ node tools/negative-storage.mjs     # 反向验证（手工工具，非常规 CI
 [用例4]  合法旧数据不回归                          4 PASS
 [用例4b] 合法 notificationHistory 正常渲染         3 PASS
 [用例4c] 合法 userProfile 正常回显                 2 PASS
+[用例5]  损坏后写入路径（addHistoryRecord）        9 PASS   ← 返工新增
+[用例5b] 损坏后完整 sendNotification 流程          8 PASS   ← 返工新增
+[用例5c] 合法 history 写入路径不被吞掉             5 PASS   ← 返工新增
 
-断言：29 passed, 0 failed
+断言：51 passed, 0 failed
 ```
 
 ### 反向验证（证明测试有效）
 
-完整输出见 `tools/RUN_negative.log`：
+完整输出见 `tools/RUN_negative.log`。反向验证会同时回退 4 个源文件
+（`state.js` / `history.js` / `buttonManager.js` / `notification.js`）：
 
 ```
-1) 基线（已修复）：退出码 = 0   符合预期
-2) 回退修复后重跑：退出码 = 1   符合预期——测试捕获到缺陷
-      history.js         SyntaxError（非法 JSON 直接 parse）
-      buttonManager.js   TypeError: this.customButtons.forEach is not a function
-3) 自动恢复：已还原 = true
+步骤1 基线（已修复）：退出码 = 0     符合预期
+步骤2 回退后重跑    ：退出码 = 1     符合预期——测试捕获到缺陷
+步骤3 自动还原      ：已还原 = true
 结果：通过——测试对缺陷有区分力
 ```
+
+回退版本输出的失败明细（节选，含真实堆栈）：
+
+```
+- 通知成功（HTTP 200）：sendNotification 全流程不抛异常
+    -> 页面内异常: SyntaxError: Unexpected token 'b', "[[[broken" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at Object.addHistoryRecord (js/modules/notification.js:51:30)
+    at Object.sendNotification (js/modules/notification.js:122:18)
+- 历史页无未捕获异常 -> SyntaxError: Unexpected token 'b' ...
+    at Object.render (js/modules/history.js:32:30)
+- buttons 非数组时无未捕获异常
+    -> TypeError: this.customButtons.forEach is not a function (buttonManager.js:245:28)
+```
+
+**结论**：每个被回退的修复点都有对应断言失败，堆栈精确指向缺陷位置。
+测试对缺陷具备区分力，非偶然通过。
 
 > 反向验证脚本用**纯文件快照/还原**（`.workbuddy/cm003_backup/` + `try/finally`），
 > **刻意不使用 `git stash`** —— 本机环境下 `git stash` 曾损坏 `.git/refs`，
 > 详情见 `tools/README.md` 的警示段落。
 
-**结论**：回退修复后同一脚本以真实异常退出 1；恢复后 29/29 全通过。
-测试对缺陷具备区分力，非偶然通过。
-
 ---
 
 ## 五、已知问题与范围外观察
 
-### 5.1 范围外：`notification.js` 存在同类脆弱点（**未修复**）
+### 5.1 `notification.js` 同类脆弱点 —— **本轮已修复**
 
-`js/modules/notification.js:51`：
+第一轮把它报为"范围外、建议另开任务"。主指挥 AI 验收判定这属于**同一条运行路径**，
+必须在 CM-003 内解决。已按返工要求修复（见第零节）。
 
-```js
-const history = JSON.parse(localStorage.getItem("notificationHistory")) || [];
-```
-
-该处在 `addHistoryRecord()` 内部，**不在 CM-003 的 Scope 内**（任务卡只列了
-`state.js` / `history.js` / `buttonManager.js`）。按 AGENTS.md「发现范围外问题只报告，不擅自修复」，
-此处仅记录，未改动。
-
-**影响面**：若 `notificationHistory` 损坏，`history.js` 渲染已不会崩（本次已修），
-但用户点击发送通知时 `addHistoryRecord` 仍会抛异常。**属同一根因的残留路径，建议另开任务。**
+**这个纠正值得记录**：我当时的判断依据是"文件不在任务卡 Scope 清单里"，
+属于**照字面读 Scope，而没有按 OBJECTIVE 的实质范围判断**。
+任务卡 NON-GOALS 排除的是"XSS、按钮 ID、冷却统一或新功能"，
+并不排除同一 key 的另一条读写路径。
 
 ### 5.2 格式检查仍为既有 FAIL
 
@@ -430,17 +511,19 @@ const history = JSON.parse(localStorage.getItem("notificationHistory")) || [];
 ```text
 CM-003 代码实现：PASS
 Lint：PASS（0 error / 0 warning，经 eslint 真实入口；npm run lint 本机不可用）
-浏览器端到端：PASS（29/29，脚本可复跑）
-反向验证：PASS（测试有效性已证明）
+浏览器端到端：PASS（51/51，脚本可复跑）
+反向验证：PASS（回退 4 个源文件均有对应断言失败，测试有效性已证明）
 范围检查：PASS（无范围外修改）
-任务整体：READY_FOR_REVIEW，待主指挥 AI 验收
+任务整体：READY_FOR_REVIEW（第二轮），待主指挥 AI 验收
 ```
 
 **遗留风险**：
 
 1. `tools/` 仍未纳入版本控制（同 CM-002 遗留项），验证能力可复跑但不可追溯。
 2. `test` 脚本依赖本机 Chrome 路径，可用环境变量 `CM003_CHROME` 覆盖。
-3. `notification.js:51` 的同类路径未覆盖，见 5.1。
+3. 写入路径的测试依赖 `window.fetch` 桩。桩只模拟 `ok` / `status` / `json()`，
+   未覆盖真实网络异常（如 CORS 失败、超时）—— 那些路径由 `sendNotification`
+   的 `catch` 统一处理，本次已断言其不抛异常。
 
 ---
 
@@ -457,5 +540,5 @@ node tools/storage-resilience.mjs    # 终端直接输出全部断言；退出�
 （可用 `CM003_LOG` 覆盖路径）。反向验证同理写 `tools/RUN_negative.log`。
 
 **证据可追溯性判断**：脚本本身（含断言清单）已纳入版本控制，
-任何人 clone 后重跑即可复现全部 29 项断言 —— 这满足"可复核"要求。
+任何人 clone 后重跑即可复现全部 51 项断言 —— 这满足"可复核"要求。
 日志文件只是本次运行的快照，不入库不影响可复核性。
