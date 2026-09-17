@@ -4,63 +4,65 @@
 
 ## CURRENT TASK
 
-当前无进行中任务。CM-004 已完成并合并。
+CM-005 — 消除动态用户输入 HTML 注入
 
-PHASE: Engineering / Compatibility
+PHASE: BugFix / Security
 PRIORITY: P1
 
 OBJECTIVE:
 
-定义并实现默认按钮稳定 ID、自定义按钮持久 ID，以及旧 `default_N` / `custom_timestamp` 配置的兼容策略。
+确保昵称、按钮文字、历史字段等用户可控数据以文本安全渲染，不被当作 HTML 或脚本执行，同时保持现有页面结构和产品行为。
 
 CONTEXT:
 
-`config.js` 已声明默认按钮 ID `quick_online` 和 `emergency`，但 `buttonManager.saveButtonConfig()` 仍按位置写入 `default_1`、`default_2`；自定义按钮每次保存都重新生成 `custom_${Date.now()}`。按钮编辑表单当前主要按数组位置关联数据，兼容策略必须避免合法旧配置中的按钮被静默丢失。
+审计发现 `buttonManager.js` 的按钮渲染/编辑表单和 `history.js` 的历史列表通过模板字符串把用户可控字段放入 `innerHTML`。重点检查 message、nickname、emoji、webhook、状态 class，以及从 LocalStorage 读取的 icon；不能只修复单一入口后留下同类路径。
 
 SCOPE:
 
-- `js/modules/config.js`
 - `js/modules/buttonManager.js`
+- `js/modules/history.js`
 - 必要的零依赖回归验证脚本或测试
 - 本通信文档中的执行状态和报告
 
 NON-GOALS:
 
-- 不增加拖拽排序、导入导出或新按钮功能。
-- 不引入框架、构建步骤或新的运行时依赖。
-- 不改变 `buttonConfig` key、按钮字段基本格式、按钮上限或现有 UI 行为。
-- 不处理 XSS、冷却、通知、历史记录或格式化基线问题。
+- 不引入框架、构建步骤、后端、CSP 配置或新的运行时依赖。
+- 不改变 LocalStorage key、按钮/历史数据格式、按钮上限或页面视觉结构。
+- 不处理按钮 ID、LocalStorage 容错、冷却、回执、语言或格式化基线问题。
+- 不以“只增加 HTML 转义函数”掩盖未审查的动态属性、class、style 或 URL 注入路径。
 
 IMPLEMENTATION REQUIREMENTS:
 
-1. 默认按钮的规范 ID 必须直接来自 `CONFIG.buttons.defaultButtons[index].id`，不能继续按位置生成 `default_N`。
-2. 旧配置中的 `default_1`、`default_2` 等 legacy ID 必须按明确规则兼容；迁移或归一化时保留对应按钮的 message、icon 及其他合法字段，不得静默丢失。
-3. 已存在的自定义按钮编辑并保存后必须保留原 ID；只有新建自定义按钮才生成新 ID。
-4. 同一页面中连续保存、刷新后再次保存、删除其他按钮后保存，都不得无理由改变未编辑自定义按钮的 ID。
-5. 对未知字段采取保留策略，除非报告明确说明兼容边界；不要把“数组位置”误当作长期身份。
-6. 先以源码和现有数据流确认策略，再做最小改动；不得借机重写整个按钮模块。
+1. 所有用户可控文本（昵称、按钮 message、历史 nickname/message/webhook 等）必须通过 `textContent`、`value` 或安全的 DOM 属性赋值进入页面，不能未经安全处理插入 `innerHTML`。
+2. 动态 class、属性和 icon class 必须使用受限枚举或 DOM API 设置；LocalStorage 中的 icon 不能直接拼接为任意 class。允许的 icon 必须受 `CONFIG.buttons.availableIcons`（含 `random` 语义）约束。
+3. 历史记录的状态 class 只能产生既有合法状态，异常/未知状态不得突破 class 属性或改变 DOM 结构。
+4. 保持现有新增、编辑、删除、历史显示、图标选择、随机图标和按钮点击行为；合法旧数据的显示结果不应改变。
+5. 优先使用最小、可读、可复用的安全渲染方式；不要批量重写无关模板或引入依赖。
+6. 为至少一个按钮渲染路径、一个按钮编辑/回显路径和一个历史渲染路径注入恶意字符串验证；测试必须确认“作为文本显示且没有新增元素/属性执行”。
 
 ACCEPTANCE CRITERIA:
 
-- [x] 新配置保存后默认按钮 ID 为 `quick_online`、`emergency`（与配置一致）。
-- [x] 含旧 `default_N` ID 的配置可读取、显示、编辑和保存，不丢失按钮内容；迁移结果有明确验证。
-- [x] 含 `custom_timestamp` ID 的旧配置可读取；编辑并保存后原自定义 ID 保持不变。
-- [x] 新建自定义按钮获得唯一持久 ID；连续保存和刷新后 ID 不变。
-- [x] 删除、重排/位置变化（若现有 UI 会产生）及默认按钮编辑路径不造成其他按钮 ID 无故变化。
-- [x] 合法配置中的未知字段按既定策略保留，或在报告中说明明确的兼容边界。
-- [x] 现有按钮新增、编辑、删除、渲染与点击行为不回归。
-- [x] 回归验证可复跑，记录准确命令、输入、结果和退出码。
-- [x] `npm run lint` 通过。
-- [x] 只修改 Scope 内文件，无无关格式化或功能扩展。
+- [ ] 恶意昵称、按钮文字、历史 message/nickname/webhook 只作为文本显示，不执行 HTML、script、事件属性或结构注入。
+- [ ] 按钮编辑表单中的文本 value、图标预览和回显不因恶意输入破坏 DOM。
+- [ ] icon 值仍受允许列表约束，非法 icon 不可注入任意 class 或 HTML。
+- [ ] 历史记录的 `_status`、字段缺失和未知字段不会突破 DOM；既有 success/error 显示不回归。
+- [ ] 新增、编辑、删除、保存、刷新、历史渲染和按钮点击行为保持正常。
+- [ ] 恶意输入回归脚本可复跑，记录准确输入、断言数、结果和退出码。
+- [ ] `npm run lint` 通过。
+- [ ] `git diff --check` 通过，且只修改 Scope 内文件。
 
 VERIFICATION:
 
 1. `npm run lint`
-2. 对规范 ID、新建自定义 ID、旧 `default_N`、旧 `custom_timestamp` 分别建立可复跑输入。
-3. 至少验证：读取旧配置 → 打开编辑 → 修改一个按钮 → 保存 → 刷新 → 再保存；比较每个未编辑按钮的 ID 和内容。
-4. 验证未知字段、删除按钮和默认按钮编辑路径。
-5. 运行项目已有相关 E2E/回归工具，并回填准确断言数。
-6. 查看完整 `git diff`、`git diff --check` 和工作区状态，确认无范围外修改。
+2. 使用浏览器回归脚本注入包含 `<script>`, `<img onerror>`, 引号和 HTML 属性片段的昵称、按钮文字、历史字段。
+3. 检查 DOM 树、文本内容、元素数量、事件/属性是否被执行或注入，并验证合法按钮 icon 与 history 状态。
+4. 运行已有 `tools/button-ids.mjs`、`tools/storage-resilience.mjs`、`tools/e2e.mjs`，确认 CM-002/003/004 行为不回归。
+5. 运行 `git diff --check`，查看完整 diff、工作区状态和实际修改文件。
+
+BRANCH:
+
+从当前本地 `main` 的实际稳定 `HEAD` 创建并使用：
+`codex/cm005-input-safety`。外部 AI 开工前必须读取实际 `HEAD` 并确认本任务卡已在其中；不要使用过期报告 hash，不要直接修改或合并 `main`。
 
 BRANCH:
 
@@ -74,13 +76,13 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：COMPLETED / MERGED — CM-004 已通过验收并合并进 main
+状态：DISPATCHED — CM-005 已派发，等待外部 AI 接受
 当前分支：main（本地 + 远端同步，执行分支已删除）
-分支基线：22f21f4（git rev-parse --short HEAD 实测，已含本任务卡）
-当前 commit：55d2e77（= main = origin/main = HEAD）
+分支基线：外部 AI 开工前以实际稳定 `HEAD` 为准
+当前 commit：外部 AI 开工前以 `git rev-parse --short HEAD` 为准
 CM-002 基线：已含（ffad349 / PR #1）
-PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
-当前任务：无；CM-004 已完成并合并
+PR：CM-003 的 PR #3、CM-004 分支均已合并
+当前任务：CM-005
 最近状态更新：2026-09-17 22:36
 ```
 
@@ -108,6 +110,10 @@ git switch -c codex/cm004-button-ids
 - 未创建 `docs/tasks/`、`docs/reports/`（遵循已收敛的单文档机制）。
 
 ## EXECUTION REPORT
+
+### CM-005 — 消除动态用户输入 HTML 注入（待外部 AI 回填）
+
+外部 AI 接受任务后，在本节顶部追加执行状态、修改文件、实现摘要、测试命令与完整结果、已知问题和 commit；不要覆盖 CM-002 至 CM-004 历史报告。
 
 ### CM-004 — 固化按钮 ID 兼容规则（2026-09-17，外部 AI 执行）
 
@@ -542,7 +548,7 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-CM-004 已完成、独立验收通过，并已快进合并到 `main`。当前没有进行中的任务，等待 Human 指派下一项。
+CM-005 已派发。外部 AI 请读取本文件的 `CURRENT TASK`，在指定分支实施，完成后回填 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主指挥 AI 独立验收。
 
 ### Human 决定：合并 CM-004 分支（2026-09-17 22:36）— 已执行完毕
 
