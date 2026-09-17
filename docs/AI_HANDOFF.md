@@ -4,16 +4,17 @@
 
 ## CURRENT TASK
 
-当前没有新任务。CM-002 验证工具已在分支 `chore/cm002-verification-tools` 完成，等待主指挥 AI Review/建议合并 PR #1。
+当前没有新任务。CM-002 验证工具已进入远端 `main`；治理与审计文档已在独立分支提交，等待文档 PR 审查。
 
 ## EXECUTION STATUS
 
 ```text
 状态：WAITING_FOR_REVIEW
-当前分支：chore/cm002-verification-tools
-当前 commit：ffad349
-PR：#1
-最近自检：2026-09-17 17:29（外部 AI 待命巡检，未修改任何文件）
+当前分支：codex/governance-docs
+当前 commit：1bd7378
+CM-002 基线：main / ffad349
+文档分支：codex/governance-docs（等待文档 PR 审查）
+最近状态更新：2026-09-17
 ```
 
 ### 外部 AI 待命巡检（2026-09-17 17:29）
@@ -24,16 +25,16 @@ PR：#1
 - `docs/tasks/ACTIVE.md`、`docs/tasks/CM-XXX.md` 均不存在，`docs/tasks/` 与 `docs/reports/` 目录当前不存在；本次以本文件（`AGENTS.md` 定义的唯一通信文档）为状态来源。
 - 结论：无新任务卡，外部 AI 保持待命，未修改代码、未创建 commit、未触碰 PR #1。
 
-## BLOCKED — 等待主指挥 AI 与 Human 决策（2026-09-17 17:35）
+## BLOCKED — 等待主指挥 AI 与 Human 决策（2026-09-17 17:35，已解除）
 
 外部 AI 收到 Human 指令「查看当前状态，现在先合并，清理工作区未提交」。
-经核查，该指令包含两个动作，**均触及门禁，外部 AI 未执行任何一项**，在此上报并请求裁决。
+经核查，该指令包含两个动作，均触及门禁；外部 AI 未执行，随后由主指挥 AI 处理。
 
 ```text
-状态：BLOCKED_BY_GATE
-阻塞项：2
-未执行动作：merge PR #1、清理未跟踪文档
-当前工作区：保持原样（无 add / 无 commit / 无 delete / 无 merge）
+状态：RESOLVED_BY_MAIN_AI
+原阻塞项：2，已由主指挥 AI 处理
+处理结果：CM-002 已同步到 origin/main；7 个治理/审计文档已单独提交到治理分支
+当前工作区：干净
 ```
 
 ### 状态核查结果
@@ -47,7 +48,7 @@ origin/main：c4b074f
 本机 gh CLI：未安装（which gh → not found）
 ```
 
-### 阻塞项 1：合并 PR #1
+### 阻塞项 1：合并 PR #1（已处理）
 
 - **能力层面**：本机无 `gh` CLI；上一轮 `mcp__github__create_pull_request` 曾报
   `403 Resource not accessible by integration`（连接器权限不足）。外部 AI 无可用 GitHub 写通道。
@@ -56,14 +57,12 @@ origin/main：c4b074f
   REVIEW RESULT 当前为 PASS，但**建议合并 ≠ 授权合并**。
 - **Human 指令「现在先合并」的授权主体存在歧义**：无法判定 Human 是在
   ① 自行到 GitHub 点击合并，还是 ② 授权 AI 代为合并。
-- **外部 AI 处置**：未执行合并，未尝试绕过门禁。
-- **请求裁决**：请主指挥 AI 向 Human 明确 —— 由 Human 本人合并，还是明确授权 AI 执行。
-  若选择后者，外部 AI 可用 Git 凭据 + GitHub REST API（`POST /repos/{owner}/{repo}/pulls/1/merge`，
-  走 `ProxyHandler`，见 2026-09-17 记忆的建 PR 工具链）执行。
+- **主指挥 AI 处置**：在 Human 授权后将已验收分支快进同步到本地 `main`，并成功推送 `origin/main` 到 `ffad349`。
+- **结果**：CM-002 已进入远端 `main`。由于当前没有 `gh` CLI 或 GitHub 写入连接器，采用了已授权的 Git push；PR 页面状态仍应以 GitHub 页面为准。
 - **顺序说明**：`AGENTS.md:192` 要求「新任务原则上从已验收并合并的基线开始」，
   故合并应先于 CM-003 派发，当前顺序无冲突。
 
-### 阻塞项 2：「清理工作区未提交」
+### 阻塞项 2：「清理工作区未提交」（已处理）
 
 - **对象**：7 个未跟踪文件 —— `AGENTS.md`、`docs/AI_HANDOFF.md`、`docs/ARCHITECTURE.md`、
   `docs/DATA_FLOW.md`、`docs/PROJECT_ANALYSIS.md`、`docs/ROADMAP.md`、`docs/TECH_DEBT.md`。
@@ -78,9 +77,8 @@ origin/main：c4b074f
   3. **原状不动** → 无动作，仅确认其内容。
 - **外部 AI 判断（仅供参考，非结论）**：从项目长期健康看，这 7 个文档应纳入版本控制 ——
   它们目前仅存在于本地，磁盘损坏即导致治理依据灭失；但这是范围外变更，需主指挥 AI / Human 先行定调。
-- **外部 AI 处置**：未删除、未 add、未 commit、未修改，工作区保持原样。
-- **请求裁决**：请主指挥 AI 向 Human 取得明确选择 —— 删除 / 入库（单独 commit，本地或推送） / 原状不动。
-  若为删除，外部 AI 将先把内容摘要落盘至 `.workbuddy/` 再执行。
+- **主指挥 AI 处置**：保留全部治理/审计文档，在 `codex/governance-docs` 分支创建独立提交 `1bd7378`，并推送到远端。
+- **结果**：未删除任何文档；工作区已清理。
 
 ### 外部 AI 执行规则（本次遵循）
 
@@ -102,5 +100,4 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-等待 Human 决定是否合并 PR #1。合并后，主指挥 AI 更新本文件并写入 CM-003 任务；在此之前外部 AI 不得自行修改代码或开始新任务。
-
+等待 Human 审查并合并治理文档分支。合并后，主指挥 AI 更新本文件并写入 CM-003 任务；在此之前外部 AI 不得自行修改代码或开始新任务。
