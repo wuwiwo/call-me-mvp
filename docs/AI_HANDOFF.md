@@ -6,7 +6,7 @@
 
 CM-003 — LocalStorage JSON 容错与启动可靠性
 
-PHASE: BugFix / Engineering  
+PHASE: BugFix / Engineering
 PRIORITY: P1
 
 OBJECTIVE:
