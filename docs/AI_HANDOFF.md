@@ -63,15 +63,136 @@ VERIFICATION:
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — 等待外部 AI 接受 CM-003
-当前分支：main
-当前 commit：5672519（docs: standardize single AI handoff channel）
-CM-002 基线：main / ffad349（已含）
-PR #1：merged（CM-002 验证工具）
-PR #2：merged（治理与审计基线文档）
+状态：PASS — CM-003 第二轮返工已通过主指挥 AI 独立验收
+当前分支：codex/cm003-storage-resilience
+分支基线：9989138（docs: clean CM-003 handoff formatting）= origin/main
+当前 commit：1217af7
+CM-002 基线：已含（ffad349 / PR #1）
+PR：#3 已更新，停在待 Review 状态，未合并
 当前任务：CM-003
 最近状态更新：2026-09-17
 ```
+
+### 外部 AI 接受 CM-003 返工（第二轮）
+
+主指挥 AI 验收结论 NEEDS_REWORK，阻塞项为
+`js/modules/notification.js:51` 仍有未防护的直接 `JSON.parse`。
+外部 AI **接受该判断**并在本轮完成修复，详见下方第二节。
+
+- 未修改 `main`，未合并任何 PR。
+- 未创建 `docs/tasks/`、`docs/reports/`（遵循已收敛的单文档机制）。
+
+## EXECUTION REPORT
+
+### CM-003 返工 — 补齐 notification.js 写入路径（第二轮）
+
+**返工触发**
+
+主指挥 AI 的核心论证：该处**与 CM-003 是同一条运行路径**（同属 `notificationHistory` 容错），
+不能作为已完成任务的遗留项。外部 AI 认同该判断 —— 我第一轮把它报为"范围外、建议另开任务"，
+依据是"文件不在任务卡 Scope 清单里"，属于**照字面读 Scope 而未按 OBJECTIVE 的实质范围判断**。
+
+**Files changed（本轮）**
+
+| 文件 | 性质 | 改动 |
+|---|---|---|
+| `js/modules/notification.js` | 修改 | `addHistoryRecord()` 改用 `readJsonSafe`；损坏时用新记录覆盖，让历史自我修复 |
+| `tools/storage-resilience.mjs` | 修改 | 新增用例 5 / 5b / 5c，共 **+22 项断言**（29 → 51） |
+| `tools/negative-storage.mjs` | 修改 | 反向验证扩展为 4 个源文件（含 `notification.js`） |
+| `tools/README.md` | 修改 | 补充写入路径用例说明、fetch 桩必要性 |
+| `tools/ACCEPTANCE.md` | 修改 | 追加返工说明与更新后的证据 |
+
+**Summary**
+
+```js
+// 修改前
+const history = JSON.parse(localStorage.getItem("notificationHistory")) || [];
+
+// 修改后
+const existing = readJsonSafe("notificationHistory", [], v => Array.isArray(v));
+const history = Array.isArray(existing) ? existing : [];
+```
+
+**关键设计权衡**：`readJsonSafe` 在**只读**路径上刻意保留损坏值（供排查），
+但 `addHistoryRecord` 是**写入**路径，语义不同 —— 必须用新记录覆盖损坏值，
+否则用户永久停在"每次发通知都抛异常"且无恢复路径。
+**仅在数据不可用（非法 JSON / 非数组）时覆盖**，合法数据（含未知字段）一律保留（用例 5c 保护）。
+
+**缺陷的真实危害**（反向验证堆栈证明）：
+
+```
+at Object.addHistoryRecord (js/modules/notification.js:51:30)
+at Object.sendNotification (js/modules/notification.js:122:18)
+```
+
+`notification.js:122` 是**失败分支** —— 原缺陷的危害是：
+当通知发送失败、系统正要把这次失败记入历史时，它自己抛了异常。
+**错误上报路径的静默失效，比功能不可用更隐蔽。**
+
+**Tests**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
+| `node tools/negative-storage.mjs` | 基线 0 / 回退版 1（4 文件全部回退） | **0** |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| `git diff --stat` | 仅范围内文件 | — |
+
+环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP 9445，脚本进程内自建服务器。
+
+新增断言覆盖：
+- `notificationHistory` 损坏（非法 JSON / 对象 / 字符串）后调用 `addHistoryRecord()`
+  → 不抛异常、新记录写入成功、内容正确（9 项）
+- 损坏 history 后走完整 `sendNotification()`（**fetch 用桩控制状态码**）
+  → HTTP 200 与 HTTP 500 两条分支都不抛异常，历史状态分别为 `success` / `error`（8 项）
+- 合法 history 在写入路径上不被吞掉 → 既有记录保留、新记录入队首（5 项）
+
+**测试可用性改进**：首次返工试验中，回退版本会在用例 5 **直接崩溃退出**
+（异常从 `evalJs` 抛出，后续用例与汇总都不执行）。已改用 `evalJsSafe`
+把页面异常转为可断言结果，现在回退版本输出**完整 FAIL 清单 + 异常文本 + 堆栈**，
+而不是一个笼统的退出码 1。**崩溃是钝的信号，可读的失败清单才是有效证据。**
+
+**Known issues**
+
+1. `npm run lint` 在本机 exit 1（shim 依赖被裁剪的 `dirname`/`sed`），
+   与代码无关；改用 `node node_modules/eslint/bin/eslint.js .` 得 exit 0。
+2. `npm run format:check` 仍为既有 FAIL（39 文件基线问题），不混入本次改动。
+3. 写入路径测试依赖 `window.fetch` 桩，未覆盖真实网络异常（CORS 失败、超时）；
+   那些路径由 `sendNotification` 的 `catch` 统一处理，已断言其不抛异常。
+4. 页面每次导航后 `window` 是新的，fetch 桩必须重新装（已在脚本内处理）。
+
+**Commit**
+
+见下方「提交记录」小节。
+
+### 提交记录（CM-003）
+
+**第一轮**
+
+```text
+e68c905  fix: LocalStorage JSON 容错，损坏数据不再阻断启动          (+104/-26)
+f680bc1  test: 补充 CM-003 存储容错回归验证工具                      (+834/-25)
+ef32a5b  docs: 记录 CM-003 验收报告与执行状态                        (+333/-6)
+ff2df58  docs: 回填 CM-003 提交 hash                                 (+3/-1)
+```
+
+**第二轮（返工）**
+
+```text
+80d0705  fix: 补齐 notification.js 写入路径的 JSON 容错            (+14/-2)
+f64d9cc  test: 补充损坏 history 后的写入路径回归断言                (+271/-3)
+9db7073  docs: 更新 CM-003 返工报告与执行状态                      (+215/-86)
+```
+
+分支：`codex/cm003-storage-resilience`，基线 `9989138`（= `origin/main`）。
+未修改 `main`，未合并任何 PR。
+
+### 需要主指挥 AI 留意的两点
+
+1. **`npm run lint` 本机不可用** —— 若 Review 环节以它作为门禁，需先修本机环境
+   （或改用 `node node_modules/eslint/bin/eslint.js .`）。这是环境问题，不是代码问题。
+2. **`notification.js:51` 残留路径** —— 本次只修了"读取渲染"路径，
+   "写入历史"路径仍会在损坏数据下抛异常，建议纳入后续任务。
 
 ### 外部 AI 待命巡检（2026-09-17 17:29）
 
@@ -201,6 +322,22 @@ GET /repos/wuwiwo/call-me-mvp/commits/fee0e2a/check-runs               → total
 
 ## REVIEW RESULT
 
+### 主指挥 AI 验收（2026-09-17）
+
+**结论：PASS，可进入合并门禁。**
+
+独立验收结果：
+
+- `node tools/storage-resilience.mjs`：51 passed / 0 failed，退出码 0。
+- `node tools/negative-storage.mjs`：修复版退出码 0，回退版退出码 1，测试具备缺陷区分力。
+- `npm run lint`：0 error / 0 warning，退出码 0。
+- `state.js`、`history.js`、`buttonManager.js`、`notification.js` 语法检查通过。
+- 分支相对 `main` 仅包含 CM-003 代码、验证工具和相关报告；反向验证后工作区干净。
+
+主指挥 AI 独立复验确认：`notification.js` 的历史写入路径已改用 `readJsonSafe`；损坏 history 后，成功和失败通知均可写入新记录，合法历史记录保持不变。
+
+格式检查仍为既有基线问题，不阻断本任务；`negative-storage.mjs` 属手工反向验证工具，不纳入普通 CI。
+
 CM-002 代码和验证结果：PASS。
 
 Prettier 仍失败，但已证明修改前版本同样失败，属于既有工程基线问题，不阻断 CM-002。
@@ -209,9 +346,18 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-治理基线已就位（`main` = `5672519`，含 `AGENTS.md`、`docs/*.md`）。
+CM-003 已通过主指挥 AI 验收。下一步是 Human 决定是否合并 PR #3；合并前不进入下一项业务任务。
 
-Human 已要求开始 CM-003。外部 AI 读取本文件后执行当前任务卡；完成后更新本文件并等待主指挥 AI Review。
+### Human 决定：合并 PR #3（2026-09-17 21:21）
+
+Human 指令「合并」= 明确授权合并。外部 AI 执行记录：
+
+- 合并前核查：`origin/main` = `9989138`，分支 = `1217af7`，
+  `rev-list --left-right --count` = `0 8`（main 无新提交），
+  `merge-base --is-ancestor` 通过 → 可快进合并，无冲突。
+- 合并方式：**快进（fast-forward）**，保持线性历史，产生的 merge commit 为 `9989138` 之后的直接续接。
+- 合并后清理：删除已合并的远端/本地分支 `codex/cm003-storage-resilience`。
+- 本文件即包含本次 Human 授权与执行记录，随文件一起提交。
 
 ### 主指挥 AI 处理记录：通信机制已收敛（2026-09-17）
 
