@@ -63,6 +63,21 @@ export const CONFIG = {
                 icon: "exclamation-triangle"
             }
         ],
+        // 默认按钮 legacy ID 映射。
+        //
+        // 历史版本按**数组位置**写入 `default_1` / `default_2`，
+        // 而规范 ID 是 defaultButtons[n].id（语义化、与顺序无关）。
+        // 这里声明 "位置式旧 ID → 规范 ID" 的一一对应，供读取时归一化：
+        // 迁移只改 id，message / icon / 未知字段一律原样保留。
+        //
+        // 注意：映射到**位置**（数组下标）而非语义，
+        // 因为旧配置的按钮本来就没有语义身份，位置是它唯一的依据。
+        legacyDefaultIdMap: {
+            default_1: 0,
+            default_2: 1
+        },
+        // 自定义按钮 ID 前缀：`custom_<数字>` 视为持久 ID
+        customIdPrefix: "custom_",
         // 可选图标列表（Font Awesome
         availableIcons: [
             "bolt",

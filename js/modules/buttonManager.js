@@ -93,10 +93,55 @@ export const buttonManager = {
         const { buttons, activeGroup } = parsed;
         // buttons 必须是数组，否则视为不可用，回退默认
         this.customButtons = Array.isArray(buttons)
-            ? buttons
+            ? this.normalizeButtonIds(buttons)
             : JSON.parse(JSON.stringify(CONFIG.buttons.defaultButtons));
         this.activeButtonGroup =
             typeof activeGroup === "string" ? activeGroup : "default";
+    },
+
+    /**
+     * 归一化按钮 ID，让旧配置平滑迁移到规范 ID。
+     *
+     * 只改 id，不动 message / icon / 未知字段 —— 迁移不许丢内容。
+     * 规则：
+     * - 前 N 位（N = CONFIG.buttons.defaultButtons.length）若 ID 是 legacy `default_N`
+     *   或缺失/非法，改写为 CONFIG.buttons.defaultButtons[位置].id。
+     * - 自定义按钮的 ID 一律保留原值（`custom_<timestamp>` 是持久标识，不重写）。
+     * - 已经是规范 ID 的默认按钮保持不变（幂等，重复调用无副作用）。
+     *
+     * 结果只存在于内存与后续保存中；读取阶段**不落盘**，
+     * 以免在一个纯读取动作里静默改写用户的存储（落盘发生在下次保存）。
+     *
+     * @param {Array} buttons 原始按钮数组
+     * @returns {Array} 归一化后的按钮数组
+     */
+    normalizeButtonIds(buttons) {
+        const defaultCount = CONFIG.buttons.defaultButtons.length;
+        const legacyMap = CONFIG.buttons.legacyDefaultIdMap || {};
+
+        return buttons.map((btn, index) => {
+            if (!btn || typeof btn !== "object") return btn;
+
+            const canonical =
+                index < defaultCount
+                    ? CONFIG.buttons.defaultButtons[index].id
+                    : null;
+
+            // 只处理默认按钮位置
+            if (canonical === null) return btn;
+
+            const id = btn.id;
+            const isLegacy = Object.prototype.hasOwnProperty.call(
+                legacyMap,
+                String(id)
+            );
+            const isMissing = typeof id !== "string" || id === "";
+
+            if (isLegacy || isMissing) {
+                return { ...btn, id: canonical };
+            }
+            return btn;
+        });
     },
 
     /**
@@ -365,21 +410,28 @@ export const buttonManager = {
         this.elements.defaultButtonsArea.innerHTML = "";
         this.elements.customButtonsArea.innerHTML = "";
 
+        // 按身份切分按钮，而不是单纯按位置：
+        // 前 N 个位置对应默认按钮（N = CONFIG.buttons.defaultButtons.length），
+        // 其余为自定义按钮。这是历史数据格式决定的（默认按钮不能删除、始终占前 N 位）。
+        const defaultCount = CONFIG.buttons.defaultButtons.length;
+        const customList = this.customButtons.slice(defaultCount);
+
         // 渲染默认按钮
         CONFIG.buttons.defaultButtons.forEach((defaultBtn, index) => {
+            // 优先用已保存的按钮内容，缺失时回退配置默认值
             const existingBtn = this.customButtons[index] || defaultBtn;
             this.addDefaultButtonForm(existingBtn, index);
         });
 
         // 渲染自定义按钮
-        const customButtonCount = Math.max(
-            0,
-            this.customButtons.length - CONFIG.buttons.defaultButtons.length
-        );
-        for (let i = 0; i < customButtonCount; i++) {
-            const btnIndex = CONFIG.buttons.defaultButtons.length + i;
-            this.addCustomButtonForm(this.customButtons[btnIndex]);
-        }
+        customList.forEach(btn => {
+            // 把未知字段挂在表单上，保存时原样带回（未知字段保留策略）
+            const withExtra =
+                btn && typeof btn === "object"
+                    ? { ...btn, __extraFields: this.pickExtraFields(btn) }
+                    : btn;
+            this.addCustomButtonForm(withExtra);
+        });
 
         // 更新模式显示
         this.updateModeDisplay();
@@ -443,6 +495,8 @@ export const buttonManager = {
     addDefaultButtonForm(buttonData, index) {
         const form = document.createElement("div");
         form.className = "button-edit-item";
+        // 默认按钮的规范 ID 由 CONFIG.buttons.defaultButtons[index] 在保存时直接提供，
+        // 不需要在表单上再存一份身份（位置本身就是身份）。
         form.innerHTML = `
             <div class="form-group">
                 <div class="form-header">
@@ -466,10 +520,23 @@ export const buttonManager = {
     /**
      * 添加自定义按钮表单
      * @param {Object} [buttonData] - 现有按钮数据
+     *
+     * buttonData.id 会被写入 form.dataset.buttonId，保存时原样回写 ——
+     * 这是"编辑已有自定义按钮不改变 ID"的唯一依据。
+     * 新建按钮（无 buttonData.id）时 dataset 为空，保存时才生成新 ID。
      */
     addCustomButtonForm(buttonData) {
         const form = document.createElement("div");
         form.className = "custom-button-form";
+        // 已有按钮：记录其持久 ID（含 legacy custom_timestamp），保存时原样保留。
+        // 新建按钮：不写 dataset，保存时才分配新 ID。
+        if (buttonData && typeof buttonData.id === "string" && buttonData.id) {
+            form.dataset.buttonId = buttonData.id;
+        }
+        // 未被编辑过的未知字段：挂在这里随表单一起走，保存时原样带回
+        if (buttonData && buttonData.__extraFields) {
+            form.__extraFields = buttonData.__extraFields;
+        }
         form.innerHTML = `
         <div class="form-group">
             <div class="form-header">
@@ -502,21 +569,31 @@ export const buttonManager = {
 
     /**
      * 保存按钮配置
+     *
+     * ID 策略（CM-004）：
+     * - 默认按钮：ID 直接取自 CONFIG.buttons.defaultButtons[index].id，不再按位置生成 `default_N`。
+     * - 自定义按钮：表单携带的 dataset.buttonId 原样保留（含 legacy `custom_<timestamp>`）；
+     *   只有**新建**按钮（无 dataset.buttonId）才生成新的唯一 ID。
+     *
+     * 这样"数组位置"不再是身份来源，编辑某个按钮不会牵连其他按钮的 ID。
      */
     saveButtonConfig() {
         const newButtons = [];
 
         // 收集默认按钮
-        CONFIG.buttons.defaultButtons.forEach((_, index) => {
+        CONFIG.buttons.defaultButtons.forEach((defaultBtn, index) => {
             const textInput = document.getElementById(`button${index + 1}Text`);
             const iconPicker = document.getElementById(`button${index + 1}Icon`);
 
+            // 复用同位置已保存按钮的未知字段，避免未知字段在保存时丢失
+            const existing = this.customButtons[index];
+            const preserved = existing ? this.pickExtraFields(existing) : {};
+
             newButtons.push({
-                id: `default_${index + 1}`,
-                message: textInput?.value.trim() ||
-                    CONFIG.buttons.defaultButtons[index].message,
-                icon: iconPicker?.dataset.value ||
-                    CONFIG.buttons.defaultButtons[index].icon
+                ...preserved,
+                id: defaultBtn.id,
+                message: textInput?.value.trim() || defaultBtn.message,
+                icon: iconPicker?.dataset.value || defaultBtn.icon
             });
         });
 
@@ -526,8 +603,12 @@ export const buttonManager = {
             const icon = form.querySelector(".icon-picker")?.dataset.value;
 
             if (text) {
+                // 已有按钮：沿用表单携带的原 ID；新建按钮：分配新 ID
+                const carried = form.dataset.buttonId;
+                const preserved = form.__extraFields || {};
                 newButtons.push({
-                    id: `custom_${Date.now()}`,
+                    ...preserved,
+                    id: carried || this.createCustomButtonId(newButtons),
                     message: text,
                     icon: icon || "circle"
                 });
@@ -553,6 +634,54 @@ export const buttonManager = {
 
         notification.show("按钮配置已保存");
         this.elements.editModal.classList.remove("show");
+    },
+
+    /**
+     * 取出按钮中不属于已知字段的部分，用于保存时保留未知字段。
+     * 已知字段：id / message / icon —— 它们由表单与配置显式提供。
+     * @param {Object} button
+     * @returns {Object} 待保留的未知字段（无则返回空对象）
+     */
+    pickExtraFields(button) {
+        if (!button || typeof button !== "object") return {};
+        const known = new Set(["id", "message", "icon"]);
+        const extra = {};
+        for (const [k, v] of Object.entries(button)) {
+            if (!known.has(k)) extra[k] = v;
+        }
+        return extra;
+    },
+
+    /**
+     * 生成新的自定义按钮 ID。
+     *
+     * 唯一性检查必须同时覆盖两处，否则同一批次里新增多个按钮会撞号：
+     * 1. `this.customButtons` —— 已在存储中的按钮
+     * 2. `pending` —— 本次保存中已经分配出去、但尚未写回 this.customButtons 的 ID
+     *
+     * 用时间戳 + 单调递增计数器：Date.now() 在同一毫秒内会被多次调用
+     * （例如一次保存里新增两个按钮），纯时间戳必然撞号。
+     *
+     * @param {Array} [pending] 本次保存已构造的按钮数组
+     * @returns {string}
+     */
+    createCustomButtonId(pending) {
+        const prefix = CONFIG.buttons.customIdPrefix || "custom_";
+        const used = new Set();
+        for (const list of [this.customButtons, pending || []]) {
+            for (const b of list) {
+                if (b && typeof b.id === "string") used.add(b.id);
+            }
+        }
+
+        let seq = this.__idSeq || 0;
+        let candidate = `${prefix}${Date.now()}`;
+        while (used.has(candidate)) {
+            seq += 1;
+            candidate = `${prefix}${Date.now() + seq}`;
+        }
+        this.__idSeq = seq;
+        return candidate;
     },
 
     /**
