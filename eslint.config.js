@@ -18,5 +18,12 @@ export default [
             'no-console': 'off'
         }
     },
+    {
+        // 验证/工具脚本：Node 环境（不属于前端产物）
+        files: ['tools/**/*.mjs'],
+        languageOptions: {
+            globals: { ...globals.node }
+        }
+    },
     eslintConfigPrettier
 ];
