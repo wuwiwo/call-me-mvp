@@ -74,15 +74,29 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — CM-004 已派发，等待外部 AI 接受
-当前分支：main（执行分支待创建）
-分支基线：外部 AI 开工前以实际稳定 `HEAD` 为准
-当前 commit：外部 AI 开工前以 `git rev-parse --short HEAD` 为准
+状态：READY_FOR_REVIEW — CM-004 已实施完毕，等待主指挥 AI 验收
+当前分支：codex/cm004-button-ids（未修改、未合并 main）
+分支基线：22f21f4（git rev-parse --short HEAD 实测，已含本任务卡）
+当前 commit：bc481bd（分支 HEAD，3 个原子提交见「提交记录（CM-004）」）
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
 当前任务：CM-004
 最近状态更新：2026-09-17
 ```
+
+### 外部 AI 接受 CM-004（2026-09-17）
+
+任务卡要求「从当前本地 `main` 的实际稳定 `HEAD` 创建」执行分支，
+并明确「不要要求 Human 在两个基线之间选择」。外部 AI 按此执行：
+
+```text
+git rev-parse --short HEAD  →  22f21f4
+（22f21f4 = docs: 避免任务基线使用过期提交号，已含 CM-004 任务卡）
+git switch -c codex/cm004-button-ids
+```
+
+**未使用过期报告中的 hash**，也**未要求 Human 选基线**。
+未修改 `main`，未合并任何 PR，未创建 `docs/tasks/`、`docs/reports/`。
 
 ### 外部 AI 接受 CM-003 返工（第二轮）
 
@@ -95,9 +109,147 @@ PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
 
 ## EXECUTION REPORT
 
+### CM-004 — 固化按钮 ID 兼容规则（2026-09-17，外部 AI 执行）
+
+**Files changed**
+
+| 文件 | 性质 | 改动 |
+|---|---|---|
+| `js/modules/config.js` | 修改 | 新增 `legacyDefaultIdMap`（位置式旧 ID → 数组下标）与 `customIdPrefix` |
+| `js/modules/buttonManager.js` | 修改 | 新增 `normalizeButtonIds()` / `pickExtraFields()` / `createCustomButtonId()`；重写 `loadButtonConfig()` / `showEditModal()` / `addCustomButtonForm()` / `saveButtonConfig()` |
+| `tools/button-ids.mjs` | 新增 | CM-004 主回归脚本，**52 项断言**，进程内自建服务器（CDP 9446） |
+| `tools/negative-button-ids.mjs` | 新增 | 反向验证脚本（回退 3 个修复点） |
+| `tools/e2e.mjs` | 修改 | 改为进程内自建服务器（原依赖跨 Bash 命令存活的 `server.mjs`） |
+| `tools/README.md` | 修改 | 补充 CM-004 用例表、反向验证证据、环境注意项 |
+| `tools/ACCEPTANCE.md` | 修改 | 追加 CM-004 验收报告 |
+
+**Summary**
+
+三条兼容规则：
+
+1. **默认按钮 ID 来自配置**，不再按位置生成 `default_N`：
+
+```js
+// saveButtonConfig() 内
+newButtons.push({
+    ...preserved,
+    id: defaultBtn.id,      // ← CONFIG.buttons.defaultButtons[index].id
+    message: textInput?.value.trim() || defaultBtn.message,
+    icon: iconPicker?.dataset.value || defaultBtn.icon
+});
+```
+
+2. **旧 `default_N` 按声明式映射归一化，只改 id**：
+
+```js
+// config.js
+legacyDefaultIdMap: { default_1: 0, default_2: 1 },
+customIdPrefix: "custom_",
+```
+
+```js
+// buttonManager.js — normalizeButtonIds()
+if (isLegacy || isMissing) {
+    return { ...btn, id: canonical };   // message / icon / 未知字段原样保留
+}
+return btn;
+```
+
+映射目标是**位置（数组下标）而非语义** —— 旧配置的按钮本来就没有语义身份，位置是它唯一的依据。
+
+3. **自定义按钮持久化 ID，只有新建才分配**：
+
+```js
+// addCustomButtonForm()：已有按钮把 ID 挂在表单上
+if (buttonData && typeof buttonData.id === "string" && buttonData.id) {
+    form.dataset.buttonId = buttonData.id;
+}
+// saveButtonConfig()
+id: carried || this.createCustomButtonId(newButtons)
+```
+
+**关键设计取舍**
+
+- **读取不落盘**（沿用 CM-003 原则）：`normalizeButtonIds()` 只在内存归一化，
+  storage 在读取路径上**不被改写**，持久化只发生在用户显式保存时。
+  用例 2 专门断言了这一点。
+- **未知字段必须有载体**：编辑表单只呈现 `message`/`icon`，其他字段会随保存消失。
+  做法是 `form.__extraFields` 显式背包 + `pickExtraFields()`，保存时 `{ ...preserved, ... }` 写回。
+- **修掉了一个真实唯一性缺陷**：原实现 `custom_${Date.now()}`
+  在同一毫秒加入两个按钮时生成**同一个 ID**。新 `createCustomButtonId(pending)`
+  同时避开已存 ID 与本批次待存 ID，并用单调计数器兜底。
+
+**Tests**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
+| `node tools/negative-button-ids.mjs` | 修复版 0 / 回退版 1（测试对缺陷有区分力） | **0** |
+| `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
+| `node tools/storage-resilience.mjs` | **51 passed, 0 failed**（CM-003 不回归） | **0** |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| `git diff --check` | clean | **0** |
+
+环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP **9446**，
+脚本进程内自建静态服务器，零 npm 依赖。
+
+52 项断言分配：用例 1（无配置→规范 ID）6 项、用例 2（旧 `default_N`）9 项、
+用例 3（旧 `custom_timestamp`）7 项、用例 4（新建/连续保存/刷新后再保存）9 项、
+用例 5（删除中间按钮 + 编辑默认按钮）5 项、用例 6（未知字段）5 项、
+用例 7（新增→选图标→保存→回显→渲染→点击回归）8 项、用例 8（幂等）3 项。
+
+**反向验证的真实缺陷证据**（回退版输出，非构造数据）：
+
+```text
+FAIL  同一批次两个新按钮 ID 互不相同
+      -> ["custom_1789653535321","custom_1789653535321"]
+
+FAIL  连续 3 次保存 ID 序列完全稳定
+      -> ["default_1,default_2,custom_1789653541862",
+          "default_1,default_2,custom_1789653541865",
+          "default_1,default_2,custom_1789653541869"]
+```
+
+第一段是**同一毫秒内 ID 冲突**；第二段是**每次保存都换 ID**（未编辑的按钮也拿到新身份）。
+
+**Known issues**
+
+1. `npm run lint` 本机 exit 1（shim 依赖被裁剪的 `dirname`/`sed`），与代码无关；
+   改用 `node node_modules/eslint/bin/eslint.js .` 得 exit 0。同 CM-002 / CM-003 记录。
+2. `npm run format:check` 仍为既有 FAIL（39 文件基线），不混入本次改动。
+3. **未知字段保留的边界**：只保留"曾存在于 storage"的字段；
+   表单不提供新增未知字段的入口 —— 这是刻意的，不是遗漏。
+4. **`activeGroup` 不在本次范围**（任务卡 NON-GOALS 已排除）。
+5. **临时诊断脚本会污染 lint**：ESLint 走全仓（含 `.workbuddy/`），
+   本次中间产物 `.workbuddy/diag.mjs`、`.workbuddy/run_e2e.mjs` 已删除。
+6. **`tools/e2e.mjs` 的顺带修复**：它原先要求手工先起 `server.mjs`，
+   而本机服务器子进程**无法跨 Bash 命令存活**，导致它一直以
+   `SecurityError: Failed to read the 'localStorage' property` 失败。
+   已改为进程内自建服务器（同 CM-003 模式），修复后 **29/29 exit 0**。
+   这一项属验证设施修复，非业务行为变化。
+
+**Commit**
+
+见下方「提交记录（CM-004）」小节。
+
 ### CM-004 — 固化按钮 ID 兼容规则（待外部 AI 回填）
 
-外部 AI 接受任务后，在本节顶部追加执行状态、修改文件、实现摘要、测试命令与完整结果、已知问题和 commit；不要覆盖 CM-003 历史报告。
+（已于 2026-09-17 回填至本节上方的同名小节，此处保留原占位说明。）
+
+### 提交记录（CM-004）
+
+```text
+9c7f4bb  fix: 固化按钮 ID 兼容规则，默认按钮用规范 ID、自定义按钮持久化   (+160/-16)
+fcc50ee  test: 补充 CM-004 按钮 ID 回归与反向验证工具                    (+1094/-6)
+0c4a46a  docs: 记录 CM-004 验收报告与执行状态                          (+490/-24)
+
+注：docs commit 的 hash 会随本文件自身内容变化而改变（自引用），
+上方 0c4a46a 是回填时的实际值；以分支 HEAD 为准：
+git log --oneline -3 codex/cm004-button-ids
+```
+
+分支：`codex/cm004-button-ids`，基线 `22f21f4`。
+未修改 `main`，未合并任何 PR。
 
 ### CM-003 返工 — 补齐 notification.js 写入路径（第二轮）
 

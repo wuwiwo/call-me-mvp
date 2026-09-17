@@ -542,3 +542,248 @@ node tools/storage-resilience.mjs    # 终端直接输出全部断言；退出�
 **证据可追溯性判断**：脚本本身（含断言清单）已纳入版本控制，
 任何人 clone 后重跑即可复现全部 51 项断言 —— 这满足"可复核"要求。
 日志文件只是本次运行的快照，不入库不影响可复核性。
+
+---
+---
+
+# CM-004 验收报告（可复核版）
+
+**TASK-ID**: CM-004 — 固化按钮 ID 兼容规则
+**状态**: READY_FOR_REVIEW
+**报告时间**: 2026-09-17
+**执行分支**: `codex/cm004-button-ids`（基线 `22f21f4`，未修改、未合并 `main`）
+
+---
+
+## 零、任务背景
+
+`config.js` 已声明默认按钮的规范 ID（`quick_online` / `emergency`），
+但 `buttonManager.saveButtonConfig()` 仍按**数组位置**写入 `default_1`、`default_2`；
+自定义按钮每次保存都重新生成 `custom_${Date.now()}`。
+结果是**按钮没有稳定身份**：每次保存都可能产生新 ID，未知字段在保存时被丢弃。
+
+CM-004 要固化三件事：
+
+1. 默认按钮 ID 直接来自 `CONFIG.buttons.defaultButtons[index].id`；
+2. 旧 `default_N` 配置有明确兼容规则，且不丢内容；
+3. 自定义按钮获得**持久 ID**，只有新建时才分配。
+
+---
+
+## 一、代码改动
+
+| 文件 | 性质 | 改动 |
+|---|---|---|
+| `js/modules/config.js` | 修改 | 新增 `legacyDefaultIdMap`（位置式旧 ID → 数组下标）与 `customIdPrefix` |
+| `js/modules/buttonManager.js` | 修改 | 新增 `normalizeButtonIds()` / `pickExtraFields()` / `createCustomButtonId()`；重写 `loadButtonConfig()` / `showEditModal()` / `addCustomButtonForm()` / `saveButtonConfig()` |
+| `tools/button-ids.mjs` | 新增 | CM-004 主回归脚本（52 项断言，进程内自建服务器） |
+| `tools/negative-button-ids.mjs` | 新增 | 反向验证脚本（回退 3 个修复点） |
+| `tools/e2e.mjs` | 修改 | 改为进程内自建服务器（原依赖跨命令存活的 `server.mjs`） |
+| `tools/README.md` | 修改 | 补充 CM-004 用例表、反向验证证据、环境注意项 |
+| `tools/ACCEPTANCE.md` | 修改 | 本报告 |
+
+**改动规模**：`config.js +15`、`buttonManager.js +161/-?`、`tools/e2e.mjs +84`、`tools/README.md +111`。
+
+---
+
+## 二、实现摘要
+
+### 2.1 旧 ID 归一化：只改 id，不动其他字段
+
+```js
+// config.js —— 声明式映射，不把规则写死在逻辑里
+legacyDefaultIdMap: { default_1: 0, default_2: 1 },
+customIdPrefix: "custom_",
+```
+
+```js
+// buttonManager.js
+normalizeButtonIds(buttons) {
+    const defaultCount = CONFIG.buttons.defaultButtons.length;
+    const legacyMap = CONFIG.buttons.legacyDefaultIdMap || {};
+    return buttons.map((btn, index) => {
+        if (!btn || typeof btn !== "object") return btn;
+        const canonical = index < defaultCount
+            ? CONFIG.buttons.defaultButtons[index].id : null;
+        if (canonical === null) return btn;          // 只处理默认按钮位置
+        const id = btn.id;
+        const isLegacy = Object.prototype.hasOwnProperty.call(legacyMap, String(id));
+        const isMissing = typeof id !== "string" || id === "";
+        return (isLegacy || isMissing) ? { ...btn, id: canonical } : btn;
+    });
+},
+```
+
+映射表指向**位置（数组下标）而非语义** —— 因为旧配置的按钮本来就没有语义身份，
+位置是它唯一的依据。`default_1` 的第 0 个按钮就是 `defaultButtons[0]`。
+
+### 2.2 读取不落盘（沿用 CM-003 原则）
+
+`normalizeButtonIds()` 只在**内存**里归一化。读取旧配置时 storage **不被改写**，
+持久化只发生在用户显式保存时。这保持了 CM-003 确立的
+「读取不静默改写数据」——用户不保存就什么都没有变。
+
+### 2.3 自定义按钮持久 ID
+
+```js
+// addCustomButtonForm()：已有按钮把 ID 挂在表单上，保存时原样带回
+if (buttonData && typeof buttonData.id === "string" && buttonData.id) {
+    form.dataset.buttonId = buttonData.id;
+}
+```
+
+```js
+// createCustomButtonId()：同时避开已存 ID 与本批次待存 ID
+createCustomButtonId(pending) {
+    const prefix = CONFIG.buttons.customIdPrefix || "custom_";
+    const used = new Set();
+    for (const list of [this.customButtons, pending || []]) {
+        for (const b of list) {
+            if (b && typeof b.id === "string") used.add(b.id);
+        }
+    }
+    let seq = this.__idSeq || 0;
+    let candidate = `${prefix}${Date.now()}`;
+    while (used.has(candidate)) {
+        seq += 1;
+        candidate = `${prefix}${Date.now() + seq}`;
+    }
+    this.__idSeq = seq;
+    return candidate;
+},
+```
+
+**这里修掉了一个真实缺陷**：原实现是 `custom_${Date.now()}`。
+两个按钮在**同一毫秒**内加入时生成**同一个 ID** —— 不是理论风险，
+反向验证的输出里它就是真的（见第四节）。
+
+### 2.4 未知字段保留
+
+编辑表单只呈现 `message` / `icon`，其他字段没有载体就会在保存时消失。
+做法是在表单对象上挂一个显式背包：
+
+```js
+pickExtraFields(button) {
+    const known = new Set(["id", "message", "icon"]);
+    const extra = {};
+    for (const [k, v] of Object.entries(button)) {
+        if (!known.has(k)) extra[k] = v;
+    }
+    return extra;
+},
+```
+
+保存时用 `{ ...preserved, id, message, icon }` 写回，未知字段（含嵌套对象）原样带回。
+**已知边界**：只有"曾经存在于 storage 中"的未知字段会被保留；
+表单界面本身不提供编辑它们的入口——这是刻意的，不是遗漏。
+
+---
+
+## 三、验证结果
+
+| 检查项 | 命令 | 结果 | 退出码 |
+|---|---|---|---|
+| 主回归 | `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
+| 反向验证 | `node tools/negative-button-ids.mjs` | 修复版 0 / 回退版 1 | **0** |
+| 既有 E2E | `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
+| CM-003 容错 | `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
+| ESLint | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| 空白检查 | `git diff --check` | clean | **0** |
+
+环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP **9446**，
+脚本进程内自建静态服务器，零 npm 依赖。
+
+### 3.1 主回归用例分配（52 项）
+
+| # | 用例 | 断言数 |
+|---|---|---|
+| 1 | 无配置启动 → 规范默认 ID；保存后为 `quick_online`/`emergency` | 6 |
+| 2 | 旧 `default_N` 配置：可读、内容完整、保存后迁到规范 ID、读取阶段不改 storage | 9 |
+| 3 | 旧 `custom_<timestamp>`：编辑后保留原 ID；未编辑按钮 ID 与内容不变 | 7 |
+| 4 | 新建自定义按钮：同批两个 ID 互异；连续保存 + 刷新后再保存 ID 稳定 | 9 |
+| 5 | 删除中间自定义按钮 + 编辑默认按钮：存活按钮 ID 不变 | 5 |
+| 6 | 未知字段保留（含嵌套对象） | 5 |
+| 7 | 回归：新增 → 选图标 → 保存 → 重开回显 → 渲染 → 可点击 | 8 |
+| 8 | 幂等：连续 3 次保存 ID 序列完全一致 | 3 |
+| **合计** | | **52** |
+
+用例 2 额外断言了**读取阶段不落盘**：注入旧配置 → 加载页面 → 读取 `localStorage`
+原始值，确认它**仍是 `default_1`/`default_2`**，没有被悄悄改写。
+
+### 3.2 用例隔离（本次踩到的坑）
+
+Chrome 的 profile 目录**跨运行持久**。首次实现时用例 1 读到了上一轮遗留的
+`buttonConfig`，断言显示 "默认按钮内容来自 CONFIG" 却是上一轮的 `规范一/规范二`。
+用例 4 同样继承脏数据，渲染出 4 个表单而非 2 个。
+
+修复：`injectAndLoad()` **一律先 `localStorage.clear()`**，再注入本轮数据，
+以 `buttonConfig: null` 约定表示"刻意不注入此 key"。修复后连跑两遍均为 52/52。
+
+---
+
+## 四、反向验证（证明测试对缺陷有区分力）
+
+`tools/negative-button-ids.mjs` 同时回退 3 个修复点：
+
+1. 默认 ID 回到位置式 `default_${index+1}`
+2. 自定义 ID 回到 `custom_${Date.now()}`
+3. 移除 `normalizeButtonIds()` 调用
+
+**真实缺陷证据**（回退版输出的 FAIL 明细，非构造数据）：
+
+```text
+FAIL  同一批次两个新按钮 ID 互不相同
+      -> ["custom_1789653535321","custom_1789653535321"]
+
+FAIL  连续 3 次保存 ID 序列完全稳定
+      -> ["default_1,default_2,custom_1789653541862",
+          "default_1,default_2,custom_1789653541865",
+          "default_1,default_2,custom_1789653541869"]
+```
+
+第一段是**同一毫秒内 ID 冲突**（两个按钮 ID 完全相同）；
+第二段是**每次保存都换 ID** —— 未编辑的按钮也拿到了新身份。
+
+```text
+步骤1 基线（已修复）：退出码 = 0     符合预期
+步骤2 回退后重跑    ：退出码 = 1     符合预期——测试捕获到缺陷
+步骤3 自动还原      ：已还原 = true
+结果：通过——测试对缺陷有区分力
+```
+
+反向验证用**纯文件快照/还原**（`.workbuddy/cm004_backup/` + `try/finally`），
+**刻意不用 `git stash`** —— 本机环境下 `git stash` 曾损坏 `.git/refs`（同 CM-003 记录）。
+异常中断也不会留下源码改动。
+
+---
+
+## 五、已知问题与边界
+
+1. **`npm run lint` 本机 exit 1**（shim 依赖被裁剪的 `dirname`/`sed`），与代码无关；
+   改用 `node node_modules/eslint/bin/eslint.js .` 得 exit 0。同 CM-002 / CM-003 记录。
+2. **`npm run format:check` 仍为既有 FAIL**（39 文件基线），不混入本次改动。
+3. **未知字段保留的边界**：只保留"曾存在于 storage"的字段；表单不提供新增未知字段的入口。
+4. **`activeGroup` 不在本次范围**：任务卡 NON-GOALS 已排除。
+5. **临时诊断脚本会污染 lint**：ESLint 走全仓（含 `.workbuddy/`），
+   本次中间产物 `.workbuddy/diag.mjs`、`.workbuddy/run_e2e.mjs` 已删除，删除后 lint 才回到 exit 0。
+
+---
+
+## 六、建议状态
+
+```text
+CM-004 代码实现：PASS
+主回归：PASS（52/52，脚本可复跑）
+反向验证：PASS（回退 3 个修复点均有对应断言失败，测试有效性已证明）
+既有 E2E 不回归：PASS（29/29）
+CM-003 容错不回归：PASS（51/51）
+Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
+范围检查：PASS（仅 Scope 内文件）
+任务整体：READY_FOR_REVIEW，待主指挥 AI 验收
+```
+
+**遗留风险**：
+
+1. 反向验证依赖本机 Chrome 路径，可用 `CM004_CHROME` 覆盖。
+2. 旧 `default_N` 映射表是**硬编码**的两个位置。若未来 `defaultButtons` 增删条目，
+   映射表需同步维护 —— 这是刻意的显式依赖，好过隐式位置推断。
