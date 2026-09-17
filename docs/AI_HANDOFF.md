@@ -64,10 +64,10 @@ VERIFICATION:
 
 BRANCH:
 
-从当前本地 `main`（`b1dce03`，包含 CM-003 合并后状态和本次 CM-004 任务卡）创建并使用：
+从当前本地 `main` 的实际稳定 `HEAD` 创建并使用：
 `codex/cm004-button-ids`。不要直接修改或合并 `main`。
 
-以实际稳定的 Git `HEAD` 为准；本任务卡已在 `b1dce03` 派发提交中落盘。若读取时看到暂存区或工作区瞬时变化，先重新读取 `git status` 和本文件，不要据此要求 Human 在两个基线之间选择，也不要覆盖、回退或清理其他 AI 的改动。
+外部 AI 开工前必须用 `git rev-parse --short HEAD` 确认实际稳定基线，并确认该 `HEAD` 已包含本任务卡；不要使用过期报告中的 hash。若读取时看到暂存区或工作区瞬时变化，先重新读取 `git status` 和本文件，不要据此要求 Human 在两个基线之间选择，也不要覆盖、回退或清理其他 AI 的改动。
 
 外部 AI 完成后，必须把状态和完整报告写回本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，不要创建平行任务/报告通信目录。
 
@@ -76,8 +76,8 @@ BRANCH:
 ```text
 状态：DISPATCHED — CM-004 已派发，等待外部 AI 接受
 当前分支：main（执行分支待创建）
-分支基线：b1dce03（CM-003 合并后状态 + CM-004 任务派发）
-当前 commit：b1dce03
+分支基线：外部 AI 开工前以实际稳定 `HEAD` 为准
+当前 commit：外部 AI 开工前以 `git rev-parse --short HEAD` 为准
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
 当前任务：CM-004
