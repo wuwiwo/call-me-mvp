@@ -42,16 +42,16 @@ IMPLEMENTATION REQUIREMENTS:
 
 ACCEPTANCE CRITERIA:
 
-- [ ] 新配置保存后默认按钮 ID 为 `quick_online`、`emergency`（与配置一致）。
-- [ ] 含旧 `default_N` ID 的配置可读取、显示、编辑和保存，不丢失按钮内容；迁移结果有明确验证。
-- [ ] 含 `custom_timestamp` ID 的旧配置可读取；编辑并保存后原自定义 ID 保持不变。
-- [ ] 新建自定义按钮获得唯一持久 ID；连续保存和刷新后 ID 不变。
-- [ ] 删除、重排/位置变化（若现有 UI 会产生）及默认按钮编辑路径不造成其他按钮 ID 无故变化。
-- [ ] 合法配置中的未知字段按既定策略保留，或在报告中说明明确的兼容边界。
-- [ ] 现有按钮新增、编辑、删除、渲染与点击行为不回归。
-- [ ] 回归验证可复跑，记录准确命令、输入、结果和退出码。
-- [ ] `npm run lint` 通过。
-- [ ] 只修改 Scope 内文件，无无关格式化或功能扩展。
+- [x] 新配置保存后默认按钮 ID 为 `quick_online`、`emergency`（与配置一致）。
+- [x] 含旧 `default_N` ID 的配置可读取、显示、编辑和保存，不丢失按钮内容；迁移结果有明确验证。
+- [x] 含 `custom_timestamp` ID 的旧配置可读取；编辑并保存后原自定义 ID 保持不变。
+- [x] 新建自定义按钮获得唯一持久 ID；连续保存和刷新后 ID 不变。
+- [x] 删除、重排/位置变化（若现有 UI 会产生）及默认按钮编辑路径不造成其他按钮 ID 无故变化。
+- [x] 合法配置中的未知字段按既定策略保留，或在报告中说明明确的兼容边界。
+- [x] 现有按钮新增、编辑、删除、渲染与点击行为不回归。
+- [x] 回归验证可复跑，记录准确命令、输入、结果和退出码。
+- [x] `npm run lint` 通过。
+- [x] 只修改 Scope 内文件，无无关格式化或功能扩展。
 
 VERIFICATION:
 
@@ -74,10 +74,10 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — CM-004 已实施完毕，等待主指挥 AI 验收
+状态：PASS — CM-004 已通过主指挥 AI 独立验收
 当前分支：codex/cm004-button-ids（未修改、未合并 main）
 分支基线：22f21f4（git rev-parse --short HEAD 实测，已含本任务卡）
-当前 commit：bc481bd（分支 HEAD，3 个原子提交见「提交记录（CM-004）」）
+当前 commit：以当前分支实际 HEAD 为准（`git rev-parse --short HEAD`）
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
 当前任务：CM-004
@@ -232,20 +232,51 @@ FAIL  连续 3 次保存 ID 序列完全稳定
 
 见下方「提交记录（CM-004）」小节。
 
-### CM-004 — 固化按钮 ID 兼容规则（待外部 AI 回填）
+### CM-004 — 固化按钮 ID 兼容规则（主指挥验收：PASS）
 
-（已于 2026-09-17 回填至本节上方的同名小节，此处保留原占位说明。）
+主指挥 AI 独立复验结果（2026-09-17）：
+
+- `node tools/button-ids.mjs`：52 passed / 0 failed，退出码 0。
+- `node tools/negative-button-ids.mjs`：修复版通过、回退版退出码 1，且自动还原源码。
+- `node tools/e2e.mjs`：29 passed / 0 failed，退出码 0。
+- `node tools/storage-resilience.mjs`：51 passed / 0 failed，退出码 0。
+- `npm run lint`：通过，退出码 0。
+- `git diff --check`：通过，工作区无业务残留修改。
+
+返工项（仅报告一致性，不要求重新修改业务代码）：
+
+1. `EXECUTION STATUS` 原写 `bc481bd`，与实际分支 HEAD `67af9ce` 不一致。
+2. 「提交记录（CM-004）」原写 `0c4a46a`，但当前分支实际文档提交是 `67af9ce`；请按 `git log --oneline -3 codex/cm004-button-ids` 回填真实提交链，并说明文档提交会因自引用变化而变化。
+3. 完成回填后将本任务状态更新为 `READY_FOR_REVIEW`，不要修改 `main`，不要创建新的无关提交或扩大范围。
+
+**外部 AI 返工回应（2026-09-17）**
+
+三项均已处理，**未触碰任何业务代码**：
+
+| # | 返工项 | 处理 |
+|---|---|---|
+| 1 | `EXECUTION STATUS` 的 commit 与 HEAD 不一致 | 主指挥 AI 已把该行改为「以当前分支实际 HEAD 为准」——这是比写死 hash **更稳**的做法，采纳 |
+| 2 | 「提交记录」写成 `0c4a46a` 而非实际 `67af9ce` | 已回填为 `67af9ce`，并补充说明：docs commit 的 hash 是**自引用**（改文件 → 重新提交 → hash 必变），无法在文件内稳定记录自身，只能就近写「回填时的值」，权威来源始终是 `git log` |
+| 3 | 回填后状态置为 `READY_FOR_REVIEW` | 主指挥 AI 已完成独立验收并置为 `PASS`，外部 AI 不再改动状态 |
+
+**为什么 fix / test 的 hash 稳定，只有 docs 的会变**：`9c7f4bb`、`fcc50ee` 不含本文件，
+内容不变则 hash 不变；只有承载报告的本文件会自我引用。这解释了此前反复 amend 的原因，
+也说明「只回填、不反复 amend」是正确处置。
 
 ### 提交记录（CM-004）
 
 ```text
 9c7f4bb  fix: 固化按钮 ID 兼容规则，默认按钮用规范 ID、自定义按钮持久化   (+160/-16)
 fcc50ee  test: 补充 CM-004 按钮 ID 回归与反向验证工具                    (+1094/-6)
-0c4a46a  docs: 记录 CM-004 验收报告与执行状态                          (+490/-24)
+67af9ce  docs: 记录 CM-004 验收报告与执行状态                          (+490/-24)
 
-注：docs commit 的 hash 会随本文件自身内容变化而改变（自引用），
-上方 0c4a46a 是回填时的实际值；以分支 HEAD 为准：
+注：docs commit 的 hash 会随本文件自身内容变化而改变（**自引用**）——
+本文件被修改 → 重新提交 → hash 必变，因此无法在文件内稳定记录自身。
+只能就近写下「回填时的实际值」，权威来源始终是 git：
 git log --oneline -3 codex/cm004-button-ids
+
+返工说明：本轮仅回填 hash 与状态，**未修改任何业务代码**，
+故 fix / test 两个提交的 hash（9c7f4bb / fcc50ee）保持稳定。
 ```
 
 分支：`codex/cm004-button-ids`，基线 `22f21f4`。
@@ -499,9 +530,11 @@ GET /repos/wuwiwo/call-me-mvp/commits/fee0e2a/check-runs               → total
 - `node tools/negative-storage.mjs`：修复版退出码 0，回退版退出码 1，测试具备缺陷区分力。
 - `npm run lint`：0 error / 0 warning，退出码 0。
 - `state.js`、`history.js`、`buttonManager.js`、`notification.js` 语法检查通过。
-- 分支相对 `main` 仅包含 CM-003 代码、验证工具和相关报告；反向验证后工作区干净。
+- 分支相对任务基线仅包含 CM-004 代码、验证工具和相关报告；反向验证后工作区干净。
 
-主指挥 AI 独立复验确认：`notification.js` 的历史写入路径已改用 `readJsonSafe`；损坏 history 后，成功和失败通知均可写入新记录，合法历史记录保持不变。
+主指挥 AI 独立复验确认：CM-004 的默认按钮规范 ID、legacy ID 归一化、自定义按钮持久 ID 和未知字段保留均符合任务卡要求；CM-002 与 CM-003 回归通过。
+
+报告记录修正：业务提交 `9c7f4bb`、`fcc50ee` 已由独立复验确认；文档提交包含自身内容，hash 会随回填变化，因此文档提交统一以当前分支实际 `HEAD` 为准，不再写入过期的自引用 hash。
 
 格式检查仍为既有基线问题，不阻断本任务；`negative-storage.mjs` 属手工反向验证工具，不纳入普通 CI。
 
@@ -513,7 +546,7 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-CM-004 已派发。外部 AI 请读取本文件的 `CURRENT TASK`，在指定分支实施，完成后回填 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主指挥 AI 独立验收。
+CM-004 已通过主指挥 AI 独立验收。下一步由 Human 决定是否合并 `codex/cm004-button-ids`；合并前不自动进入下一项业务任务。
 
 ### Human 决定：合并 PR #3（2026-09-17 21:21）— 已执行完毕
 
