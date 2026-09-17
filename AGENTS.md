@@ -93,23 +93,23 @@ READY_FOR_REVIEW → NEEDS_REWORK → IN_PROGRESS
 
 如果执行 AI 运行在另一个软件中，它不是当前 Codex 会话的内部子代理，不能直接通过本项目的内部 Agent 通道收发消息。除非该软件提供已连接的 API、插件或共享通信通道，否则不能承诺两个 AI 之间存在实时直接对话。
 
-本项目默认使用共享工作区和 Git 作为无复制粘贴的交接机制：
+本项目默认使用共享工作区、Git 和唯一通信文档作为无复制粘贴的交接机制：
 
 ```text
 主 AI
-  -> 写入 docs/tasks/CM-XXX.md
+  -> 写入 docs/AI_HANDOFF.md 的 CURRENT TASK
   -> 创建 codex/cm-xxx-* 分支或指定执行分支
 
 外部 AI
-  -> 读取任务文件和 AGENTS.md
+  -> 读取 docs/AI_HANDOFF.md 和 AGENTS.md
   -> 在指定分支修改代码
-  -> 写入 docs/reports/CM-XXX.md
+  -> 更新 docs/AI_HANDOFF.md 的 EXECUTION STATUS / EXECUTION REPORT
   -> 提交 commit
 
 主 AI
-  -> 读取报告和 Git diff
+  -> 读取同一文档和 Git diff
   -> 运行独立验证
-  -> 通过或把返工要求写入报告/任务文件
+  -> 更新 REVIEW RESULT / NEXT ACTION
 ```
 
 ### 唯一通信文档
@@ -157,7 +157,7 @@ NEXT ACTION
 1. 读取任务报告，但不把报告视为自动通过。
 2. 检查分支和 diff，重新阅读关键源码。
 3. 独立运行关键验证；对于只在外部软件中运行过、没有落盘证据的测试，标记为不可复核。
-4. 将 PASS、CONDITIONAL PASS 或 NEEDS REWORK 写回报告或任务文件。
+4. 将 PASS、CONDITIONAL PASS 或 NEEDS REWORK 写回 `docs/AI_HANDOFF.md` 的 `REVIEW RESULT`。
 
 ### 不能共享工作区时
 
@@ -176,13 +176,13 @@ Human 不需要复制任务正文或执行 AI 报告。只需向主 AI 发送以
 暂停任务
 ```
 
-主 AI 收到短指令后负责读取工作区、任务文件、报告、分支和 Git 状态，并执行相应动作。需要唤醒外部 AI 时，Human 只需向外部 AI 发送固定激活语句：
+主 AI 收到短指令后负责读取工作区、`docs/AI_HANDOFF.md`、分支和 Git 状态，并执行相应动作。需要唤醒外部 AI 时，Human 只需向外部 AI 发送固定激活语句：
 
 ```text
-请读取仓库中的 AGENTS.md 和 docs/tasks/ACTIVE.md，按任务卡执行；完成后将报告写入 docs/reports/ACTIVE.md，并等待主 AI 验收。不要直接修改或合并 main。
+请读取仓库中的 AGENTS.md 和 docs/AI_HANDOFF.md，按 CURRENT TASK 执行；完成后更新同一文档的 EXECUTION STATUS 和 EXECUTION REPORT，并等待主 AI 验收。不要直接修改或合并 main。
 ```
 
-任务切换时，主 AI 将 `ACTIVE.md` 指向具体任务，或者创建对应的 `docs/tasks/CM-XXX.md`；外部 AI 不应要求 Human 再次转发任务正文。外部 AI 的长报告只需落盘，主 AI 通过文件和 Git diff 读取，不依赖 Human 转发。
+任务切换时，主 AI 直接更新 `docs/AI_HANDOFF.md` 的 `CURRENT TASK`；外部 AI 不应要求 Human 再次转发任务正文。外部 AI 的长报告只需更新同一文档，主 AI 通过文件和 Git diff 读取，不依赖 Human 转发。
 
 ### PR 门禁
 

@@ -160,6 +160,14 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 外部 AI 当前状态：待命。未收到任务卡前不修改代码。
 
+### 主指挥 AI 处理记录：通信机制已收敛（2026-09-17）
+
+- 已修正 `AGENTS.md` 中残留的 `docs/tasks/`、`docs/reports/` 双目录描述。
+- 当前唯一通信文档为 `docs/AI_HANDOFF.md`。
+- 主 AI 将任务写入 `CURRENT TASK`，外部 AI 将状态和结果写入 `EXECUTION STATUS` / `EXECUTION REPORT`，主 AI 将验收写入 `REVIEW RESULT` / `NEXT ACTION`。
+- `docs/tasks/` 与 `docs/reports/` 不建立、不使用；历史报告和测试证据仍可保留在 `tools/` 或其他归档文档。
+- 本记录之后，外部 AI 不应再以双目录机制作为阻塞理由。
+
 ### Human 已决事项（2026-09-17 18:10）
 
 | # | 事项 | Human 决定 | 外部 AI 执行 |
