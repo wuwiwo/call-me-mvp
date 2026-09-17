@@ -37,7 +37,7 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-storage.mjs` | CM-003：反向验证（纯文件备份还原） |
 | `button-ids.mjs` | CM-004：按钮 ID 兼容规则，52 项断言 |
 | `negative-button-ids.mjs` | CM-004：反向验证 |
-| `input-safety.mjs` | CM-005：动态用户输入注入防护 + 严格图标允许列表，93 项断言 |
+| `input-safety.mjs` | CM-005：动态用户输入注入防护 + 严格图标允许列表，97 项断言 |
 | `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
 
@@ -197,14 +197,14 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 
 ### CM-005（`input-safety.mjs`）
 
-对齐 CM-005 验收标准（含 icon 白名单返工），共 **93** 项断言，分 9 个用例：
+对齐 CM-005 验收标准（含 icon 白名单返工），共 **97** 项断言，分 9 个用例：
 
 | 用例 | 覆盖内容 | 断言数 |
 |---|---|---|
 | 1 | 首页按钮渲染：恶意 `message`（`<script>` / `<img onerror>`）与恶意 `icon` | 9 |
 | 2 | 按钮编辑表单：恶意 `message` 经 `value` **完整回显**，不产生额外属性 | 7 |
 | 3 | 恶意 icon：不注入 class，且**不静默丢失原值** | 15 |
-| 3b | **严格允许列表**：白名单外的历史值不进入 class，且保存保留原值 | 25 |
+| 3b | **严格允许列表**：白名单外的历史值不进入 class，且保存保留原值 | 29 |
 | 4 | 自定义按钮表单：结构注入载荷（`</span><b id="inj">`）只作文本 | 6 |
 | 5 | 历史渲染：恶意 `nickname` / `message` / `emoji` / `webhook` | 9 |
 | 6 | 历史 `_status`：未知值不产生状态 class；`success` / `error` / 缺失三种情形不回归 | 10 |
@@ -263,8 +263,8 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 避免"手写回退与真实历史有偏差"造成的假结论。
 
 ```text
-修复版本退出码 : 0 (预期 0)          断言：93 passed, 0 failed
-回退版本退出码 : 1 (预期非 0)        断言：62 passed, 31 failed
+修复版本退出码 : 0 (预期 0)          断言：97 passed, 0 failed
+回退版本退出码 : 1 (预期非 0)        断言：65 passed, 32 failed
 回退版本注入类失败项     : 17 条 (预期 > 0)
 回退版本允许列表类失败项 :  4 条 (预期 > 0)
 源码已还原     : true (预期 true)

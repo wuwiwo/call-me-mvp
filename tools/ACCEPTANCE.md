@@ -835,7 +835,7 @@ Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
 | 文件 | 改动 |
 |---|---|
 | `js/modules/buttonManager.js` | 删除 `ICON_TOKEN_RE` 与 `isSafeIconName()`；改为 `ALLOWED_ICON_NAMES` 闭集 + `isAllowedIcon()` / `displayIcon()`；新增表现层 `PICKER_GLYPH_NAMES` + `pickerGlyph()`；`createIconPicker()` 分离"显示值"与"保存回写值" |
-| `tools/input-safety.mjs` | 64 → **93** 项断言：新增用例 3b（25 项），重写用例 3（15 项） |
+| `tools/input-safety.mjs` | 64 → **97** 项断言：新增用例 3b（29 项），重写用例 3（15 项） |
 | `tools/negative-input-safety.mjs` | 失败关键字从"仅注入类"扩展为"注入类 + 允许列表类"两组，两组都必须命中 |
 | `tools/README.md` | 更新用例表、三概念对照表、反向验证证据 |
 
@@ -915,7 +915,7 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 
 | 命令 | 结果 | 退出码 |
 |---|---|---|
-| `node tools/input-safety.mjs` | **93 passed, 0 failed**（原 64） | **0** |
+| `node tools/input-safety.mjs` | **97 passed, 0 failed**（原 64） | **0** |
 | `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
 | `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
 | `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
@@ -923,7 +923,7 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
 | `git diff --check` | clean | **0** |
 
-新增用例 3b（25 项）覆盖：
+新增用例 3b（29 项）覆盖：
 - 白名单外的 `not-configured` **不渲染为** `fa-not-configured`（主指挥初审的反例原文）
 - 白名单外的 `circle` 同样回退
 - 白名单内的 `fire` 正常渲染（对照）
@@ -939,8 +939,8 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 ### 反向验证的关键证据（回退到基线原文后）
 
 ```text
-修复版本退出码 : 0    汇总：93 passed, 0 failed
-回退版本退出码 : 1    汇总：62 passed, 31 failed
+修复版本退出码 : 0    汇总：97 passed, 0 failed
+回退版本退出码 : 1    汇总：65 passed, 32 failed
 回退版本注入类失败项     : 17 条
 回退版本允许列表类失败项 :  4 条
 源码已还原     : true

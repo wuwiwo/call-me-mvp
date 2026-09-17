@@ -157,7 +157,7 @@ git switch -c codex/cm004-button-ids
 | 文件 | 改动 |
 |---|---|
 | `js/modules/buttonManager.js` | 删除 `ICON_TOKEN_RE` + `isSafeIconName()`；改为闭集 `ALLOWED_ICON_NAMES` + `isAllowedIcon()` / `displayIcon()`；新增表现层 `PICKER_GLYPH_NAMES` + `pickerGlyph()`；`createIconPicker()` 分离"显示值"与"保存回写值" |
-| `tools/input-safety.mjs` | 64 → **93** 项断言：新增用例 3b（25 项），重写用例 3（15 项） |
+| `tools/input-safety.mjs` | 64 → **97** 项断言：新增用例 3b（29 项），重写用例 3（15 项） |
 | `tools/negative-input-safety.mjs` | 失败关键字扩为"注入类 + 允许列表类"两组，**两组都必须命中** |
 | `tools/README.md` | 更新用例表、三概念对照表、反向验证证据 |
 
@@ -229,7 +229,7 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 
 | 命令 | 结果 | 退出码 |
 |---|---|---|
-| `node tools/input-safety.mjs` | **93 passed, 0 failed**（原 64） | **0** |
+| `node tools/input-safety.mjs` | **97 passed, 0 failed**（原 64） | **0** |
 | `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
 | `node tools/button-ids.mjs` | **52 passed, 0 failed**（CM-004 不回归） | **0** |
 | `node tools/storage-resilience.mjs` | **51 passed, 0 failed**（CM-003 不回归） | **0** |
@@ -237,9 +237,9 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
 | `git diff --check` | clean | **0** |
 
-93 项断言分配：用例 1（首页按钮渲染）9、用例 2（编辑表单 value 回显）7、
+97 项断言分配：用例 1（首页按钮渲染）9、用例 2（编辑表单 value 回显）7、
 用例 3（恶意 icon：不注入 class + 不丢原值）15、
-**用例 3b（严格允许列表 + 保存兼容）25**、用例 4（自定义表单）6、
+**用例 3b（严格允许列表 + 保存兼容）29**、用例 4（自定义表单）6、
 用例 5（历史渲染）9、用例 6（历史 `_status`）10、用例 7（合法数据不回归）11、
 用例 8（异常检查）1。
 
@@ -248,13 +248,14 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 选择器保留白名单外原值（默认 + 自定义各一）、未知值不点亮任何选项、
 **选择器可选集合与 `availableIcons` 顺序内容完全一致**、
 每个选项 class 与自身 `data-value` 一致、
-未改图标保存后原值保留、主动点击 `star` 后写入新值且其他按钮不受牵连。
+未改图标保存后原值保留、主动点击 `star` 后写入新值且其他按钮不受牵连、
+**icon 字段完全缺失时**渲染回退值且保存不写出空值（4 项）。
 
 **反向验证的关键证据**（回退到基线原文后）
 
 ```text
-修复版本退出码 : 0    汇总：93 passed, 0 failed
-回退版本退出码 : 1    汇总：62 passed, 31 failed
+修复版本退出码 : 0    汇总：97 passed, 0 failed
+回退版本退出码 : 1    汇总：65 passed, 32 failed
 回退版本注入类失败项     : 17 条
 回退版本允许列表类失败项 :  4 条
 源码已还原     : true
@@ -488,7 +489,8 @@ Chrome 起不来等基础设施抖动误读成"测试有效"。脚本因此额�
 ```text
 49bff04  fix: icon 改为严格允许列表，并定义未知历史值的显示与保存兼容   (+88/-54)
 1f62ee9  test: 补充严格图标允许列表与保存兼容的回归断言                 (+315/-36)
-（docs commit）docs: 回填 CM-005 返工报告与执行状态
+6b626f3  test: 补充 icon 字段缺失时的回退断言                          (+55)
+（docs commit）docs: 回填 CM-005 返工报告与执行状态 / 修正断言计数
 ```
 
 分支：`codex/cm005-input-safety`，基线 `ddff168`。
