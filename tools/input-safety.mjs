@@ -879,6 +879,61 @@ await injectAndLoad("index.html", {
     }
 }
 
+// icon 字段完全缺失时：显示回退、回写取回退值（与修复前一致）
+{
+    await injectAndLoad("index.html", {
+        [ONB]: "true",
+        buttonConfig: JSON.stringify({
+            buttons: [
+                { id: "quick_online", message: "无图标字段" },
+                { id: "emergency", message: "有图标", icon: "bell" },
+            ],
+            activeGroup: "default",
+        }),
+    });
+
+    const homeCls = await evalJs(`(() => {
+        const i = document.querySelector(".bubble-container .bubble-btn .bubble-content i");
+        return i ? i.className : "(no i)";
+    })()`);
+    check("icon 缺失时首页渲染回退图标", homeCls === FALLBACK_CLASS, homeCls);
+
+    await openModal();
+    const picker = JSON.parse(
+        await evalJs(`(() => {
+            const p = document.getElementById("button1Icon");
+            if (!p) return JSON.stringify(null);
+            return JSON.stringify({
+                value: p.dataset.value,
+                trigger: p.querySelector(".icon-picker-trigger i").className,
+            });
+        })()`)
+    );
+    check(
+        "icon 缺失时回写值取回退值",
+        picker && picker.value === FALLBACK_ICON,
+        JSON.stringify(picker && picker.value)
+    );
+    check(
+        "icon 缺失时选择器预览为回退字形",
+        picker && picker.trigger === PICKER_FALLBACK_CLASS,
+        JSON.stringify(picker && picker.trigger)
+    );
+
+    const saved = await evalJsSafe(`(() => {
+        document.getElementById("saveButtons").click();
+        return localStorage.getItem("buttonConfig");
+    })()`);
+    if (saved.ok) {
+        const icons = (JSON.parse(saved.value).buttons || []).map(b => b.icon);
+        check(
+            "icon 缺失时保存写入回退值，不写出空值",
+            icons[0] === FALLBACK_ICON,
+            JSON.stringify(icons[0])
+        );
+    }
+}
+
 // ─────────────────────────────────────────────────────────
 log("");
 log("[用例4] 自定义按钮表单：恶意 message 与 icon");
