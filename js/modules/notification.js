@@ -6,7 +6,8 @@ import {
     utils
 } from './utils.js';
 import {
-    state
+    state,
+    readJsonSafe
 } from './state.js';
 import {
     soundManager
@@ -47,8 +48,19 @@ export const notification = {
     },
 
     // 添加历史记录
+    //
+    // 这是写入路径，必须比只读路径更宽容：
+    // `notificationHistory` 损坏时 readJsonSafe 会回退为空数组（且保留原始值），
+    // 我们在此基础上**用新记录覆盖损坏值**，让历史功能自我修复，
+    // 而不是让用户永久停在"每次发通知都抛异常"的状态。
+    // 注意：仅在数据不可用（非法 JSON / 非数组）时才覆盖，合法数据一律保留。
     addHistoryRecord(message, isSuccess) {
-        const history = JSON.parse(localStorage.getItem("notificationHistory")) || [];
+        const existing = readJsonSafe(
+            "notificationHistory",
+            [],
+            v => Array.isArray(v)
+        );
+        const history = Array.isArray(existing) ? existing : [];
         history.unshift({
             timestamp: new Date().toISOString(),
             message,
