@@ -4,72 +4,81 @@
 
 ## CURRENT TASK
 
-当前无进行中任务。CM-003 已完成并合并。
+CM-004 — 固化按钮 ID 兼容规则
 
-PHASE: BugFix / Engineering
+PHASE: Engineering / Compatibility
 PRIORITY: P1
 
 OBJECTIVE:
 
-让损坏或非法的 LocalStorage JSON 不再阻断首页或历史页启动，同时保持合法旧数据的现有行为不变。
+定义并实现默认按钮稳定 ID、自定义按钮持久 ID，以及旧 `default_N` / `custom_timestamp` 配置的兼容策略。
 
 CONTEXT:
 
-`state.js` 和 `history.js` 直接调用 `JSON.parse`；`buttonManager.js` 已有局部 catch，但回退行为需要统一核对。当前项目没有 schema version，也没有自动化存储解析测试。
+`config.js` 已声明默认按钮 ID `quick_online` 和 `emergency`，但 `buttonManager.saveButtonConfig()` 仍按位置写入 `default_1`、`default_2`；自定义按钮每次保存都重新生成 `custom_${Date.now()}`。按钮编辑表单当前主要按数组位置关联数据，兼容策略必须避免合法旧配置中的按钮被静默丢失。
 
 SCOPE:
 
-- `js/modules/state.js`
-- `js/modules/history.js`
-- 必要时 `js/modules/buttonManager.js`
+- `js/modules/config.js`
+- `js/modules/buttonManager.js`
 - 必要的零依赖回归验证脚本或测试
 - 本通信文档中的执行状态和报告
 
 NON-GOALS:
 
-- 不引入大型 Storage Layer、框架或新依赖。
-- 不改变 LocalStorage key 名称和合法数据格式。
-- 不修改按钮、通知、冷却或历史记录的正常产品行为。
-- 不在本任务中处理 XSS、按钮 ID、冷却统一或新功能。
+- 不增加拖拽排序、导入导出或新按钮功能。
+- 不引入框架、构建步骤或新的运行时依赖。
+- 不改变 `buttonConfig` key、按钮字段基本格式、按钮上限或现有 UI 行为。
+- 不处理 XSS、冷却、通知、历史记录或格式化基线问题。
 
 IMPLEMENTATION REQUIREMENTS:
 
-1. 为 `userProfile`、`notificationHistory`、`buttonConfig` 的非法 JSON 和错误顶层类型定义明确的安全回退行为。
-2. 非法数据不得抛出未捕获异常或阻止页面继续初始化。
-3. 合法数据必须保持现有读取结果和用户行为。
-4. 回退逻辑应集中在最小必要范围内，避免复制多套解析规则。
-5. 为至少一个首页启动路径和一个历史页路径增加可复现回归验证；验证必须记录命令、输入数据和结果。
-6. 不要静默覆盖可解析但未知字段的数据；如需清除损坏 key，必须在报告中说明。
+1. 默认按钮的规范 ID 必须直接来自 `CONFIG.buttons.defaultButtons[index].id`，不能继续按位置生成 `default_N`。
+2. 旧配置中的 `default_1`、`default_2` 等 legacy ID 必须按明确规则兼容；迁移或归一化时保留对应按钮的 message、icon 及其他合法字段，不得静默丢失。
+3. 已存在的自定义按钮编辑并保存后必须保留原 ID；只有新建自定义按钮才生成新 ID。
+4. 同一页面中连续保存、刷新后再次保存、删除其他按钮后保存，都不得无理由改变未编辑自定义按钮的 ID。
+5. 对未知字段采取保留策略，除非报告明确说明兼容边界；不要把“数组位置”误当作长期身份。
+6. 先以源码和现有数据流确认策略，再做最小改动；不得借机重写整个按钮模块。
 
 ACCEPTANCE CRITERIA:
 
-- [x] `userProfile` 为非法 JSON 时，首页可以加载，用户状态回退为未注册，不出现未捕获异常。
-- [x] `notificationHistory` 为非法 JSON 时，历史页可以加载并显示空状态，不出现未捕获异常。
-- [x] `buttonConfig` 为非法 JSON 或错误顶层类型时，按钮管理器回退到可用默认按钮，不出现未捕获异常。
-- [x] 合法的现有资料、历史和按钮配置行为不回归。
-- [x] 回归验证可复跑，并报告准确命令、退出码和结果。
-- [x] `npm run lint` 通过。
-- [x] 只修改 Scope 内文件，无无关格式化或功能扩展。
+- [ ] 新配置保存后默认按钮 ID 为 `quick_online`、`emergency`（与配置一致）。
+- [ ] 含旧 `default_N` ID 的配置可读取、显示、编辑和保存，不丢失按钮内容；迁移结果有明确验证。
+- [ ] 含 `custom_timestamp` ID 的旧配置可读取；编辑并保存后原自定义 ID 保持不变。
+- [ ] 新建自定义按钮获得唯一持久 ID；连续保存和刷新后 ID 不变。
+- [ ] 删除、重排/位置变化（若现有 UI 会产生）及默认按钮编辑路径不造成其他按钮 ID 无故变化。
+- [ ] 合法配置中的未知字段按既定策略保留，或在报告中说明明确的兼容边界。
+- [ ] 现有按钮新增、编辑、删除、渲染与点击行为不回归。
+- [ ] 回归验证可复跑，记录准确命令、输入、结果和退出码。
+- [ ] `npm run lint` 通过。
+- [ ] 只修改 Scope 内文件，无无关格式化或功能扩展。
 
 VERIFICATION:
 
 1. `npm run lint`
-2. 对三个 key 分别注入非法 JSON、数组/字符串等错误类型，刷新首页和历史页。
-3. 验证合法旧数据仍可读取。
-4. 查看 `git diff` 和工作区状态，确认无范围外修改。
+2. 对规范 ID、新建自定义 ID、旧 `default_N`、旧 `custom_timestamp` 分别建立可复跑输入。
+3. 至少验证：读取旧配置 → 打开编辑 → 修改一个按钮 → 保存 → 刷新 → 再保存；比较每个未编辑按钮的 ID 和内容。
+4. 验证未知字段、删除按钮和默认按钮编辑路径。
+5. 运行项目已有相关 E2E/回归工具，并回填准确断言数。
+6. 查看完整 `git diff`、`git diff --check` 和工作区状态，确认无范围外修改。
+
+BRANCH:
+
+从当前本地 `main`（`39498c5`，包含 CM-003 合并后通信文档状态）创建并使用：
+`codex/cm004-button-ids`。不要直接修改或合并 `main`。
 
 外部 AI 完成后，必须把状态和完整报告写回本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，不要创建平行任务/报告通信目录。
 
 ## EXECUTION STATUS
 
 ```text
-状态：COMPLETED / MERGED — CM-003 已通过验收并合并
-当前分支：main
-分支基线：9989138（docs: clean CM-003 handoff formatting）= origin/main
-当前 commit：4e5b346
+状态：DISPATCHED — CM-004 已派发，等待外部 AI 接受
+当前分支：main（执行分支待创建）
+分支基线：39498c5（CM-003 合并后文档状态）
+当前 commit：39498c5
 CM-002 基线：已含（ffad349 / PR #1）
-PR：#3 已合并（merge commit：6ff3db4）
-当前任务：无；等待 Human 指定下一任务
+PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
+当前任务：CM-004
 最近状态更新：2026-09-17
 ```
 
@@ -83,6 +92,10 @@ PR：#3 已合并（merge commit：6ff3db4）
 - 未创建 `docs/tasks/`、`docs/reports/`（遵循已收敛的单文档机制）。
 
 ## EXECUTION REPORT
+
+### CM-004 — 固化按钮 ID 兼容规则（待外部 AI 回填）
+
+外部 AI 接受任务后，在本节顶部追加执行状态、修改文件、实现摘要、测试命令与完整结果、已知问题和 commit；不要覆盖 CM-003 历史报告。
 
 ### CM-003 返工 — 补齐 notification.js 写入路径（第二轮）
 
@@ -346,7 +359,7 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-CM-003 已通过主指挥 AI 验收。下一步是 Human 决定是否合并 PR #3；合并前不进入下一项业务任务。
+CM-004 已派发。外部 AI 请读取本文件的 `CURRENT TASK`，在指定分支实施，完成后回填 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主指挥 AI 独立验收。
 
 ### Human 决定：合并 PR #3（2026-09-17 21:21）— 已执行完毕
 
