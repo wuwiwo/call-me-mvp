@@ -63,15 +63,108 @@ VERIFICATION:
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — 等待外部 AI 接受 CM-003
-当前分支：main
-当前 commit：5672519（docs: standardize single AI handoff channel）
-CM-002 基线：main / ffad349（已含）
-PR #1：merged（CM-002 验证工具）
-PR #2：merged（治理与审计基线文档）
+状态：READY_FOR_REVIEW — CM-003 已完成，等待主指挥 AI 验收
+当前分支：codex/cm003-storage-resilience
+分支基线：9989138（docs: clean CM-003 handoff formatting）= origin/main
+当前 commit：待提交（见 EXECUTION REPORT 的 commit 字段）
+CM-002 基线：已含（ffad349 / PR #1）
+PR：本次已创建，停在待 Review 状态，未合并
 当前任务：CM-003
 最近状态更新：2026-09-17
 ```
+
+### 外部 AI 接受 CM-003（2026-09-17）
+
+- 已按 `AGENTS.md` 与 `CURRENT TASK` 的 Scope / Non-Goals / Acceptance Criteria 执行。
+- 全程未修改 `main`，未合并任何 PR。
+- 未创建 `docs/tasks/`、`docs/reports/`（遵循主 AI 已收敛的单文档机制）。
+
+## EXECUTION REPORT
+
+### CM-003 — LocalStorage JSON 容错与启动可靠性（READY_FOR_REVIEW）
+
+**Files changed**
+
+| 文件 | 性质 | 改动 |
+|---|---|---|
+| `js/modules/state.js` | 修改 | 新增导出 `readJsonSafe`；`init()` 改用它读 `userProfile`；`checkCooldownStatus()` 对非数字时间戳清理 |
+| `js/modules/history.js` | 修改 | `render()` 改用 `readJsonSafe('notificationHistory', [], Array.isArray)` |
+| `js/modules/buttonManager.js` | 修改 | `loadButtonConfig()` 重写，用 `readJsonSafe` + `Array.isArray` / `typeof` 校验，废弃原 `try/catch` |
+| `tools/storage-resilience.mjs` | 新增 | 零依赖 CDP 端到端回归验证，29 断言 |
+| `tools/negative-storage.mjs` | 新增 | 反向验证（手工工具） |
+| `tools/README.md` | 修改 | 补充两个脚本的环境变量、复跑命令与本机踩坑警示 |
+| `tools/ACCEPTANCE.md` | 修改 | 追加 CM-003 验收报告 |
+
+**Summary**
+
+集中式 `readJsonSafe(key, fallback, isValid)`：key 缺失/空串、JSON 非法、顶层类型不符三种情况
+一律返回 fallback 且不抛异常；**不删除原始值**（保留在 storage 中供排查）。
+解析规则集中在 `state.js` 一处，另两个模块复用，满足任务卡"避免复制多套解析规则"。
+
+`buttonConfig` 刻意区分三态：无配置 → 默认按钮并主动落盘；损坏 → 默认按钮但不覆盖原始值；
+合法 → 保留未知字段。`activeGroup` 非字符串才置 `"default"`，`buttons` 非数组才回退。
+
+`checkCooldownStatus()` 对 `parseInt` 结果为非有限数的时间戳清理该 key 并置 `canClick = true`。
+
+**Tests**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/storage-resilience.mjs` | **29 passed, 0 failed** | **0** |
+| `node tools/negative-storage.mjs` | 基线 0 / 回退版 1，测试对缺陷有区分力 | **0** |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| `git diff --stat` | 仅 Scope 内文件 | — |
+
+环境：Chrome/152.0.7977.84（`--headless=new`），URL `http://127.0.0.1:8899`，CDP 9445。
+服务器现由脚本**进程内自建**（CM-002 的双终端模式在本机不可用，服务器子进程无法跨命令存活）。
+
+覆盖路径：三个 key × {非法 JSON、错误顶层类型} 各自回退 + 页面无未捕获异常；
+另有 9 项断言专门保护**合法旧数据不回归**（含"合法配置未被静默改写"）。
+
+反向验证证据（真实异常，非伪造）：
+
+```
+history.js:43        TypeError: records.map is not a function   （错误类型路径）
+buttonManager.js:245 TypeError: this.customButtons.forEach is not a function
+```
+
+**已知问题**
+
+1. **范围外未修复**：`js/modules/notification.js:51` 的
+   `JSON.parse(localStorage.getItem("notificationHistory")) || []` 是同一根因的残留路径，
+   不在任务卡 Scope 内，按 `AGENTS.md` 只报告未修改。建议另开任务。
+2. `npm run lint` 在本机返回 exit 1，**根因是 `node_modules/.bin/eslint` 的 POSIX shim
+   依赖 `dirname`/`sed`，而本机 bash 的 PATH 被裁剪**，与代码无关（`main` 基线同样失败）。
+   改用 `node node_modules/eslint/bin/eslint.js .` 得 exit 0、零输出。
+3. `npm run format:check` 仍为既有 FAIL（39 文件基线问题），按既定判断不混入本次改动。
+
+**Commit**
+
+见下方「提交记录」小节。
+
+### 提交记录（CM-003）
+
+```text
+e68c905  fix: LocalStorage JSON 容错，损坏数据不再阻断启动
+         3 files changed, 104 insertions(+), 26 deletions(-)
+         js/modules/state.js, js/modules/history.js, js/modules/buttonManager.js
+
+f680bc1  test: 补充 CM-003 存储容错回归验证工具
+         3 files changed, 834 insertions(+), 25 deletions(-)
+         tools/storage-resilience.mjs, tools/negative-storage.mjs, tools/README.md
+
+<docs-commit>  docs: 记录 CM-003 验收报告与执行状态
+```
+
+分支：`codex/cm003-storage-resilience`，基线 `9989138`（= `origin/main`）。
+未修改 `main`，未合并任何 PR。
+
+### 需要主指挥 AI 留意的两点
+
+1. **`npm run lint` 本机不可用** —— 若 Review 环节以它作为门禁，需先修本机环境
+   （或改用 `node node_modules/eslint/bin/eslint.js .`）。这是环境问题，不是代码问题。
+2. **`notification.js:51` 残留路径** —— 本次只修了"读取渲染"路径，
+   "写入历史"路径仍会在损坏数据下抛异常，建议纳入后续任务。
 
 ### 外部 AI 待命巡检（2026-09-17 17:29）
 

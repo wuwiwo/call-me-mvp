@@ -225,3 +225,237 @@ Lint：PASS（0 error / 0 warning）
 2. 验证脚本依赖本机 Chrome 路径（`C:/Program Files/Google/Chrome/Application/chrome.exe`），
    可通过环境变量 `CM002_CHROME` 覆盖，但在他人机器上仍需调整。
 3. 本机 `HTTP_PROXY` 会劫持回环请求，脚本已内置绕开逻辑；换环境时若代理行为不同，需复核该部分。
+
+---
+---
+
+# CM-003 验收报告（可复核版）
+
+**TASK-ID**: CM-003 — LocalStorage JSON 容错与启动可靠性
+**状态**: READY_FOR_REVIEW
+**报告时间**: 2026-09-17
+
+---
+
+## 一、问题背景
+
+`docs/TECH_DEBT.md` 的 `CM-001-TD-02`：
+
+`userProfile` / `notificationHistory` / `buttonConfig` 三个 key 在读取时直接 `JSON.parse`，
+一旦内容损坏（用户手工改、扩展写入、写入中断），异常会在**模块导入阶段**抛出，
+导致整页无法初始化 —— 历史页白屏、首页按钮不渲染。
+
+风险等级 P1：损坏数据可由外部因素产生，且后果是"整站不可用"而非"局部功能降级"。
+
+---
+
+## 二、代码改动
+
+| 文件 | 改动 |
+|---|---|
+| `js/modules/state.js` | 新增导出 `readJsonSafe(key, fallback, isValid)`；`init()` 改用它读取 `userProfile`；`checkCooldownStatus()` 对非数字时间戳做清理 |
+| `js/modules/history.js` | `render()` 改用 `readJsonSafe('notificationHistory', [], Array.isArray)` |
+| `js/modules/buttonManager.js` | `loadButtonConfig()` 重写，用 `readJsonSafe` + `Array.isArray` / `typeof` 校验，废弃原 `try/catch` |
+
+**设计要点**：解析规则集中在 `state.js` 一处，另两个模块复用，
+满足任务卡"回退逻辑应集中在最小必要范围内，避免复制多套解析规则"的要求。
+依赖方向单一（`state.js` 只依赖 `config.js`），无循环导入。
+
+**回退语义**（刻意区分三态）：
+
+| 场景 | 行为 |
+|---|---|
+| key 不存在 / 空串 | 返回 fallback |
+| JSON 非法 | 返回 fallback，**原始值保留在 storage 中不删除**（供用户排查） |
+| 解析成功但顶层类型不符 | 返回 fallback |
+| `buttonConfig` 无配置 | 用默认按钮 + 主动 `saveConfig()` 落盘 |
+| `buttonConfig` 损坏 | 用默认按钮，**不覆盖原始值** |
+| `buttonConfig` 合法 | 保留未知字段；`buttons` 非数组才回退，`activeGroup` 非字符串才置 `"default"` |
+
+---
+
+## 三、独立验证结果
+
+| 检查项 | 命令 | 结果 |
+|---|---|---|
+| ESLint | `node node_modules/eslint/bin/eslint.js .` | **PASS**（0 error / 0 warning，exit 0） |
+| 浏览器端到端 | `node tools/storage-resilience.mjs` | **PASS**（29 passed / 0 failed，exit 0） |
+| 反向验证 | `node tools/negative-storage.mjs` | **PASS**（回退修复后 exit 1） |
+| 范围检查 | `git diff --stat` | **PASS**（仅 4 个在范围内文件） |
+
+### 关于 `npm run lint` 的退出码（**本机环境问题，非 lint 失败**）
+
+`npm run lint` 在本机返回 **exit 1**，但**不是** ESLint 报告了问题：
+
+```
+$ npm run lint
+（无 eslint 输出）
+exit 1
+
+$ node node_modules/.bin/eslint .
+SyntaxError: missing ) after argument list
+    basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")   ← shim 脚本第 2 行
+```
+
+**根因**：`node_modules/.bin/eslint` 是 POSIX shim，首行用 `dirname` / `sed`，
+而本机 bash 的 PATH 被裁剪（`dirname: command not found`），shim 无法执行。
+这与 CM-003 改动无关，`main` 基线上同样会发生。
+
+**结论**：绕开 shim、直接调用 ESLint 真实入口 `node_modules/eslint/bin/eslint.js`，
+结果为 **exit 0、零输出（0 error / 0 warning）**。
+
+**给后续任务的命令建议**：本机验证 lint 请用
+
+```bash
+node node_modules/eslint/bin/eslint.js .
+```
+
+`npm run lint` 在修复本机 PATH 或改用 Windows 侧 shell 之前不可作为门禁依据。
+
+---
+
+## 四、端到端验证（可复现）
+
+### 测试环境
+
+| 项 | 值 |
+|---|---|
+| 浏览器 | Chrome/152.0.7977.84（`--headless=new`） |
+| 驱动方式 | Chrome DevTools Protocol（WebSocket，端口 9445） |
+| 服务器 | 脚本**进程内自建**静态服务（端口 8899） |
+| 依赖 | 仅 Node 内置模块 + 本机 Chrome，**零 npm 依赖** |
+
+> **与 CM-002 的关键差异**：CM-002 用两个终端（`server.mjs` + `e2e.mjs`），
+> 但在本机环境下服务器子进程**无法跨 Bash 命令存活**，导致 CM-003 调试时
+> 页面落到 `chrome-error://chromewebdata/`。CM-003 改为脚本内自建服务器，单进程完成。
+
+### 复现步骤
+
+```bash
+node tools/storage-resilience.mjs   # 自动起停服务器与 Chrome，退出码即结果
+node tools/negative-storage.mjs     # 反向验证（手工工具，非常规 CI）
+```
+
+### 用例分组的断言分配
+
+| 用例 | 场景 | 断言数 |
+|---|---|---|
+| 1 | `userProfile` 非法 JSON → 首页可加载 | 2 |
+| 1b | `userProfile` 错误顶层类型（数组/字符串/数字） | 3 |
+| 2 | `notificationHistory` 非法 JSON → 历史页显示空状态 | 4 |
+| 2b | `notificationHistory` 错误顶层类型（对象/数字/字符串） | 3 |
+| 3 | `buttonConfig` 非法 JSON → 回退默认按钮 | 4 |
+| 3b | `buttonConfig` 错误顶层类型（数组/字符串/数字） | 3 |
+| 3c | `buttonConfig` 合法但 `buttons` 非数组 | 1 |
+| 4 | 合法 `buttonConfig` 不回归 | 4 |
+| 4b | 合法 `notificationHistory` 正常渲染 | 3 |
+| 4c | 合法 `userProfile` 正常回显 | 2 |
+| **合计** | | **29** |
+
+每组同时断言两件事：**损坏数据下页面仍能初始化** + **回退到预期默认值**。
+用例 4 / 4b / 4c 是反向保护：确保加容错后没有把**正常数据**也一起吞掉，
+即"不静默改写可解析的数据"这条设计约束有实测覆盖。
+
+### 逐项结果
+
+完整输出见 `tools/RUN_storage_resilience.log`（`*.log` 已被 `.gitignore:20` 忽略，
+属运行时证据，不纳入版本控制；可用第十节命令重新生成）：
+
+```
+=== CM-003 存储容错回归验证 ===
+[环境] Chrome/152.0.7977.84 @ http://127.0.0.1:8899 / CDP 9445
+
+[用例1]  userProfile 非法 JSON                     2 PASS
+[用例1b] userProfile 错误顶层类型                  3 PASS
+[用例2]  notificationHistory 非法 JSON             4 PASS
+[用例2b] notificationHistory 错误顶层类型          3 PASS
+[用例3]  buttonConfig 非法 JSON                    4 PASS
+[用例3b] buttonConfig 错误顶层类型                 3 PASS
+[用例3c] buttonConfig 合法但 buttons 非数组        1 PASS
+[用例4]  合法旧数据不回归                          4 PASS
+[用例4b] 合法 notificationHistory 正常渲染         3 PASS
+[用例4c] 合法 userProfile 正常回显                 2 PASS
+
+断言：29 passed, 0 failed
+```
+
+### 反向验证（证明测试有效）
+
+完整输出见 `tools/RUN_negative.log`：
+
+```
+1) 基线（已修复）：退出码 = 0   符合预期
+2) 回退修复后重跑：退出码 = 1   符合预期——测试捕获到缺陷
+      history.js         SyntaxError（非法 JSON 直接 parse）
+      buttonManager.js   TypeError: this.customButtons.forEach is not a function
+3) 自动恢复：已还原 = true
+结果：通过——测试对缺陷有区分力
+```
+
+> 反向验证脚本用**纯文件快照/还原**（`.workbuddy/cm003_backup/` + `try/finally`），
+> **刻意不使用 `git stash`** —— 本机环境下 `git stash` 曾损坏 `.git/refs`，
+> 详情见 `tools/README.md` 的警示段落。
+
+**结论**：回退修复后同一脚本以真实异常退出 1；恢复后 29/29 全通过。
+测试对缺陷具备区分力，非偶然通过。
+
+---
+
+## 五、已知问题与范围外观察
+
+### 5.1 范围外：`notification.js` 存在同类脆弱点（**未修复**）
+
+`js/modules/notification.js:51`：
+
+```js
+const history = JSON.parse(localStorage.getItem("notificationHistory")) || [];
+```
+
+该处在 `addHistoryRecord()` 内部，**不在 CM-003 的 Scope 内**（任务卡只列了
+`state.js` / `history.js` / `buttonManager.js`）。按 AGENTS.md「发现范围外问题只报告，不擅自修复」，
+此处仅记录，未改动。
+
+**影响面**：若 `notificationHistory` 损坏，`history.js` 渲染已不会崩（本次已修），
+但用户点击发送通知时 `addHistoryRecord` 仍会抛异常。**属同一根因的残留路径，建议另开任务。**
+
+### 5.2 格式检查仍为既有 FAIL
+
+`npm run format:check` 未通过，为 39 文件既有基线问题，与本次改动无关，
+按既定判断不混入 P1 bugfix（同 CM-002 记录）。
+
+---
+
+## 六、建议状态
+
+```text
+CM-003 代码实现：PASS
+Lint：PASS（0 error / 0 warning，经 eslint 真实入口；npm run lint 本机不可用）
+浏览器端到端：PASS（29/29，脚本可复跑）
+反向验证：PASS（测试有效性已证明）
+范围检查：PASS（无范围外修改）
+任务整体：READY_FOR_REVIEW，待主指挥 AI 验收
+```
+
+**遗留风险**：
+
+1. `tools/` 仍未纳入版本控制（同 CM-002 遗留项），验证能力可复跑但不可追溯。
+2. `test` 脚本依赖本机 Chrome 路径，可用环境变量 `CM003_CHROME` 覆盖。
+3. `notification.js:51` 的同类路径未覆盖，见 5.1。
+
+---
+
+## 七、日志与证据说明
+
+`tools/*.log` 被仓库既有规则 `.gitignore:20`（`*.log`）忽略，
+因此**运行日志不进版本控制**，属运行时证据。可复跑命令：
+
+```bash
+node tools/storage-resilience.mjs    # 终端直接输出全部断言；退出码 0 = 全通过
+```
+
+`storage-resilience.mjs` 默认同时写 stdout 与 `tools/RUN_storage_resilience.log`
+（可用 `CM003_LOG` 覆盖路径）。反向验证同理写 `tools/RUN_negative.log`。
+
+**证据可追溯性判断**：脚本本身（含断言清单）已纳入版本控制，
+任何人 clone 后重跑即可复现全部 29 项断言 —— 这满足"可复核"要求。
+日志文件只是本次运行的快照，不入库不影响可复核性。
