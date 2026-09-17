@@ -4,18 +4,73 @@
 
 ## CURRENT TASK
 
-治理文档 PR #2 已由 Human 授权、外部 AI 执行合并并验证。当前无新任务，等待主指挥 AI 派发 CM-003。
+CM-003 — LocalStorage JSON 容错与启动可靠性
+
+PHASE: BugFix / Engineering  
+PRIORITY: P1
+
+OBJECTIVE:
+
+让损坏或非法的 LocalStorage JSON 不再阻断首页或历史页启动，同时保持合法旧数据的现有行为不变。
+
+CONTEXT:
+
+`state.js` 和 `history.js` 直接调用 `JSON.parse`；`buttonManager.js` 已有局部 catch，但回退行为需要统一核对。当前项目没有 schema version，也没有自动化存储解析测试。
+
+SCOPE:
+
+- `js/modules/state.js`
+- `js/modules/history.js`
+- 必要时 `js/modules/buttonManager.js`
+- 必要的零依赖回归验证脚本或测试
+- 本通信文档中的执行状态和报告
+
+NON-GOALS:
+
+- 不引入大型 Storage Layer、框架或新依赖。
+- 不改变 LocalStorage key 名称和合法数据格式。
+- 不修改按钮、通知、冷却或历史记录的正常产品行为。
+- 不在本任务中处理 XSS、按钮 ID、冷却统一或新功能。
+
+IMPLEMENTATION REQUIREMENTS:
+
+1. 为 `userProfile`、`notificationHistory`、`buttonConfig` 的非法 JSON 和错误顶层类型定义明确的安全回退行为。
+2. 非法数据不得抛出未捕获异常或阻止页面继续初始化。
+3. 合法数据必须保持现有读取结果和用户行为。
+4. 回退逻辑应集中在最小必要范围内，避免复制多套解析规则。
+5. 为至少一个首页启动路径和一个历史页路径增加可复现回归验证；验证必须记录命令、输入数据和结果。
+6. 不要静默覆盖可解析但未知字段的数据；如需清除损坏 key，必须在报告中说明。
+
+ACCEPTANCE CRITERIA:
+
+- [ ] `userProfile` 为非法 JSON 时，首页可以加载，用户状态回退为未注册，不出现未捕获异常。
+- [ ] `notificationHistory` 为非法 JSON 时，历史页可以加载并显示空状态，不出现未捕获异常。
+- [ ] `buttonConfig` 为非法 JSON 或错误顶层类型时，按钮管理器回退到可用默认按钮，不出现未捕获异常。
+- [ ] 合法的现有资料、历史和按钮配置行为不回归。
+- [ ] 回归验证可复跑，并报告准确命令、退出码和结果。
+- [ ] `npm run lint` 通过。
+- [ ] 只修改 Scope 内文件，无无关格式化或功能扩展。
+
+VERIFICATION:
+
+1. `npm run lint`
+2. 对三个 key 分别注入非法 JSON、数组/字符串等错误类型，刷新首页和历史页。
+3. 验证合法旧数据仍可读取。
+4. 查看 `git diff` 和工作区状态，确认无范围外修改。
+
+外部 AI 完成后，必须把状态和完整报告写回本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，不要创建平行任务/报告通信目录。
 
 ## EXECUTION STATUS
 
 ```text
-状态：DONE — 治理文档已合并入 main
+状态：DISPATCHED — 等待外部 AI 接受 CM-003
 当前分支：main
-当前 commit：0658966（Merge pull request #2 from wuwiwo/codex/governance-docs）
+当前 commit：5672519（docs: standardize single AI handoff channel）
 CM-002 基线：main / ffad349（已含）
 PR #1：merged（CM-002 验证工具）
 PR #2：merged（治理与审计基线文档）
-最近状态更新：2026-09-17 17:57
+当前任务：CM-003
+最近状态更新：2026-09-17
 ```
 
 ### 外部 AI 待命巡检（2026-09-17 17:29）
@@ -154,11 +209,9 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-治理基线已就位（`main` = `0658966`，含 `AGENTS.md`、`docs/*.md`）。
+治理基线已就位（`main` = `5672519`，含 `AGENTS.md`、`docs/*.md`）。
 
-等待主指挥 AI 派发 CM-003。建议候选（依据 `docs/TECH_DEBT.md`）：CM-001-TD-02 LocalStorage JSON 容错。
-
-外部 AI 当前状态：待命。未收到任务卡前不修改代码。
+Human 已要求开始 CM-003。外部 AI 读取本文件后执行当前任务卡；完成后更新本文件并等待主指挥 AI Review。
 
 ### 主指挥 AI 处理记录：通信机制已收敛（2026-09-17）
 
