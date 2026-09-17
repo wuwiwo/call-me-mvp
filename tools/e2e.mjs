@@ -1,9 +1,15 @@
 // CM-002 端到端验证脚本（可复现）
 //
-// 运行方式（三段式，缺一不可）：
-//   1) 起静态服务器：node tools/server.mjs        （监听 8899）
-//   2) 跑本脚本：    node tools/e2e.mjs           （自查 + 启 Chrome + 断言）
-//   3) 收工：        Ctrl+C 停掉 1)
+// 运行方式：
+//   node tools/e2e.mjs
+//
+// 本脚本**自带静态服务器**（与 Chrome 同进程启动），无需另开终端。
+// 也可复用外部服务器：设置 CM002_NO_SERVER=1 并先跑 `node tools/server.mjs`。
+//
+// 为什么改成自带服务器（CM-003/CM-004 的教训）：
+//   本机子进程不能跨 Bash 命令存活。单独一条命令后台起 server.mjs，
+//   下一条命令里端口就没了 —— 症状是页面停在 chrome-error://chromewebdata/，
+//   而报错却是 SecurityError（误导性极强）。把服务器内联进本进程即可根除。
 //
 // 依赖：仅 Node 内置模块（node:http / node:child_process / node:fs）+ 本机 Chrome。
 // 不引入任何 npm 依赖，符合 AGENTS.md「不引入大型依赖」要求。
@@ -13,16 +19,77 @@
 //   - 探针必须用 node:http 直连，不能用 fetch
 import http from "node:http";
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { createReadStream, mkdirSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const BASE = process.env.CM002_BASE || "http://127.0.0.1:8899";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..");
+
+const SERVE_PORT = Number(process.env.CM002_PORT || 8899);
+const EXTERNAL = process.env.CM002_NO_SERVER === "1";
+const BASE = process.env.CM002_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM002_CDP_PORT || 9444);
 const CHROME =
     process.env.CM002_CHROME ||
     "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PROFILE = path.join(os.tmpdir(), "cm002-e2e-profile");
+
+const MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".m4a": "audio/mp4",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+};
+
+// ── 自带静态服务器（与浏览器同进程，避免子进程被回收） ──
+let staticServer = null;
+function startStaticServer() {
+    return new Promise((resolve, reject) => {
+        staticServer = http.createServer((req, res) => {
+            let rel = decodeURIComponent(req.url.split("?")[0]);
+            if (rel === "/") rel = "/index.html";
+            const fp = path.join(ROOT, rel);
+            if (!fp.startsWith(ROOT)) {
+                res.writeHead(403);
+                res.end("forbidden");
+                return;
+            }
+            let st;
+            try {
+                st = statSync(fp);
+            } catch {
+                res.writeHead(404);
+                res.end("not found");
+                return;
+            }
+            if (!st.isFile()) {
+                res.writeHead(404);
+                res.end("not found");
+                return;
+            }
+            res.writeHead(200, {
+                "Content-Type": MIME[path.extname(fp)] || "application/octet-stream",
+                "Cache-Control": "no-store",
+            });
+            createReadStream(fp).pipe(res);
+        });
+        staticServer.on("error", reject);
+        staticServer.listen(SERVE_PORT, "127.0.0.1", () => resolve());
+    });
+}
+
+if (!EXTERNAL) {
+    await startStaticServer();
+}
 
 // 绕开本机代理
 const cleanEnv = { ...process.env };
@@ -442,6 +509,11 @@ if (uniq.length) {
 ws.close();
 try {
     chromeProc.kill();
+} catch {
+    /* ignore */
+}
+try {
+    staticServer?.close();
 } catch {
     /* ignore */
 }
