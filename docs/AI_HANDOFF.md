@@ -4,7 +4,7 @@
 
 ## CURRENT TASK
 
-CM-004 — 固化按钮 ID 兼容规则
+当前无进行中任务。CM-004 已完成并合并。
 
 PHASE: Engineering / Compatibility
 PRIORITY: P1
@@ -74,13 +74,13 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：MERGED — CM-004 已通过验收并经 Human 授权合并进 main
+状态：COMPLETED / MERGED — CM-004 已通过验收并合并进 main
 当前分支：main（本地 + 远端同步，执行分支已删除）
 分支基线：22f21f4（git rev-parse --short HEAD 实测，已含本任务卡）
-当前 commit：984a3bb（= main = origin/main = HEAD）
+当前 commit：55d2e77（= main = origin/main = HEAD）
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
-当前任务：CM-004（已完成并合并）
+当前任务：无；CM-004 已完成并合并
 最近状态更新：2026-09-17 22:36
 ```
 
@@ -542,7 +542,7 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-CM-004 已通过主指挥 AI 独立验收。下一步由 Human 决定是否合并 `codex/cm004-button-ids`；合并前不自动进入下一项业务任务。
+CM-004 已完成、独立验收通过，并已快进合并到 `main`。当前没有进行中的任务，等待 Human 指派下一项。
 
 ### Human 决定：合并 CM-004 分支（2026-09-17 22:36）— 已执行完毕
 
