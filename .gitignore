@@ -44,3 +44,6 @@ build/
 *.flac
 *.wav.orig
 
+# AI 会话 / 记忆目录（仅本地，不提交）
+.workbuddy/
+
