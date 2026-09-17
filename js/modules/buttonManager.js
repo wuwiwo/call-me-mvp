@@ -15,6 +15,55 @@ import {
     countdown
 } from "./countdown.js";
 
+// 图标名进入 CSS class 与 dataset 前的两道闸门。
+//
+// button.icon 来自 LocalStorage，是可控输入，会被拼进
+// `class="fas fa-<icon>"`。因此**必须**校验，否则形如 `x" onload="` 的值
+// 可以直接突破属性、注入事件处理器。
+//
+// 闸门 1 —— 白名单：CONFIG.buttons.availableIcons（UI 实际提供的图标）
+//   另加两个由现有代码路径产生、且必须继续可渲染的值：
+//     - "random"：图标选择器的"随机"语义，保存后会持久化进 buttonConfig
+//     - "circle"：saveButtonConfig() 在未取到图标时的保存默认值
+//
+// 闸门 2 —— 语法安全的 token：/^[a-z0-9][a-z0-9-]{0,49}$/
+//   为什么需要第二道：icon 取自 LocalStorage，可能存在白名单之外的历史值。
+//   若把这类值一律当作非法并改写为 fallback，会产生两类回归 ——
+//   ① 渲染结果变化（原本有图标，变成占位图标）
+//   ② 保存时把用户原值静默改写为 fallback，属数据丢失
+//   第二道闸门只放行"在 class 属性里不可能越界"的字符集
+//   （无引号、空格、尖括号、等号、斜杠），因此既不改变合法旧数据的
+//   显示与存储，也不给注入留任何入口。
+//
+// 两道都不满足 → 回退到 fallback（既不渲染、也不写回该值）。
+const SAFE_ICON_NAMES = new Set([
+    ...(CONFIG.buttons.availableIcons || []),
+    "random",
+    "circle"
+]);
+
+const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/;
+
+// 两道闸门都不通过时的统一回退值。
+//
+// 取 "random" 而不是另造一个占位值，是为了让**首页按钮渲染**与
+// **编辑表单的选择器回显**给出同一个结论 —— 否则会出现
+// "按钮显示某图标、打开编辑却预选另一项"的自我矛盾，
+// 用户一保存又变成第三个值。
+// "random" 也正是图标选择器原有的回退语义（图标缺失/非法时的既有分支），
+// 因此这条路径的行为没有变化。
+//
+// 注意区分：saveButtonConfig() 对"**新增**按钮未选图标"写入 "circle"，
+// 那是"用户还没选"，与"存储里的值不可用"不是同一件事。
+const UNUSABLE_ICON = "random";
+
+// 图标名是否可以安全地拼进 class / 写入 dataset
+function isSafeIconName(name) {
+    if (typeof name !== "string") return false;
+    if (SAFE_ICON_NAMES.has(name)) return true;
+    return ICON_TOKEN_RE.test(name);
+}
+
 export const buttonManager = {
     elements: null,
     customButtons: [],
@@ -318,19 +367,34 @@ export const buttonManager = {
 
     /**
      * 创建按钮元素
+     *
+     * button.message 与 button.icon 都来自 LocalStorage（可控输入）：
+     * - message 用 textContent 写入，恶意标记只显示为字面文本；
+     * - icon 先经 SAFE_ICON_NAMES 白名单，再拼进 class。
+     * 不使用模板字符串，避免任何一个字段突破 DOM 结构。
+     *
      * @param {Object} button - 按钮配置对象
      * @param {number} index - 按钮索引
      */
     createButtonElement(button, index) {
+        const data = button && typeof button === "object" ? button : {};
+
         const buttonEl = document.createElement('div');
         buttonEl.className = 'bubble-btn';
-        buttonEl.setAttribute('data-button-index', index);
-        buttonEl.innerHTML = `
-        <div class="bubble-content">
-            <i class="fas fa-${button.icon}"></i>
-            <span>${button.message}</span>
-        </div>
-    `;
+        buttonEl.setAttribute('data-button-index', String(index));
+
+        const contentEl = document.createElement('div');
+        contentEl.className = 'bubble-content';
+
+        const iconEl = document.createElement('i');
+        iconEl.className = `fas fa-${isSafeIconName(data.icon) ? data.icon : UNUSABLE_ICON}`;
+
+        const labelEl = document.createElement('span');
+        labelEl.textContent = data.message ?? '';
+
+        contentEl.appendChild(iconEl);
+        contentEl.appendChild(labelEl);
+        buttonEl.appendChild(contentEl);
 
         buttonEl.addEventListener('click', () => {
             this.handleButtonClick(button);
@@ -446,49 +510,110 @@ export const buttonManager = {
     },
 
     /**
-     * 创建图标选择器 HTML（带预览的网格弹出）
+     * 创建单个图标选项（DOM 节点，不经过 HTML 字符串）
+     * @param {string} value - data-value（写入 dataset，不拼字符串）
+     * @param {string} iconName - Font Awesome 图标名（须通过 isSafeIconName）
+     * @param {string} label - 显示文本（textContent）
+     * @param {boolean} selected - 是否选中
+     */
+    createIconOption(value, iconName, label, selected) {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "icon-picker-option" + (selected ? " selected" : "");
+        option.dataset.value = value;
+
+        const iconEl = document.createElement("i");
+        iconEl.className = `fas fa-${isSafeIconName(iconName) ? iconName : UNUSABLE_ICON}`;
+
+        const labelEl = document.createElement("span");
+        labelEl.textContent = label;
+
+        option.appendChild(iconEl);
+        option.appendChild(labelEl);
+
+        return option;
+    },
+
+    /**
+     * 创建图标选择器（带预览的网格弹出）
+     *
+     * selectedIcon 来自 LocalStorage（可控输入），会被写进
+     * `data-value` 与 `class="fas fa-<icon>"`。因此这里先过 isSafeIconName：
+     * 两道闸门都不满足的值一律按"随机"处理 —— 与"图标缺失"走同一条既有分支，
+     * 既修掉注入，也不改变任何可安全渲染的旧值。
+     *
+     * 整个选择器用 DOM API 构建：值走 dataset，文本走 textContent。
+     *
      * @param {string} [selectedIcon] - 当前选中的图标
      * @param {string} [id] - 选择器 ID（默认按钮用）
      */
     createIconPicker(selectedIcon, id) {
-        const current = selectedIcon && selectedIcon !== "random" ? selectedIcon : "random";
+        const current =
+            isSafeIconName(selectedIcon) && selectedIcon !== "random"
+                ? selectedIcon
+                : UNUSABLE_ICON;
         const randomLabel = utils.getTranslation("profile.randomIcon");
 
-        const optionsHtml = CONFIG.buttons.availableIcons
-            .map(icon => {
-                const name = utils.getTranslation("icons." + icon);
-                return `<button type="button" class="icon-picker-option${
-                    icon === selectedIcon ? " selected" : ""
-                }" data-value="${icon}">
-                    <i class="fas fa-${icon}"></i>
-                    <span>${name}</span>
-                </button>`;
-            })
-            .join("");
+        const picker = document.createElement("div");
+        picker.className = "icon-picker";
+        picker.dataset.value = current;
+        if (id) picker.id = id;
 
-        const triggerIcon = current === "random" ? "shuffle" : current;
-        const triggerLabel = current === "random" ? randomLabel : utils.getTranslation("icons." + current);
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.className = "icon-picker-trigger";
 
-        return `<div class="icon-picker" data-value="${current}"${id ? ` id="${id}"` : ""}>
-            <button type="button" class="icon-picker-trigger">
-                <i class="fas fa-${triggerIcon}"></i>
-                <span class="icon-picker-label">${triggerLabel}</span>
-                <i class="fas fa-chevron-down icon-picker-caret"></i>
-            </button>
-            <div class="icon-picker-menu">
-                <button type="button" class="icon-picker-option${
-                    current === "random" ? " selected" : ""
-                }" data-value="random">
-                    <i class="fas fa-shuffle"></i>
-                    <span>${randomLabel}</span>
-                </button>
-                ${optionsHtml}
-            </div>
-        </div>`;
+        const triggerIcon = document.createElement("i");
+        const triggerIconName = current === "random" ? "shuffle" : current;
+        triggerIcon.className = `fas fa-${triggerIconName}`;
+
+        const triggerLabel = document.createElement("span");
+        triggerLabel.className = "icon-picker-label";
+        triggerLabel.textContent =
+            current === "random"
+                ? randomLabel
+                : utils.getTranslation("icons." + current);
+
+        const caret = document.createElement("i");
+        caret.className = "fas fa-chevron-down icon-picker-caret";
+
+        trigger.appendChild(triggerIcon);
+        trigger.appendChild(triggerLabel);
+        trigger.appendChild(caret);
+
+        const menu = document.createElement("div");
+        menu.className = "icon-picker-menu";
+
+        // "随机"选项排在图标列表之前（保持既有顺序）
+        menu.appendChild(
+            this.createIconOption("random", "shuffle", randomLabel, current === "random")
+        );
+
+        CONFIG.buttons.availableIcons.forEach(icon => {
+            menu.appendChild(
+                this.createIconOption(
+                    icon,
+                    icon,
+                    utils.getTranslation("icons." + icon),
+                    icon === selectedIcon
+                )
+            );
+        });
+
+        picker.appendChild(trigger);
+        picker.appendChild(menu);
+
+        return picker;
     },
 
     /**
      * 添加默认按钮表单
+     *
+     * buttonData.message 来自 LocalStorage（可控输入）。原实现把它拼进
+     * `value="${...}"`，一个双引号即可突破属性、注入事件处理器。
+     * 现在：模板里不含任何用户数据，文本一律用 input.value 赋值，
+     * 图标选择器作为 DOM 节点 append（不经过 innerHTML）。
+     *
      * @param {Object} buttonData - 按钮数据
      * @param {number} index - 按钮索引
      */
@@ -497,6 +622,7 @@ export const buttonManager = {
         form.className = "button-edit-item";
         // 默认按钮的规范 ID 由 CONFIG.buttons.defaultButtons[index] 在保存时直接提供，
         // 不需要在表单上再存一份身份（位置本身就是身份）。
+        // 以下模板只含内部常量（序号、长度上限），不含用户数据。
         form.innerHTML = `
             <div class="form-group">
                 <div class="form-header">
@@ -504,15 +630,21 @@ export const buttonManager = {
                 </div>
                 <input type="text" class="btn-text" 
                        id="button${index + 1}Text"
-                       value="${buttonData?.message || ""}"
-                       maxlength="${CONFIG.buttons.maxLength}"
-                       placeholder="${utils.formatString(
-                           utils.getTranslation("profile.buttonTextPlaceholder"),
-                           { maxLength: CONFIG.buttons.maxLength }
-                       )}">
-                ${this.createIconPicker(buttonData?.icon, `button${index + 1}Icon`)}
+                       maxlength="${CONFIG.buttons.maxLength}">
             </div>
         `;
+
+        const formGroup = form.querySelector(".form-group");
+        const textInput = form.querySelector(".btn-text");
+        textInput.value = buttonData?.message || "";
+        textInput.placeholder = utils.formatString(
+            utils.getTranslation("profile.buttonTextPlaceholder"),
+            { maxLength: CONFIG.buttons.maxLength }
+        );
+
+        formGroup.appendChild(
+            this.createIconPicker(buttonData?.icon, `button${index + 1}Icon`)
+        );
 
         this.elements.defaultButtonsArea.appendChild(form);
     },
@@ -540,21 +672,28 @@ export const buttonManager = {
         form.innerHTML = `
         <div class="form-group">
             <div class="form-header">
-                <label>${utils.getTranslation("profile.customButton")}</label>
+                <label></label>
                 <button class="remove-btn">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <input type="text" class="btn-text" 
-                   value="${buttonData?.message || ""}"
-                   maxlength="${CONFIG.buttons.maxLength}"
-                   placeholder="${utils.formatString(
-                       utils.getTranslation("profile.buttonTextPlaceholder"),
-                       { maxLength: CONFIG.buttons.maxLength }
-                   )}">
-            ${this.createIconPicker(buttonData?.icon)}
+            <input type="text" class="btn-text" maxlength="${CONFIG.buttons.maxLength}">
         </div>
     `;
+
+        // 模板只含静态结构；文本与图标一律用 DOM API 赋值（见 addDefaultButtonForm 说明）
+        const formGroup = form.querySelector(".form-group");
+        form.querySelector(".form-header label").textContent =
+            utils.getTranslation("profile.customButton");
+
+        const textInput = form.querySelector(".btn-text");
+        textInput.value = buttonData?.message || "";
+        textInput.placeholder = utils.formatString(
+            utils.getTranslation("profile.buttonTextPlaceholder"),
+            { maxLength: CONFIG.buttons.maxLength }
+        );
+
+        formGroup.appendChild(this.createIconPicker(buttonData?.icon));
 
         // 图标回显由 createIconPicker(buttonData?.icon) 统一处理，
         // 它会根据 icon 计算 trigger 图标、label 与 data-value（含 random 分支）
@@ -712,6 +851,11 @@ export const buttonManager = {
 
     /**
      * 显示确认对话框（Notion 风格模态框，替代原生 confirm）
+     *
+     * `message` 是调用方传入的提示文本，属动态内容，用 textContent 写入。
+     * 模板中其余插值均为应用自带的多语言文案（translations.js，
+     * 不随用户输入变化），因此保留在模板里，不做整段重写。
+     *
      * @param {string} message - 提示消息
      * @param {Function} onConfirm - 确认回调
      */
@@ -724,7 +868,7 @@ export const buttonManager = {
                     <h2>${utils.getTranslation("common.confirm")}</h2>
                 </div>
                 <div class="modal-body">
-                    <p class="confirm-message">${message}</p>
+                    <p class="confirm-message"></p>
                 </div>
                 <div class="modal-footer">
                     <button class="btn confirm-cancel-btn">${utils.getTranslation("common.cancel")}</button>
@@ -732,6 +876,7 @@ export const buttonManager = {
                 </div>
             </div>
         `;
+        modal.querySelector('.confirm-message').textContent = message ?? "";
         document.body.appendChild(modal);
 
         const close = () => modal.remove();
