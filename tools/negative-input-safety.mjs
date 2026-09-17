@@ -157,9 +157,13 @@ try {
 // 判定"测试有区分力"必须同时满足三件事，缺一不可：
 //   1. 修复版通过（退出码 0，且汇总为 0 failed）
 //   2. 回退版失败（退出码非 0）
-//   3. 回退版的失败**确由注入类断言触发** —— 否则可能只是
+//   3. 回退版的失败**确由本轮修复点相关断言触发** —— 否则可能只是
 //      端口占用、Chrome 起不来等基础设施抖动造成的假阳性。
 // 第 3 条是这里的关键：只比较退出码会把环境故障误读成"测试有效"。
+//
+// 关键字分两组：
+//   - 注入类：证明原缺陷确实可执行/可注入
+//   - 允许列表类：证明"严格允许列表 + 原值保留"这一返工要求也被覆盖
 const INJECTION_MARKERS = [
     "元素注入",
     "事件属性注入",
@@ -167,9 +171,20 @@ const INJECTION_MARKERS = [
     "字面文本",
     "注入片段",
 ];
-const injectionFails = reverted
-    ? reverted.allFails.filter(l => INJECTION_MARKERS.some(m => l.includes(m)))
-    : [];
+const ALLOWLIST_MARKERS = [
+    "白名单外",
+    "回退为允许列表内的图标",
+    "原值被原样保留",
+];
+
+function countMatches(fails, markers) {
+    return fails
+        ? fails.filter(l => markers.some(m => l.includes(m)))
+        : [];
+}
+
+const injectionFails = countMatches(reverted && reverted.allFails, INJECTION_MARKERS);
+const allowlistFails = countMatches(reverted && reverted.allFails, ALLOWLIST_MARKERS);
 
 log("");
 log("=== 结论 ===");
@@ -178,22 +193,29 @@ log(
     `修复版本汇总   : ${baseline ? baseline.summary : "(未执行)"} (预期 0 failed)`
 );
 log(`回退版本退出码 : ${reverted ? reverted.code : "(未执行)"} (预期非 0)`);
+log(`回退版本汇总   : ${reverted ? reverted.summary : "(未执行)"}`);
 log(
-    `回退版本注入类失败项 : ${injectionFails.length} 条 (预期 > 0)`
+    `回退版本注入类失败项     : ${injectionFails.length} 条 (预期 > 0)`
 );
-if (injectionFails.length) {
-    injectionFails.slice(0, 8).forEach(f => log(`     - ${f}`));
-}
+injectionFails.slice(0, 8).forEach(f => log(`     - ${f}`));
+log(
+    `回退版本允许列表类失败项 : ${allowlistFails.length} 条 (预期 > 0)`
+);
+allowlistFails.slice(0, 8).forEach(f => log(`     - ${f}`));
 log(`源码已还原     : ${restored} (预期 true)`);
 
 const baselineOk = baseline && baseline.code === 0 && /0 failed/.test(baseline.summary);
-const revertedOk = reverted && reverted.code !== 0 && injectionFails.length > 0;
+const revertedOk =
+    reverted &&
+    reverted.code !== 0 &&
+    injectionFails.length > 0 &&
+    allowlistFails.length > 0;
 const ok = baselineOk && revertedOk && restored === true;
 
 log(
     `结果           : ${
         ok
-            ? "通过——测试对注入缺陷有区分力（失败确由注入类断言触发）"
+            ? "通过——测试对注入缺陷与允许列表返工点均有区分力"
             : "不通过——需检查（注意区分真缺陷与基础设施抖动）"
     }`
 );

@@ -16,9 +16,16 @@
 // 覆盖任务卡 ACCEPTANCE CRITERIA：
 //   - 恶意昵称/按钮文字/历史 message/nickname/webhook 只作为文本显示
 //   - 按钮编辑表单的 value 与图标回显不被恶意输入破坏
-//   - icon 受白名单/安全 token 约束，不能注入任意 class 或 HTML
+//   - icon 受**严格允许列表**约束，不能注入任意 class 或 HTML
 //   - 历史 _status 与字段缺失不突破 DOM，success/error 显示不回归
 //   - 新增/编辑/删除/渲染/点击行为不回归
+//
+// 覆盖 CM-005 返工要求（主指挥 AI 初审）：
+//   - 白名单外的历史 icon（如 `not-configured`）不再渲染成 `fa-not-configured`
+//   - 未知历史 icon 的**显示**：回退到允许列表内的图标，且不点亮任何选项
+//   - 未知历史 icon 的**保存兼容**：用户未主动改图标时原值原样保留（不静默丢数据）
+//   - 用户主动改选图标时才写入新值（"保留"不等于"锁死"）
+//   - 选择器提供的可选图标集合与 CONFIG.buttons.availableIcons 完全一致
 //
 // 判定"注入未发生"的四类证据（每类都独立断言）：
 //   1. window.__pwned 未被设置（脚本/事件属性未执行）
@@ -328,10 +335,41 @@ const ICON_P = {
     slash: "bolt/onload",
 };
 
-// 只允许形如 fa-bolt / fa-exclamation-triangle 的 class 尾巴
+// 只允许形如 fa-bolt / fa-exclamation-triangle 的 class 尾巴（形态检查）
 const ICON_CLASS_RE = /^fas fa-[a-z0-9][a-z0-9-]*$/;
-// 合法的 dataset.value / 存储值
-const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/;
+
+// CONFIG.buttons.availableIcons 的契约值。
+// 这里刻意**硬编码副本**而不是从页面读取：如果实现方偷偷往白名单里加了值，
+// 硬编码的副本才能真正把它暴露出来。
+const AVAILABLE_ICONS = [
+    "bolt",
+    "bell",
+    "exclamation-triangle",
+    "shield-alt",
+    "fire",
+    "clock",
+    "running",
+    "heartbeat",
+    "phone",
+    "comment-dots",
+    "envelope",
+    "bullhorn",
+    "hand-paper",
+    "star",
+    "flag",
+    "gift",
+    "mug-hot",
+    "utensils",
+];
+
+// 严格允许列表 = 可选图标 + "random" 语义。
+// 白名单外的值不允许变成 class，一律渲染为 FALLBACK_ICON。
+const ALLOWED_ICONS = new Set([...AVAILABLE_ICONS, "random"]);
+const FALLBACK_ICON = "random";
+// 首页按钮渲染 "random" 用 fa-random（修复前的既有行为，保持不变）
+const FALLBACK_CLASS = "fas fa-random";
+// 选择器预览 "random" 用 fa-shuffle（修复前的既有表现层常量，保持不变）
+const PICKER_FALLBACK_CLASS = "fas fa-shuffle";
 
 /**
  * 注入 storage 后加载指定页面。
@@ -505,7 +543,7 @@ await openModal();
 
 // ─────────────────────────────────────────────────────────
 log("");
-log("[用例3] 图标选择器：恶意 icon 不注入任意 class / 属性");
+log("[用例3] 恶意 icon：不注入 class，且不静默丢失原值");
 // 本用例必须独立注入恶意 icon —— 不能复用上一用例的合法配置，
 // 否则断言只会跑在 `bolt`/`bell` 上，形成"看起来通过"的覆盖盲区。
 await injectAndLoad("index.html", {
@@ -525,8 +563,14 @@ await injectAndLoad("index.html", {
         return i ? i.className : "(no i)";
     })()`);
     check(
-        "首页：恶意 icon 被替换为安全值（非原样拼接）",
-        homeCls === "fas fa-random",
+        "首页：恶意 icon 回退为允许列表内的图标",
+        homeCls === FALLBACK_CLASS,
+        homeCls
+    );
+    check(
+        "首页：恶意 icon 的载荷片段未进入 class",
+        !homeCls.replace(/^fas fa-/, "").includes("onerror") &&
+            !/["'<>\s]/.test(homeCls.replace(/^fas fa-/, "")),
         homeCls
     );
 
@@ -537,14 +581,9 @@ await injectAndLoad("index.html", {
         return p ? p.dataset.value : "(missing)";
     })()`);
     check(
-        "图标选择器 dataset.value 为安全 token 或 random",
-        idVal === "random" || ICON_TOKEN_RE.test(idVal),
-        idVal
-    );
-    check(
-        "恶意 icon 未落入 dataset.value（回退为 random）",
-        idVal === "random",
-        idVal
+        "选择器 dataset.value 保留原始值（保存回写载体）",
+        idVal === ICON_P.attrBreak,
+        JSON.stringify(idVal)
     );
 
     const iconClasses = JSON.parse(
@@ -560,8 +599,8 @@ await injectAndLoad("index.html", {
         })()`)
     );
     check(
-        "触发按钮图标 class 为安全图标名",
-        iconClasses && ICON_CLASS_RE.test(iconClasses.trigger),
+        "触发按钮图标 class 为回退值（选择器用 shuffle 表现随机语义）",
+        iconClasses && iconClasses.trigger === PICKER_FALLBACK_CLASS,
         JSON.stringify(iconClasses && iconClasses.trigger)
     );
     check(
@@ -575,6 +614,13 @@ await injectAndLoad("index.html", {
             iconClasses.options.length > 0 &&
             iconClasses.options.every(c => ICON_CLASS_RE.test(c)),
         JSON.stringify(iconClasses && iconClasses.options)
+    );
+    check(
+        "未知值不点亮任何选项（不假装用户选了随机）",
+        (await evalJs(
+            `document.querySelectorAll("#button1Icon .icon-picker-option.selected").length`
+        )) === 0,
+        "存在被选中的选项"
     );
 
     // 任一 <i> 的 class 都必须匹配"安全图标名（可带 caret 后缀）"这一唯一形态
@@ -593,7 +639,7 @@ await injectAndLoad("index.html", {
     check("无任何 <i> 的 class 携带注入片段", anyBadIcon === "[]", anyBadIcon);
 }
 
-// 保存后不应把恶意串写进存储
+// 保存：恶意原值必须**保留**（用户没有主动改图标），且渲染仍安全
 {
     const saved = await evalJsSafe(`(() => {
         document.getElementById("saveButtons").click();
@@ -605,18 +651,229 @@ await injectAndLoad("index.html", {
         const cfg = JSON.parse(saved.value);
         const icons = (cfg.buttons || []).map(b => b.icon);
         check(
-            "保存后 icon 全部为安全 token",
-            icons.every(i => typeof i === "string" && ICON_TOKEN_RE.test(i)),
-            JSON.stringify(icons)
+            "未改动图标时原值被原样保留（不静默丢数据）",
+            icons[0] === ICON_P.attrBreak,
+            JSON.stringify(icons[0])
         );
         check(
-            "保存后恶意 icon 已被规范化为 random（不落库原始载荷）",
-            icons[0] === "random",
-            JSON.stringify(icons)
+            "同一批其他按钮的 icon 未被牵连",
+            icons[1] === "bell",
+            JSON.stringify(icons[1])
+        );
+    }
+
+    // 重新加载后渲染仍必须是安全 class（原值保留 ≠ 原值被当 class 用）
+    await goto(BASE + "/index.html");
+    const a = await audit(".bubble-container");
+    checkNoInjection("保存并重载后的首页", a);
+    const reloadedCls = JSON.parse(
+        await evalJs(`JSON.stringify(
+            Array.from(document.querySelectorAll(".bubble-container .bubble-btn .bubble-content i"))
+                .map(i => i.className)
+        )`)
+    );
+    check(
+        "重载后全部图标 class 均在允许列表内",
+        reloadedCls.length > 0 && reloadedCls.every(c => ALLOWED_ICONS.has(c.replace("fas fa-", ""))),
+        JSON.stringify(reloadedCls)
+    );
+}
+
+// ─────────────────────────────────────────────────────────
+log("");
+log("[用例3b] 严格允许列表：白名单外的历史值不进入 class，且保存保留原值");
+// 主指挥 AI 初审给出的具体反例：不在 availableIcons 中的 `not-configured`
+// 曾被渲染成 `fa-not-configured`。这里把它作为断言的核心输入。
+// 同时放入 `circle`（saveButtonConfig 的防御性默认值、无翻译键）与一个合法值做对照。
+await injectAndLoad("index.html", {
+    [ONB]: "true",
+    buttonConfig: JSON.stringify({
+        buttons: [
+            { id: "quick_online", message: "白名单外一", icon: "not-configured" },
+            { id: "emergency", message: "白名单外二", icon: "circle" },
+            {
+                id: "custom_1700000000777",
+                message: "合法对照",
+                icon: "fire",
+            },
+        ],
+        activeGroup: "default",
+    }),
+});
+{
+    const cls = JSON.parse(
+        await evalJs(`JSON.stringify(
+            Array.from(document.querySelectorAll(".bubble-container .bubble-btn .bubble-content i"))
+                .map(i => i.className)
+        )`)
+    );
+    check(
+        "白名单外的 not-configured 不渲染为 fa-not-configured",
+        cls[0] === FALLBACK_CLASS,
+        JSON.stringify(cls[0])
+    );
+    check(
+        "白名单外的 circle 同样回退（无对应翻译键，不进入 class）",
+        cls[1] === FALLBACK_CLASS,
+        JSON.stringify(cls[1])
+    );
+    check(
+        "白名单内的 fire 正常渲染",
+        cls[2] === "fas fa-fire",
+        JSON.stringify(cls[2])
+    );
+
+    const html = await evalJs(
+        `document.querySelector(".bubble-container").innerHTML`
+    );
+    check(
+        "整段 HTML 中不出现 fa-not-configured",
+        !html.includes("not-configured"),
+        "HTML 含 not-configured"
+    );
+
+    const a = await audit(".bubble-container");
+    checkNoInjection("白名单外图标下的首页", a);
+}
+
+{
+    await openModal();
+    const pickers = JSON.parse(
+        await evalJs(`(() => {
+            const p1 = document.getElementById("button1Icon");
+            const p2 = document.getElementById("button2Icon");
+            const cf = document.querySelector(".custom-button-form .icon-picker");
+            return JSON.stringify({
+                p1: p1 ? p1.dataset.value : null,
+                p1Trigger: p1 ? p1.querySelector(".icon-picker-trigger i").className : null,
+                p1Selected: p1 ? p1.querySelectorAll(".icon-picker-option.selected").length : -1,
+                p2: p2 ? p2.dataset.value : null,
+                custom: cf ? cf.dataset.value : null,
+            });
+        })()`)
+    );
+    check(
+        "默认按钮选择器保留白名单外的原值",
+        pickers.p1 === "not-configured",
+        JSON.stringify(pickers.p1)
+    );
+    check(
+        "未知值的选择器预览回退为随机字形（表现层常量）",
+        pickers.p1Trigger === PICKER_FALLBACK_CLASS,
+        JSON.stringify(pickers.p1Trigger)
+    );
+    check(
+        "未知值不点亮任何选项",
+        pickers.p1Selected === 0,
+        String(pickers.p1Selected)
+    );
+    check(
+        "另一个白名单外的原值（circle）同样被保留",
+        pickers.p2 === "circle",
+        JSON.stringify(pickers.p2)
+    );
+    check(
+        "合法值的选择器原值不受影响",
+        pickers.custom === "fire",
+        JSON.stringify(pickers.custom)
+    );
+
+    // 白名单完整性：选择器提供的可选值必须恰好等于 availableIcons 契约
+    const offered = JSON.parse(
+        await evalJs(`JSON.stringify(
+            Array.from(document.querySelectorAll("#button1Icon .icon-picker-option"))
+                .map(o => o.dataset.value)
+        )`)
+    );
+    const offeredIcons = offered.filter(v => v !== "random");
+    check(
+        "选择器提供的图标数量等于 availableIcons",
+        offeredIcons.length === AVAILABLE_ICONS.length,
+        JSON.stringify(offeredIcons.length)
+    );
+    check(
+        "选择器提供的图标集合与 availableIcons 完全一致",
+        JSON.stringify(offeredIcons) === JSON.stringify(AVAILABLE_ICONS),
+        JSON.stringify(offeredIcons)
+    );
+    check(
+        "每个选项的图标 class 与自身 data-value 一致",
+        (await evalJs(`(() => {
+            const bad = [];
+            document.querySelectorAll("#button1Icon .icon-picker-option").forEach(o => {
+                const v = o.dataset.value;
+                const expect = v === "random" ? "fas fa-shuffle" : "fas fa-" + v;
+                if (o.querySelector("i").className !== expect) bad.push(v);
+            });
+            return JSON.stringify(bad);
+        })()`)) === "[]",
+        "存在 class 与 data-value 不一致的选项"
+    );
+}
+
+// 未主动改图标 → 保存后原值不变
+{
+    const saved = await evalJsSafe(`(() => {
+        document.getElementById("saveButtons").click();
+        return localStorage.getItem("buttonConfig");
+    })()`);
+    check("白名单外图标下保存不抛异常", saved.ok === true, saved.ok ? "" : saved.error);
+    if (saved.ok) {
+        const cfg = JSON.parse(saved.value);
+        const icons = (cfg.buttons || []).map(b => b.icon);
+        check(
+            "未改动图标时 not-configured 被原样保留",
+            icons[0] === "not-configured",
+            JSON.stringify(icons[0])
         );
         check(
-            "保存后 icon 字面量不含注入字符",
-            icons.every(i => !/["'<>\s/=]/.test(i)),
+            "未改动图标时 circle 被原样保留",
+            icons[1] === "circle",
+            JSON.stringify(icons[1])
+        );
+        check(
+            "合法 icon 不受影响",
+            icons[2] === "fire",
+            JSON.stringify(icons[2])
+        );
+    }
+}
+
+// 主动改选图标 → 写入新值（证明"保留"不等于"锁死"）
+{
+    await openModal();
+    const clicked = await evalJsSafe(`(() => {
+        const opt = document.querySelector('#button1Icon .icon-picker-option[data-value="star"]');
+        if (!opt) return "no-option";
+        opt.click();
+        const p = document.getElementById("button1Icon");
+        return JSON.stringify({
+            value: p.dataset.value,
+            trigger: p.querySelector(".icon-picker-trigger i").className,
+            selected: p.querySelectorAll(".icon-picker-option.selected").length,
+        });
+    })()`);
+    check("可选择合法图标（点击不抛异常）", clicked.ok === true, clicked.ok ? "" : clicked.error);
+    if (clicked.ok) {
+        const r = JSON.parse(clicked.value);
+        check("主动选择后 dataset.value 变为新值", r.value === "star", JSON.stringify(r.value));
+        check("主动选择后预览图标更新", r.trigger === "fas fa-star", JSON.stringify(r.trigger));
+        check("主动选择后恰好有一项被点亮", r.selected === 1, String(r.selected));
+    }
+    const saved = await evalJsSafe(`(() => {
+        document.getElementById("saveButtons").click();
+        return localStorage.getItem("buttonConfig");
+    })()`);
+    if (saved.ok) {
+        const icons = (JSON.parse(saved.value).buttons || []).map(b => b.icon);
+        check(
+            "主动改选后写入的是新图标",
+            icons[0] === "star",
+            JSON.stringify(icons[0])
+        );
+        check(
+            "未触碰的其他按钮仍保留原值",
+            icons[1] === "circle" && icons[2] === "fire",
             JSON.stringify(icons)
         );
     }
