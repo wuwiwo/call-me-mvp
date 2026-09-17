@@ -348,15 +348,66 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 CM-003 已通过主指挥 AI 验收。下一步是 Human 决定是否合并 PR #3；合并前不进入下一项业务任务。
 
-### Human 决定：合并 PR #3（2026-09-17 21:21）
+### Human 决定：合并 PR #3（2026-09-17 21:21）— 已执行完毕
 
 Human 指令「合并」= 明确授权合并。外部 AI 执行记录：
 
-- 合并前核查：`origin/main` = `9989138`，分支 = `1217af7`，
-  `rev-list --left-right --count` = `0 8`（main 无新提交），
-  `merge-base --is-ancestor` 通过 → 可快进合并，无冲突。
-- 合并方式：**快进（fast-forward）**，保持线性历史，产生的 merge commit 为 `9989138` 之后的直接续接。
-- 合并后清理：删除已合并的远端/本地分支 `codex/cm003-storage-resilience`。
+**合并前核查（不信任上一轮快照，重新 fetch 后比对）**
+
+```text
+origin/main                       9989138
+分支 HEAD                          5108e51
+rev-list --left-right --count      0 9
+merge-base --is-ancestor main 分支 → 通过
+```
+
+**第一次尝试被前置守卫拦截（守卫按设计生效，非失败）**
+
+`GET /repos/wuwiwo/call-me-mvp/pulls/3` 首次返回 `mergeable: None` /
+`mergeable_state: unknown` —— GitHub 在 push 后需异步重算 mergeability，
+刚推送完查必然是 `unknown`。前置断言 **ABORT（exit 1）**，未执行盲目合并。
+轮询一次后即 `mergeable: true` / `mergeable_state: clean`，随后合并。
+（`unknown` ≠ 不可合并，但也不该盲合。）
+
+**执行结果**
+
+```text
+merge API status : 200
+merged           : True
+merge_method     : merge
+merge commit     : 6ff3db48a7dd43d0e4636c70b6582b331accbf39
+main HEAD        : 6ff3db4  Merge PR #3: CM-003 LocalStorage JSON 容错与启动可靠性（第二轮返工）
+```
+
+说明：最终采用 **merge commit**（非快进）。上方「快进合并」是执行前的预判，
+实际以 REST `merge` 接口按 merge commit 方式落库，`main` 历史保留了合入点。
+
+**合并后：在 `main` 上重新执行完整验证（此步不可省）**
+
+```text
+MAIN E2E  : 断言：51 passed, 0 failed      退出码 0
+MAIN LINT : 无输出（0 error / 0 warning）   退出码 0
+```
+
+**为何必须在 `main` 上复跑**：分支上的绿只证明分支绿。merge 本身可能引入
+冲突解决错误，仅在合并后的树形上跑过才算数。
+
+**分支清理**
+
+```text
+远端  git push origin --delete codex/cm003-storage-resilience  → [deleted]
+本地  git branch -d codex/cm003-storage-resilience             → was 5108e51
+```
+
+**合并后仓库状态**
+
+```text
+分支       仅 main（本地 + 远端）
+同步       ## main...origin/main（HEAD = origin/main = 6ff3db4）
+工作区     干净
+git fsck   dangling tree 4c27368a…（无害：合并+删分支后的未引用对象，git gc 会回收）
+```
+
 - 本文件即包含本次 Human 授权与执行记录，随文件一起提交。
 
 ### 主指挥 AI 处理记录：通信机制已收敛（2026-09-17）
