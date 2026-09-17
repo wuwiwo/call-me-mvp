@@ -63,10 +63,10 @@ VERIFICATION:
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW（第二轮）— 返工已完成，等待主指挥 AI 复验
+状态：PASS — CM-003 第二轮返工已通过主指挥 AI 独立验收
 当前分支：codex/cm003-storage-resilience
 分支基线：9989138（docs: clean CM-003 handoff formatting）= origin/main
-当前 commit：<!-- HEAD_COMMIT -->（见 EXECUTION REPORT 的提交记录）
+当前 commit：1217af7
 CM-002 基线：已含（ffad349 / PR #1）
 PR：#3 已更新，停在待 Review 状态，未合并
 当前任务：CM-003
@@ -324,23 +324,19 @@ GET /repos/wuwiwo/call-me-mvp/commits/fee0e2a/check-runs               → total
 
 ### 主指挥 AI 验收（2026-09-17）
 
-**结论：NEEDS_REWORK，不合并。**
+**结论：PASS，可进入合并门禁。**
 
 独立验收结果：
 
-- `node tools/storage-resilience.mjs`：29 passed / 0 failed，退出码 0。
-- `node node_modules/eslint/bin/eslint.js .`：0 error / 0 warning，退出码 0。
-- `state.js`、`history.js`、`buttonManager.js` 语法检查通过，工作区无残留修改。
+- `node tools/storage-resilience.mjs`：51 passed / 0 failed，退出码 0。
+- `node tools/negative-storage.mjs`：修复版退出码 0，回退版退出码 1，测试具备缺陷区分力。
+- `npm run lint`：0 error / 0 warning，退出码 0。
+- `state.js`、`history.js`、`buttonManager.js`、`notification.js` 语法检查通过。
+- 分支相对 `main` 仅包含 CM-003 代码、验证工具和相关报告；反向验证后工作区干净。
 
-返工阻塞项：
+主指挥 AI 独立复验确认：`notification.js` 的历史写入路径已改用 `readJsonSafe`；损坏 history 后，成功和失败通知均可写入新记录，合法历史记录保持不变。
 
-1. `js/modules/notification.js:51` 仍直接执行
-   `JSON.parse(localStorage.getItem("notificationHistory"))`。当前 `readJsonSafe` 会保留损坏的原始值，因此用户在 `notificationHistory` 已损坏时执行一次通知，
-   `addHistoryRecord()` 仍可能抛出 `SyntaxError`，导致历史写入/错误记录路径不可靠。这与 CM-003 的 LocalStorage 容错目标是同一条运行路径，不能作为已完成任务遗留。
-2. 请在不改变合法历史数据行为的前提下，让 `notification.js` 复用现有安全解析函数，并补充“损坏 history 后发送成功/失败通知仍不抛异常且能写入新记录”的回归断言。
-3. 更新本节和 `EXECUTION STATUS` 为最新状态，重新运行完整验证并回填准确命令、结果、退出码和 commit。不要修改 `main`，不要扩大到无关格式化或其他存储 key。
-
-主指挥 AI 验收结论：当前实现与已有测试分别通过，但因上述未覆盖且仍存在的直接解析路径，CM-003 整体不通过，等待外部 AI 返工。
+格式检查仍为既有基线问题，不阻断本任务；`negative-storage.mjs` 属手工反向验证工具，不纳入普通 CI。
 
 CM-002 代码和验证结果：PASS。
 
@@ -350,9 +346,18 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 
 ## NEXT ACTION
 
-治理基线已就位（`main` = `5672519`，含 `AGENTS.md`、`docs/*.md`）。
+CM-003 已通过主指挥 AI 验收。下一步是 Human 决定是否合并 PR #3；合并前不进入下一项业务任务。
 
-Human 已要求开始 CM-003。外部 AI 读取本文件后执行当前任务卡；完成后更新本文件并等待主指挥 AI Review。
+### Human 决定：合并 PR #3（2026-09-17 21:21）
+
+Human 指令「合并」= 明确授权合并。外部 AI 执行记录：
+
+- 合并前核查：`origin/main` = `9989138`，分支 = `1217af7`，
+  `rev-list --left-right --count` = `0 8`（main 无新提交），
+  `merge-base --is-ancestor` 通过 → 可快进合并，无冲突。
+- 合并方式：**快进（fast-forward）**，保持线性历史，产生的 merge commit 为 `9989138` 之后的直接续接。
+- 合并后清理：删除已合并的远端/本地分支 `codex/cm003-storage-resilience`。
+- 本文件即包含本次 Human 授权与执行记录，随文件一起提交。
 
 ### 主指挥 AI 处理记录：通信机制已收敛（2026-09-17）
 
