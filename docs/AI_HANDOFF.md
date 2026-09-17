@@ -66,7 +66,7 @@ VERIFICATION:
 状态：READY_FOR_REVIEW（第二轮）— 返工已完成，等待主指挥 AI 复验
 当前分支：codex/cm003-storage-resilience
 分支基线：9989138（docs: clean CM-003 handoff formatting）= origin/main
-当前 commit：<!-- COMMIT_REWORK -->（见 EXECUTION REPORT 的提交记录）
+当前 commit：<!-- HEAD_COMMIT -->（见 EXECUTION REPORT 的提交记录）
 CM-002 基线：已含（ffad349 / PR #1）
 PR：#3 已更新，停在待 Review 状态，未合并
 当前任务：CM-003
@@ -181,7 +181,7 @@ ff2df58  docs: 回填 CM-003 提交 hash                                 (+3/-1)
 ```text
 80d0705  fix: 补齐 notification.js 写入路径的 JSON 容错            (+14/-2)
 f64d9cc  test: 补充损坏 history 后的写入路径回归断言                (+271/-3)
-<!-- COMMIT_REWORK_DOCS -->  docs: 更新 CM-003 返工报告与执行状态
+9db7073  docs: 更新 CM-003 返工报告与执行状态                      (+215/-86)
 ```
 
 分支：`codex/cm003-storage-resilience`，基线 `9989138`（= `origin/main`）。
