@@ -472,10 +472,8 @@ export const buttonManager = {
         </div>
     `;
 
-        // 设置选中图标
-        if (buttonData?.icon && buttonData.icon !== "random") {
-            form.querySelector(".icon-selector").value = buttonData.icon;
-        }
+        // 图标回显由 createIconPicker(buttonData?.icon) 统一处理，
+        // 它会根据 icon 计算 trigger 图标、label 与 data-value（含 random 分支）
 
         // 绑定删除事件
         form.querySelector(".remove-btn").addEventListener("click", () => {
