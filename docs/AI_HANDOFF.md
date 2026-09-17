@@ -153,7 +153,9 @@ f680bc1  test: 补充 CM-003 存储容错回归验证工具
          3 files changed, 834 insertions(+), 25 deletions(-)
          tools/storage-resilience.mjs, tools/negative-storage.mjs, tools/README.md
 
-<docs-commit>  docs: 记录 CM-003 验收报告与执行状态
+ef32a5b  docs: 记录 CM-003 验收报告与执行状态
+         2 files changed, 333 insertions(+), 6 deletions(-)
+         docs/AI_HANDOFF.md, tools/ACCEPTANCE.md
 ```
 
 分支：`codex/cm003-storage-resilience`，基线 `9989138`（= `origin/main`）。
