@@ -74,14 +74,14 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：PASS — CM-004 已通过主指挥 AI 独立验收
-当前分支：codex/cm004-button-ids（未修改、未合并 main）
+状态：MERGED — CM-004 已通过验收并经 Human 授权合并进 main
+当前分支：main（本地 + 远端同步，执行分支已删除）
 分支基线：22f21f4（git rev-parse --short HEAD 实测，已含本任务卡）
-当前 commit：以当前分支实际 HEAD 为准（`git rev-parse --short HEAD`）
+当前 commit：984a3bb（= main = origin/main = HEAD）
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3 已合并（merge commit：6ff3db4）
-当前任务：CM-004
-最近状态更新：2026-09-17
+当前任务：CM-004（已完成并合并）
+最近状态更新：2026-09-17 22:36
 ```
 
 ### 外部 AI 接受 CM-004（2026-09-17）
@@ -543,6 +543,107 @@ Prettier 仍失败，但已证明修改前版本同样失败，属于既有工�
 ## NEXT ACTION
 
 CM-004 已通过主指挥 AI 独立验收。下一步由 Human 决定是否合并 `codex/cm004-button-ids`；合并前不自动进入下一项业务任务。
+
+### Human 决定：合并 CM-004 分支（2026-09-17 22:36）— 已执行完毕
+
+Human 指令「合并 CM-004 分支」= 明确授权合并（同 PR #3 先例）。
+外部 AI 执行记录如下。
+
+**合并前核查（不信任上一轮快照，重新比对）**
+
+```text
+本地 main                          22f21f4   （引用陈旧，落后远端 4 个 commit）
+origin/main                        4e5b346
+分支 codex/cm004-button-ids        984a3bb
+rev-list --left-right --count
+  origin/main...分支               0  9      （落后 0 / 领先 9）
+merge-base --is-ancestor
+  origin/main 是否为分支祖先        YES —— 可干净快进，无冲突可能
+分支是否有远端上游                  无（从未 push，纯本地分支）
+```
+
+**分支相对 `origin/main` 的改动范围**：9 个 commit，9 个文件，+1829/-80。
+
+**合并前置验证（在分支上复跑，未合并前必须先绿）**
+
+```text
+tools/button-ids.mjs           52 passed, 0 failed   退出码 0
+tools/storage-resilience.mjs   51 passed, 0 failed   退出码 0
+tools/e2e.mjs                  29 passed, 0 failed   退出码 0
+```
+
+**执行合并（fast-forward）**
+
+```text
+git switch main
+git merge --ff-only codex/cm004-button-ids
+Updating 22f21f4..984a3bb
+Fast-forward
+ 8 files changed, 1791 insertions(+), 60 deletions(-)
+```
+
+采用 **`--ff-only`**：`origin/main` 已是分支祖先，快进是唯一无冲突的路径；
+若断言失败会直接 abort，不会产生意外的 merge commit。
+
+**合并后：在 `main` 上重新执行完整验证（此步不可省）**
+
+```text
+MAIN button-ids            : 52 passed, 0 failed     退出码 0
+MAIN storage-resilience    : 51 passed, 0 failed     退出码 0
+MAIN e2e                   : 29 passed, 0 failed     退出码 0
+MAIN lint（eslint 真实入口）: 0 error / 0 warning      退出码 0
+```
+
+**为何必须在 `main` 上复跑**：分支上的绿只证明分支绿。
+merge 本身可能引入冲突解决错误，仅在合并后的树形上跑过才算数。
+
+**推送与清理**
+
+```text
+git push origin main                   4e5b346..984a3bb   （退出码 0）
+git branch -d codex/cm004-button-ids   → Deleted (was 984a3bb)
+```
+
+**合并后仓库状态**
+
+```text
+分支       仅 main（本地 + 远端）
+同步       main = origin/main = HEAD = 984a3bb
+工作区     干净
+```
+
+---
+
+#### 合并过程中发现的范围外问题（已报告，未擅自扩大范围）
+
+**现象**：合并后在 `main` 上首次跑 `storage-resilience.mjs` 时 exit 1，
+报 `Cannot find module '.../tools/storage-resilience.mjs'`。
+
+**排查结论：与本次合并无关，属既有工作区不一致。**
+
+```text
+git status 显示 4 个文件为「工作区已删除、未暂存」：
+  D tools/negative-storage.mjs
+  D tools/negative.mjs
+  D tools/server.mjs
+  D tools/storage-resilience.mjs
+
+关键证据：
+  git log --diff-filter=D -- <这4个文件>   → 空
+    即：从未被任何 commit 删除，属工作区层面丢失
+  这 4 个文件是 CM-003 的验证资产（f680bc1 / f64d9cc 引入）
+  本次合并 diff 仅涉及 5 个文件，完全未触及这 4 个
+    （ACCEPTANCE.md / README.md / button-ids.mjs / e2e.mjs / negative-button-ids.mjs）
+  git ls-files -v 显示全部为 H（无 assume-unchanged / skip-worktree 标记）
+```
+
+**与已知问题的关联**：这正是本文件此前报告的同类现象 ——
+「5 个 `docs/*.md` 在工作区缺失且未被任何 commit 删除」。
+本次是 `tools/*.mjs` 出现同样症状，**第二个实例**，建议主指挥 AI 考虑单开任务排查根因。
+
+**外部 AI 处置**：用 `git restore` 从 git 恢复这 4 个文件（**未提交、未 add**），
+使合并后验证得以完整执行；恢复后工作区干净。
+未修改任何业务代码，未新增 commit，未扩大任务范围。
 
 ### Human 决定：合并 PR #3（2026-09-17 21:21）— 已执行完毕
 
