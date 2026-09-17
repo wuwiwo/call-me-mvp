@@ -37,7 +37,7 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-storage.mjs` | CM-003：反向验证（纯文件备份还原） |
 | `button-ids.mjs` | CM-004：按钮 ID 兼容规则，52 项断言 |
 | `negative-button-ids.mjs` | CM-004：反向验证 |
-| `input-safety.mjs` | CM-005：动态用户输入注入防护，64 项断言 |
+| `input-safety.mjs` | CM-005：动态用户输入注入防护 + 严格图标允许列表，93 项断言 |
 | `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
 
@@ -197,18 +197,19 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 
 ### CM-005（`input-safety.mjs`）
 
-对齐 CM-005 验收标准，共 **64** 项断言，分 8 个用例：
+对齐 CM-005 验收标准（含 icon 白名单返工），共 **93** 项断言，分 9 个用例：
 
-| 用例 | 覆盖内容 |
-|---|---|
-| 1 | 首页按钮渲染：恶意 `message`（`<script>` / `<img onerror>`）与恶意 `icon` |
-| 2 | 按钮编辑表单：恶意 `message` 经 `value` **完整回显**，不产生额外属性 |
-| 3 | 图标选择器：恶意 `icon` 回退为安全值，不进入 class / `dataset.value`；保存后不落库原始载荷 |
-| 4 | 自定义按钮表单：结构注入载荷（`</span><b id="inj">`）只作文本 |
-| 5 | 历史渲染：恶意 `nickname` / `message` / `emoji` / `webhook` |
-| 6 | 历史 `_status`：未知值不产生状态 class；`success` / `error` / 缺失三种情形不回归 |
-| 7 | 合法数据不回归：`fire` / `random` / `star` 渲染、文案、`data-button-index`、选择器回显 |
-| 8 | 全流程无未捕获异常 / `console.error` |
+| 用例 | 覆盖内容 | 断言数 |
+|---|---|---|
+| 1 | 首页按钮渲染：恶意 `message`（`<script>` / `<img onerror>`）与恶意 `icon` | 9 |
+| 2 | 按钮编辑表单：恶意 `message` 经 `value` **完整回显**，不产生额外属性 | 7 |
+| 3 | 恶意 icon：不注入 class，且**不静默丢失原值** | 15 |
+| 3b | **严格允许列表**：白名单外的历史值不进入 class，且保存保留原值 | 25 |
+| 4 | 自定义按钮表单：结构注入载荷（`</span><b id="inj">`）只作文本 | 6 |
+| 5 | 历史渲染：恶意 `nickname` / `message` / `emoji` / `webhook` | 9 |
+| 6 | 历史 `_status`：未知值不产生状态 class；`success` / `error` / 缺失三种情形不回归 | 10 |
+| 7 | 合法数据不回归：`fire` / `random` / `star` 渲染、文案、`data-button-index`、选择器回显 | 11 |
+| 8 | 全流程无未捕获异常 / `console.error` | 1 |
 
 **判定"注入未发生"的四类独立证据**（每类都单独断言，不靠单一信号）：
 
@@ -221,14 +222,51 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 > 第 4 条是刻意设计的：只断言"没有报错/没有 pwned"会把"把内容整个过滤掉"
 > 也算成通过，而那会破坏功能。文本必须在，且必须仍是文本。
 
-**反向验证**（`negative-input-safety.mjs`）不同于前几个任务的做法：
-它**不手写回退片段**，而是用 `git show <ref>:<file>` 取出**基线分支的原文**覆盖
-当前文件 —— 回退的就是真正的缺陷版本，避免"手写回退与真实历史有偏差"造成的假结论。
+#### 图标：严格允许列表 + 未知历史值的定义行为
+
+返工后的策略是**闭集允许列表**，不再有"安全字符集正则"兜底 ——
+正则挡不住"任意合法 token"，例如 `not-configured` 会被渲染成 `fa-not-configured`，
+于是 class 的内容由**数据**而不是由**配置**决定。
 
 ```text
-修复版本退出码 : 0 (预期 0)          断言：64 passed, 0 failed
-回退版本退出码 : 1 (预期非 0)        断言：36 passed, 28 failed
-回退版本注入类失败项 : 17 条 (预期 > 0)
+允许列表 = CONFIG.buttons.availableIcons（18 个）+ "random"（选择器的随机语义）
+渲染     = 列表内 → 原样；列表外 → FALLBACK_ICON("random")
+保存     = dataset.value 携带**原始值**，用户未改图标时原样写回
+```
+
+三个必须分清的概念（混用会互相打架）：
+
+| 概念 | 值 | 说明 |
+|---|---|---|
+| 存储值 | 任意 | 来自 LocalStorage，可能在允许列表外；**不因显示兜底而被改写** |
+| 首页按钮字形 | `displayIcon(存储值)` | 列表外 → `fa-random` |
+| 选择器字形 | `pickerGlyph(...)` | `random` 语义用表现层常量 `shuffle` → `fa-shuffle` |
+
+> `displayIcon`（存储值 → 字形）与 `pickerGlyph`（表现层常量）必须分开。
+> 早期版本把 `"shuffle"` 也交给 `displayIcon`，它被判成白名单外并回退成 `random`，
+> 于是随机选项显示 `fa-random`、触发按钮显示 `fa-shuffle` —— **同一控件内自相矛盾**。
+> 该矛盾由用例 3b 的"每个选项的图标 class 与自身 data-value 一致"捕获。
+
+**未知历史 icon 的定义行为**（返工要求）：
+
+- **显示**：回退为允许列表内的图标；选择器不点亮任何选项（不假装用户选了随机）
+- **保存**：`dataset.value` 保留原值 → "打开编辑 → 不碰图标 → 保存"原样写回
+- **用户主动改选**：写入新的合法值（"保留"不等于"锁死"）
+
+> 首页按钮渲染 `"random"` 用 `fa-random`、选择器预览用 `fa-shuffle`，
+> 这个差异是**修复前就存在的**，本次保持不变（属表现层既有状态，不在本任务范围）。
+
+#### 反向验证（`negative-input-safety.mjs`）
+
+与前几个任务的做法不同：**不手写回退片段**，而是用 `git show <ref>:<file>`
+取出**基线分支的原文**覆盖当前文件 —— 回退的就是真正的缺陷版本，
+避免"手写回退与真实历史有偏差"造成的假结论。
+
+```text
+修复版本退出码 : 0 (预期 0)          断言：93 passed, 0 failed
+回退版本退出码 : 1 (预期非 0)        断言：62 passed, 31 failed
+回退版本注入类失败项     : 17 条 (预期 > 0)
+回退版本允许列表类失败项 :  4 条 (预期 > 0)
 源码已还原     : true (预期 true)
 ```
 
@@ -237,17 +275,24 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 ```text
 FAIL  首页按钮容器：无元素注入（无 SCRIPT/IMG/SVG 等） -> ["IMG","SCRIPT","IMG"]
 FAIL  首页按钮容器：无事件属性注入（无 on* 属性）      -> ["IMG@onerror","IMG@onerror"]
-FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置）  -> true     ← 脚本真的执行了
-FAIL  表单 value 完整回显恶意 message（未被截断/逃逸） -> ""        ← value 属性被突破
-FAIL  首页：恶意 icon 被替换为安全值（非原样拼接）      -> fas fa-bolt
+FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置）  -> true        ← 脚本真的执行了
+FAIL  表单 value 完整回显恶意 message（未被截断/逃逸） -> ""          ← value 属性被突破
+FAIL  白名单外的 not-configured 不渲染为 fa-not-configured
+      -> "fas fa-not-configured"                                    ← 主指挥初审的反例
+FAIL  白名单外的 circle 同样回退（无对应翻译键，不进入 class）
+      -> "fas fa-circle"
+FAIL  未改动图标时原值被原样保留（不静默丢数据） -> "bolt"              ← 原实现在引号处截断
+FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missing)"    ← 元素身份被属性突破破坏
 ```
 
 `__pwned = true` 是**真实执行**的直接证据（不是"可能被注入"的推断）；
-`value -> ""` 则说明 `value="${message}"` 的属性突破路径在修复前是可达的。
+`value -> ""` 与 `dataset.value -> "(missing)"` 说明属性突破路径在修复前可达，
+且会破坏输入框内容与元素身份（功能损坏，不只是安全问题）。
 
-> **为什么反向验证还要求"失败项必须是注入类"**：只比较退出码会把
+> **为什么反向验证还要求"失败项必须命中修复点关键字"**：只比较退出码会把
 > 端口占用、Chrome 起不来等基础设施抖动误读成"测试有效"。
-> 脚本因此额外断言失败项中包含注入类关键字，并要求修复版汇总为 `0 failed`。
+> 脚本因此额外断言：修复版汇总为 `0 failed`，且回退版失败项中
+> **同时**包含注入类与允许列表类关键字。
 
 ## 环境注意事项
 

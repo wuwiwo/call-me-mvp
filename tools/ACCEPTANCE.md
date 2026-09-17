@@ -798,6 +798,174 @@ Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
 **报告时间**: 2026-09-17
 **执行分支**: `codex/cm005-input-safety`（基线 `ddff168`，未修改、未合并 `main`）
 
+## 返工说明（第二轮 — 严格 icon 允许列表）
+
+### 主指挥 AI 初审结论：NEEDS_REWORK
+
+初审对代码与既有回归的复验全部通过（`input-safety` 64/64、`button-ids` 52/52、
+`storage-resilience` 51/51、`e2e` 29/29、lint 0 error），但提出一个阻塞项：
+
+> `js/modules/buttonManager.js` 的 `isSafeIconName()` 在白名单不命中时仍以
+> `ICON_TOKEN_RE` 放行任意安全 token；例如不在 `CONFIG.buttons.availableIcons`
+> 中的 `not-configured` 会被渲染为 `fa-not-configured`。这解决了 class 注入，
+> 但不符合本任务卡"icon 值仍受允许列表约束"的验收标准。
+>
+> 请改为严格的允许列表策略，并明确未知历史 icon 的显示与保存兼容行为：
+> 不得注入任意 class，也不得在用户未主动修改 icon 时静默丢失原始数据。
+
+**这个判断是对的，而且指出了我第一版设计里一个真实的错误来源。**
+
+### 我的第一版错在哪：用"字符集正则"代替"允许列表"
+
+第一版是两道闸门：白名单 + 安全 token 正则 `/^[a-z0-9][a-z0-9-]{0,49}$/`。
+我当时把它当作"既安全又不丢数据"的折中，但它的实质是：
+
+> **用"这个字符串长得安全"替换了"这个值是配置承认的"。**
+
+后果是 class 的内容由**数据**决定，而不是由**配置**决定 ——
+`not-configured` 这种从未被配置承认的值，只因为字符集合法就获得了渲染权。
+这不是等价的安全保证，而是不同的问题被解决了两次（都只解决注入），
+而"哪些值有资格当图标"这个问题从未被回答。
+
+**正则的定位错了**：它适合做最后一道"防越界"兜底，
+不能当作"准入资格"来用。准入资格必须来自配置的闭集。
+
+### 返工改动
+
+| 文件 | 改动 |
+|---|---|
+| `js/modules/buttonManager.js` | 删除 `ICON_TOKEN_RE` 与 `isSafeIconName()`；改为 `ALLOWED_ICON_NAMES` 闭集 + `isAllowedIcon()` / `displayIcon()`；新增表现层 `PICKER_GLYPH_NAMES` + `pickerGlyph()`；`createIconPicker()` 分离"显示值"与"保存回写值" |
+| `tools/input-safety.mjs` | 64 → **93** 项断言：新增用例 3b（25 项），重写用例 3（15 项） |
+| `tools/negative-input-safety.mjs` | 失败关键字从"仅注入类"扩展为"注入类 + 允许列表类"两组，两组都必须命中 |
+| `tools/README.md` | 更新用例表、三概念对照表、反向验证证据 |
+
+### 设计：三个必须分清的概念
+
+混用它们会互相打架，这是本轮返工的核心：
+
+| 概念 | 取值 | 作用 |
+|---|---|---|
+| **存储值** | 任意字符串 | 来自 LocalStorage，可能在允许列表外。**不因显示兜底而被改写** |
+| **首页按钮字形** | `displayIcon(存储值)` | 列表外 → `FALLBACK_ICON`("random") → 渲染 `fa-random` |
+| **选择器字形** | `pickerGlyph(...)` | `random` 语义用表现层常量 `shuffle` → 渲染 `fa-shuffle` |
+
+```js
+// 闭集：只有配置承认的值 + 选择器的随机语义
+const ALLOWED_ICON_NAMES = new Set([
+    ...(CONFIG.buttons.availableIcons || []),
+    "random"
+]);
+const FALLBACK_ICON = "random";
+
+function isAllowedIcon(name) {
+    return typeof name === "string" && ALLOWED_ICON_NAMES.has(name);
+}
+// 只用于「要变成 class」的场合：列表外一律回退，绝不放行任意值
+function displayIcon(name) {
+    return isAllowedIcon(name) ? name : FALLBACK_ICON;
+}
+```
+
+```js
+// createIconPicker()：显示与回写分离
+const original = typeof selectedIcon === "string" && selectedIcon
+    ? selectedIcon            // ← 可能是白名单外的历史值，原样保留
+    : FALLBACK_ICON;
+const current = displayIcon(original);   // ← 预览只使用列表内的值
+picker.dataset.value = original;         // ← 保存回写载体 = 原值
+```
+
+因为 `saveButtonConfig()` 读的正是 `picker.dataset.value`，
+"打开编辑 → 不碰图标 → 保存"就会原样写回原值。
+**这与修复前的行为一致**：原实现同样把选中值直接放进 `data-value`。
+所以"不静默丢数据"不是靠新增脏标记实现的，而是靠**恢复原有的恒等回写语义**。
+
+### 返工中发现并修掉的一个新缺陷（自己引入的）
+
+把 `"shuffle"` 也交给 `displayIcon()`，它被判成白名单外、回退成 `"random"`，
+于是随机选项渲染 `fa-random`、触发按钮渲染 `fa-shuffle` ——
+**同一个控件里两个字形互相矛盾**。
+
+根因是把"存储值 → 字形"和"表现层常量"这两件事混成了一个函数。
+已拆出 `pickerGlyph()` 处理后者（仍是闭集：允许列表 + `shuffle`）。
+该矛盾由新增的断言"每个选项的图标 class 与自身 data-value 一致"捕获。
+
+> **这个缺陷是我自己的测试先报出来的**，不是主指挥 AI 发现的 ——
+> 说明"按契约逐项核对选择器选项"这类断言值得写。
+
+### 未知历史 icon 的定义行为（返工要求）
+
+| 场景 | 显示 | 存储 |
+|---|---|---|
+| 值在允许列表内 | 原样渲染 | 不变 |
+| 值不在允许列表内（如 `not-configured`、`circle`） | 回退为 `fa-random`；选择器**不点亮任何选项** | **原样保留** |
+| 用户主动改选图标 | 渲染新值 | 写入新值 |
+
+**关于 `circle`**：`saveButtonConfig()` 有一个 `icon || "circle"` 的防御性默认值，
+`language.js:204` 也有一个同值的兜底。但 `circle` 既不在 `availableIcons`、
+也没有翻译键（`icons.circle` 不存在），因此它**同样按"未知历史值"处理** ——
+显示回退、保存保留。这样避免了"应用能写入一个自己无法显示的值"的尴尬，
+也不需要改动任何写入路径（属于最小改动）。
+
+**关于"不点亮任何选项"**：未知值时选择器不选中任何项。
+如果让它点亮"随机"，界面就在说谎 —— 用户会以为保存会写 `random`，
+而实际上保存写回的是原值。**UI 不能声称一个与保存结果不符的状态。**
+
+### 返工后验证
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/input-safety.mjs` | **93 passed, 0 failed**（原 64） | **0** |
+| `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
+| `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
+| `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
+| `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| `git diff --check` | clean | **0** |
+
+新增用例 3b（25 项）覆盖：
+- 白名单外的 `not-configured` **不渲染为** `fa-not-configured`（主指挥初审的反例原文）
+- 白名单外的 `circle` 同样回退
+- 白名单内的 `fire` 正常渲染（对照）
+- 整段 HTML 中不出现 `not-configured`
+- 选择器保留白名单外的原值（默认按钮与自定义按钮各一）
+- 未知值预览回退、且不点亮任何选项
+- 选择器提供的可选图标集合与 `availableIcons` **完全一致**（顺序与内容）
+- 每个选项的图标 class 与自身 `data-value` 一致
+- 未改图标 → 保存后 `not-configured` / `circle` 原样保留，合法值不受影响
+- 主动点击 `star` → `dataset.value` / 预览 / 选中项同步更新，保存写入 `star`
+- 未触碰的其他按钮仍保留原值
+
+### 反向验证的关键证据（回退到基线原文后）
+
+```text
+修复版本退出码 : 0    汇总：93 passed, 0 failed
+回退版本退出码 : 1    汇总：62 passed, 31 failed
+回退版本注入类失败项     : 17 条
+回退版本允许列表类失败项 :  4 条
+源码已还原     : true
+
+FAIL  白名单外的 not-configured 不渲染为 fa-not-configured
+      -> "fas fa-not-configured"                    ← 主指挥初审的反例，实测确认
+FAIL  白名单外的 circle 同样回退 -> "fas fa-circle"
+FAIL  未改动图标时原值被原样保留（不静默丢数据） -> "bolt"
+FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missing)"
+FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置） -> true
+```
+
+两处证据尤其值得注意：
+
+- **`-> "bolt"`**：原实现保存恶意 icon 时，值在第一个引号处被截断成 `"bolt"` ——
+  即**原实现确实会丢数据**，"不静默丢数据"不是过度设计。
+- **`-> "(missing)"`**：原实现下 `getElementById("button1Icon")` 直接取不到 ——
+  属性突破**破坏了元素身份**，不只是渲染异常。
+
+反向验证脚本的结论判定也同步收紧：现在要求修复版汇总为 `0 failed`，
+且回退版失败项**同时**命中注入类与允许列表类关键字 ——
+**只比较退出码会把基础设施抖动误读成"测试有效"。**
+
+---
+
 ---
 
 ## 零、任务背景

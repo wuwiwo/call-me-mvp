@@ -71,14 +71,14 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：NEEDS_REWORK — CM-005 代码验证大体通过，但 icon 白名单约束未满足
+状态：READY_FOR_REVIEW — CM-005 第二轮返工已完成（严格 icon 允许列表），等待重新验收
 当前分支：codex/cm005-input-safety（未修改、未合并 main）
 分支基线：ddff168（git rev-parse --short HEAD 实测，已含本任务卡）
-当前 commit：业务提交 906f27a / c081fc7；docs 提交 hash 属自引用，以 `git log --oneline -3 codex/cm005-input-safety` 为准
+当前 commit：见「提交记录（CM-005 返工）」；docs 提交 hash 属自引用，以 `git log --oneline -5 codex/cm005-input-safety` 为准
 CM-002 基线：已含（ffad349 / PR #1）
 PR：CM-003 的 PR #3、CM-004 分支均已合并
 当前任务：CM-005
-最近状态更新：2026-09-17 23:15
+最近状态更新：2026-09-18 00:00（第二轮返工）
 ```
 
 ### 外部 AI 接受 CM-005（2026-09-17）
@@ -142,6 +142,155 @@ git switch -c codex/cm004-button-ids
 2. 请改为严格的允许列表策略，并明确未知历史 icon 的显示与保存兼容行为：不得注入任意 class，也不得在用户未主动修改 icon 时静默丢失原始数据。补充对应回归断言后，更新本节与 `EXECUTION STATUS`，等待重新验收。
 
 其他代码路径和既有回归目前通过；不需要扩大到 `notification.js` 或无关格式化。
+
+### CM-005 返工 — 严格 icon 允许列表（第二轮，外部 AI 执行）
+
+**接受初审判断**。阻塞项成立：第一版用"安全字符集正则"代替了"允许列表"，
+实质是**用"这个字符串长得安全"替换了"这个值是配置承认的"** ——
+于是 class 的内容由**数据**而不是由**配置**决定。
+
+正则适合做最后一道"防越界"兜底，**不能当作准入资格**。准入资格必须来自配置闭集。
+这是我第一版设计里真实的错误来源，不是措辞问题。
+
+**返工改动**
+
+| 文件 | 改动 |
+|---|---|
+| `js/modules/buttonManager.js` | 删除 `ICON_TOKEN_RE` + `isSafeIconName()`；改为闭集 `ALLOWED_ICON_NAMES` + `isAllowedIcon()` / `displayIcon()`；新增表现层 `PICKER_GLYPH_NAMES` + `pickerGlyph()`；`createIconPicker()` 分离"显示值"与"保存回写值" |
+| `tools/input-safety.mjs` | 64 → **93** 项断言：新增用例 3b（25 项），重写用例 3（15 项） |
+| `tools/negative-input-safety.mjs` | 失败关键字扩为"注入类 + 允许列表类"两组，**两组都必须命中** |
+| `tools/README.md` | 更新用例表、三概念对照表、反向验证证据 |
+
+**设计：三个必须分清的概念**（混用会互相打架，这是本轮核心）
+
+| 概念 | 取值 | 作用 |
+|---|---|---|
+| **存储值** | 任意字符串 | 来自 LocalStorage，可能在允许列表外；**不因显示兜底而被改写** |
+| **首页按钮字形** | `displayIcon(存储值)` | 列表外 → `FALLBACK_ICON`("random") → 渲染 `fa-random` |
+| **选择器字形** | `pickerGlyph(...)` | `random` 语义用表现层常量 `shuffle` → 渲染 `fa-shuffle` |
+
+```js
+// 闭集：只有配置承认的值 + 选择器的随机语义
+const ALLOWED_ICON_NAMES = new Set([
+    ...(CONFIG.buttons.availableIcons || []),
+    "random"
+]);
+const FALLBACK_ICON = "random";
+function isAllowedIcon(name) {
+    return typeof name === "string" && ALLOWED_ICON_NAMES.has(name);
+}
+function displayIcon(name) {          // 只用于「要变成 class」的场合
+    return isAllowedIcon(name) ? name : FALLBACK_ICON;
+}
+```
+
+```js
+// createIconPicker()：显示与回写分离
+const original = typeof selectedIcon === "string" && selectedIcon
+    ? selectedIcon            // ← 可能是白名单外的历史值，原样保留
+    : FALLBACK_ICON;
+const current = displayIcon(original);   // ← 预览只用列表内的值
+picker.dataset.value = original;         // ← 保存回写载体 = 原值
+```
+
+`saveButtonConfig()` 读的正是 `picker.dataset.value`，因此
+"打开编辑 → 不碰图标 → 保存"会原样写回原值。
+**这与修复前的行为一致**（原实现同样把选中值直接放进 `data-value`）——
+"不静默丢数据"不是靠新增脏标记，而是靠**恢复原有的恒等回写语义**。
+
+**返工中发现并修掉的一个新缺陷（我自己引入的）**
+
+把 `"shuffle"` 也交给 `displayIcon()`，它被判成白名单外并回退成 `"random"`，
+于是随机选项渲染 `fa-random`、触发按钮渲染 `fa-shuffle` —— **同一控件内两个字形矛盾**。
+根因是把"存储值 → 字形"与"表现层常量"混成一个函数。已拆出 `pickerGlyph()`。
+
+> 这个缺陷是**我自己的测试先报出来的**，不是主指挥 AI 发现的 ——
+> 说明"按契约逐项核对选择器选项"这类断言值得写。
+
+**未知历史 icon 的定义行为**（返工要求）
+
+| 场景 | 显示 | 存储 |
+|---|---|---|
+| 值在允许列表内 | 原样渲染 | 不变 |
+| 值不在允许列表内（`not-configured`、`circle`） | 回退 `fa-random`；选择器**不点亮任何选项** | **原样保留** |
+| 用户主动改选图标 | 渲染新值 | 写入新值 |
+
+**关于 `circle`**：`saveButtonConfig()` 有 `icon || "circle"` 的防御性默认值，
+`language.js:204` 也有同值兜底。但 `circle` 既不在 `availableIcons`、
+也没有翻译键（`icons.circle` 不存在），故**同样按"未知历史值"处理** ——
+显示回退、保存保留。这样避免"应用能写入一个自己无法显示的值"，
+且无需改动任何写入路径（最小改动）。
+
+**关于"不点亮任何选项"**：未知值时不选中任何项。若点亮"随机"，界面就在说谎 ——
+用户会以为保存会写 `random`，而实际写回的是原值。
+**UI 不能声称一个与保存结果不符的状态。**
+
+**Tests**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/input-safety.mjs` | **93 passed, 0 failed**（原 64） | **0** |
+| `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
+| `node tools/button-ids.mjs` | **52 passed, 0 failed**（CM-004 不回归） | **0** |
+| `node tools/storage-resilience.mjs` | **51 passed, 0 failed**（CM-003 不回归） | **0** |
+| `node tools/e2e.mjs` | **29 passed, 0 failed**（CM-002 不回归） | **0** |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
+| `git diff --check` | clean | **0** |
+
+93 项断言分配：用例 1（首页按钮渲染）9、用例 2（编辑表单 value 回显）7、
+用例 3（恶意 icon：不注入 class + 不丢原值）15、
+**用例 3b（严格允许列表 + 保存兼容）25**、用例 4（自定义表单）6、
+用例 5（历史渲染）9、用例 6（历史 `_status`）10、用例 7（合法数据不回归）11、
+用例 8（异常检查）1。
+
+新增用例 3b 覆盖：`not-configured` 不渲染为 `fa-not-configured`（**初审反例原文**）、
+`circle` 同样回退、`fire` 正常渲染作对照、整段 HTML 不含 `not-configured`、
+选择器保留白名单外原值（默认 + 自定义各一）、未知值不点亮任何选项、
+**选择器可选集合与 `availableIcons` 顺序内容完全一致**、
+每个选项 class 与自身 `data-value` 一致、
+未改图标保存后原值保留、主动点击 `star` 后写入新值且其他按钮不受牵连。
+
+**反向验证的关键证据**（回退到基线原文后）
+
+```text
+修复版本退出码 : 0    汇总：93 passed, 0 failed
+回退版本退出码 : 1    汇总：62 passed, 31 failed
+回退版本注入类失败项     : 17 条
+回退版本允许列表类失败项 :  4 条
+源码已还原     : true
+
+FAIL  白名单外的 not-configured 不渲染为 fa-not-configured
+      -> "fas fa-not-configured"                    ← 初审反例，实测确认
+FAIL  白名单外的 circle 同样回退 -> "fas fa-circle"
+FAIL  未改动图标时原值被原样保留（不静默丢数据） -> "bolt"
+FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missing)"
+FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置） -> true
+```
+
+两处尤其值得注意：
+
+- **`-> "bolt"`**：原实现保存恶意 icon 时，值在第一个引号处被截断成 `"bolt"` ——
+  **原实现确实会丢数据**，"不静默丢数据"不是过度设计。
+- **`-> "(missing)"`**：原实现下 `getElementById("button1Icon")` 取不到 ——
+  属性突破**破坏了元素身份**，不只是渲染异常。
+
+反向验证结论判定同步收紧：要求修复版汇总为 `0 failed`，且回退版失败项
+**同时**命中注入类与允许列表类关键字 ——
+**只比较退出码会把基础设施抖动误读成"测试有效"。**
+
+**Known issues（本轮增量）**
+
+1. **`fa-random` 与 `fa-shuffle` 的既有差异**：首页按钮渲染 `"random"` 用
+   `fa-random`、选择器预览用 `fa-shuffle`。这个差异**修复前就存在**，
+   本次保持不变（表现层既有状态，不在本任务范围），已在用例中显式断言以固定现状。
+2. **`circle` 被归为"未知历史值"**，因此显示为回退图标而非 `fa-circle`。
+   这是返工要求的直接结果（它不在 `availableIcons`、也无翻译键）。
+   若主指挥 AI 认为 `circle` 应视为合法值，需要把它加入 `availableIcons`
+   并补 `icons.circle` 翻译 —— 那属于配置变更，外部 AI 未擅自处理。
+
+**Commit**
+
+见下方「提交记录（CM-005 返工）」小节。
 
 ### CM-005 — 消除动态用户输入 HTML 注入（2026-09-17，外部 AI 执行）
 
@@ -333,6 +482,28 @@ Chrome 起不来等基础设施抖动误读成"测试有效"。脚本因此额�
 **Commit**
 
 见下方「提交记录（CM-005）」小节。
+
+### 提交记录（CM-005 返工）
+
+```text
+49bff04  fix: icon 改为严格允许列表，并定义未知历史值的显示与保存兼容   (+88/-54)
+1f62ee9  test: 补充严格图标允许列表与保存兼容的回归断言                 (+315/-36)
+（docs commit）docs: 回填 CM-005 返工报告与执行状态
+```
+
+分支：`codex/cm005-input-safety`，基线 `ddff168`。
+未修改 `main`，未合并任何 PR。
+
+**第一轮提交**：`906f27a`（fix）、`c081fc7`（test）、`0980825`（docs）。
+
+**关于 docs commit 的 hash**：本文件被修改 → 提交 → hash 必变（**自引用**），
+故此处不写死自身 hash，权威来源为：
+
+```text
+git log --oneline -5 codex/cm005-input-safety
+```
+
+两个业务提交（fix / test）不含本文件，hash 稳定，已列在上方。
 
 ### 提交记录（CM-005）
 
