@@ -5,7 +5,8 @@ import {
     utils
 } from "./utils.js";
 import {
-    state
+    state,
+    readJsonSafe
 } from "./state.js";
 import {
     notification
@@ -58,28 +59,44 @@ export const buttonManager = {
 
     /**
      * 从localStorage加载按钮配置
+     *
+     * 非法 JSON 或错误顶层类型（数组/字符串/数字等）时，
+     * 回退到 CONFIG.buttons.defaultButtons，且不抛出异常。
+     * 合法旧数据（含未知字段）保持原样读取，不静默改写。
      */
     loadButtonConfig() {
-        try {
-            const savedConfig = localStorage.getItem("buttonConfig");
-            if (savedConfig) {
-                const {
-                    buttons,
-                    activeGroup
-                } = JSON.parse(savedConfig);
-                this.customButtons = buttons || [];
-                this.activeButtonGroup = activeGroup || "default";
-            } else {
-                // 使用默认配置
-                this.customButtons = JSON.parse(
-                    JSON.stringify(CONFIG.buttons.defaultButtons)
-                );
-                this.saveConfig();
-            }
-        } catch (e) {
-            console.error("Failed to load button config:", e);
-            this.resetToDefault();
+        const savedConfig = localStorage.getItem("buttonConfig");
+
+        if (!savedConfig) {
+            // 无配置：使用默认配置并落盘
+            this.customButtons = JSON.parse(
+                JSON.stringify(CONFIG.buttons.defaultButtons)
+            );
+            this.activeButtonGroup = "default";
+            this.saveConfig();
+            return;
         }
+
+        const parsed = readJsonSafe("buttonConfig", null, v =>
+            v !== null && typeof v === "object" && !Array.isArray(v)
+        );
+
+        if (!parsed) {
+            // 损坏或类型错误：回退默认按钮，不删除原始值
+            this.customButtons = JSON.parse(
+                JSON.stringify(CONFIG.buttons.defaultButtons)
+            );
+            this.activeButtonGroup = "default";
+            return;
+        }
+
+        const { buttons, activeGroup } = parsed;
+        // buttons 必须是数组，否则视为不可用，回退默认
+        this.customButtons = Array.isArray(buttons)
+            ? buttons
+            : JSON.parse(JSON.stringify(CONFIG.buttons.defaultButtons));
+        this.activeButtonGroup =
+            typeof activeGroup === "string" ? activeGroup : "default";
     },
 
     /**

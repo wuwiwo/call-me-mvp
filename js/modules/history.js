@@ -1,6 +1,7 @@
 // history.js - 修改后的完整代码
 // /src/modules/history.js
 import { utils } from './utils.js';
+import { readJsonSafe } from './state.js';
 
 // 历史记录管理
 export const history = {
@@ -29,7 +30,12 @@ export const history = {
     
     // 渲染历史记录
     render() {
-        const records = JSON.parse(localStorage.getItem('notificationHistory')) || [];
+        // 损坏或类型错误时回退为空数组，历史页仍可加载并显示空状态
+        const records = readJsonSafe(
+            'notificationHistory',
+            [],
+            v => Array.isArray(v)
+        );
         
         if (records.length === 0) {
             this.elements.list.innerHTML = `
