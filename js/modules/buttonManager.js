@@ -15,53 +15,66 @@ import {
     countdown
 } from "./countdown.js";
 
-// 图标名进入 CSS class 与 dataset 前的两道闸门。
+// 图标渲染的**严格允许列表**。
 //
-// button.icon 来自 LocalStorage，是可控输入，会被拼进
-// `class="fas fa-<icon>"`。因此**必须**校验，否则形如 `x" onload="` 的值
-// 可以直接突破属性、注入事件处理器。
+// button.icon 来自 LocalStorage，是可控输入，会被拼进 `class="fas fa-<icon>"`。
+// 因此只有「应用自身会产生、且用户可在 UI 中选中」的值才允许进入 class：
+//   - CONFIG.buttons.availableIcons：图标选择器提供的全部图标
+//   - "random"：选择器的"随机"语义，保存时会持久化进 buttonConfig
 //
-// 闸门 1 —— 白名单：CONFIG.buttons.availableIcons（UI 实际提供的图标）
-//   另加两个由现有代码路径产生、且必须继续可渲染的值：
-//     - "random"：图标选择器的"随机"语义，保存后会持久化进 buttonConfig
-//     - "circle"：saveButtonConfig() 在未取到图标时的保存默认值
+// **刻意不再使用"安全字符集正则"兜底。**
+// 正则只能挡住引号、空格这类越界字符，挡不住"任意合法 token"被当作图标渲染 ——
+// 例如一个不在配置里的 `not-configured` 会渲染成 `fa-not-configured`，
+// 于是 class 的内容由**数据**而不是由**配置**决定。
+// 允许列表是闭集：列表外的值一律不参与 class 构造。
 //
-// 闸门 2 —— 语法安全的 token：/^[a-z0-9][a-z0-9-]{0,49}$/
-//   为什么需要第二道：icon 取自 LocalStorage，可能存在白名单之外的历史值。
-//   若把这类值一律当作非法并改写为 fallback，会产生两类回归 ——
-//   ① 渲染结果变化（原本有图标，变成占位图标）
-//   ② 保存时把用户原值静默改写为 fallback，属数据丢失
-//   第二道闸门只放行"在 class 属性里不可能越界"的字符集
-//   （无引号、空格、尖括号、等号、斜杠），因此既不改变合法旧数据的
-//   显示与存储，也不给注入留任何入口。
-//
-// 两道都不满足 → 回退到 fallback（既不渲染、也不写回该值）。
-const SAFE_ICON_NAMES = new Set([
+// 关于 "circle"：saveButtonConfig() 里有一个 `icon || "circle"` 的防御性默认值，
+// 而 "circle" 既不在 availableIcons、也没有对应翻译（`icons.circle` 不存在），
+// 因此它**同样按"未知历史值"处理** —— 显示回退、保存保留原值。
+// 详情见 displayIcon() 与 createIconPicker()。
+const ALLOWED_ICON_NAMES = new Set([
     ...(CONFIG.buttons.availableIcons || []),
-    "random",
-    "circle"
+    "random"
 ]);
 
-const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/;
-
-// 两道闸门都不通过时的统一回退值。
+// 允许列表之外的一律显示为这个值。
 //
-// 取 "random" 而不是另造一个占位值，是为了让**首页按钮渲染**与
-// **编辑表单的选择器回显**给出同一个结论 —— 否则会出现
-// "按钮显示某图标、打开编辑却预选另一项"的自我矛盾，
-// 用户一保存又变成第三个值。
-// "random" 也正是图标选择器原有的回退语义（图标缺失/非法时的既有分支），
-// 因此这条路径的行为没有变化。
-//
-// 注意区分：saveButtonConfig() 对"**新增**按钮未选图标"写入 "circle"，
-// 那是"用户还没选"，与"存储里的值不可用"不是同一件事。
-const UNUSABLE_ICON = "random";
+// 取 "random" 而不是另造一个占位值，因为它本身就是图标选择器原有的
+// 回退语义（图标缺失/非法时的既有分支），且首页按钮渲染与编辑表单的
+// 选择器会给出**同一个**结论 —— 否则会出现"按钮显示某图标、打开编辑却
+// 预选另一项"的自我矛盾，用户一保存又变成第三个值。
+const FALLBACK_ICON = "random";
 
-// 图标名是否可以安全地拼进 class / 写入 dataset
-function isSafeIconName(name) {
-    if (typeof name !== "string") return false;
-    if (SAFE_ICON_NAMES.has(name)) return true;
-    return ICON_TOKEN_RE.test(name);
+// 是否属于允许列表（闭集判断，没有正则兜底）
+function isAllowedIcon(name) {
+    return typeof name === "string" && ALLOWED_ICON_NAMES.has(name);
+}
+
+/**
+ * 只用于「这个值要变成 class」的场合。
+ * 允许列表之外一律回退到 FALLBACK_ICON，绝不放行任意值。
+ *
+ * 注意：它**只影响显示**，不改变存储 —— 保存回写用的原始值由调用方另行携带
+ * （见 createIconPicker 的 `original`），以免用户未改图标时静默丢数据。
+ */
+function displayIcon(name) {
+    return isAllowedIcon(name) ? name : FALLBACK_ICON;
+}
+
+// 选择器内部的**展示图标名**。
+//
+// 与 displayIcon 的区别：displayIcon 处理"存储值 → 要渲染的图标"，
+// 而选择器里的 "random" 语义在界面上用一个专用字形表示（shuffle），
+// 这个字形是**表现层常量**，并不是一个可存储的图标值。
+// 两者必须分开，否则把 "shuffle" 交给 displayIcon 会被判成白名单外、
+// 回退成 "random"，于是随机选项显示成 fa-random、触发按钮显示成 fa-shuffle ——
+// 同一控件内自相矛盾。
+//
+// 这里仍然是闭集判断：只放行允许列表与表现层常量，不放行任意字符串。
+const PICKER_GLYPH_NAMES = new Set([...ALLOWED_ICON_NAMES, "shuffle"]);
+
+function pickerGlyph(name) {
+    return PICKER_GLYPH_NAMES.has(name) ? name : "shuffle";
 }
 
 export const buttonManager = {
@@ -370,7 +383,7 @@ export const buttonManager = {
      *
      * button.message 与 button.icon 都来自 LocalStorage（可控输入）：
      * - message 用 textContent 写入，恶意标记只显示为字面文本；
-     * - icon 先经 SAFE_ICON_NAMES 白名单，再拼进 class。
+     * - icon 先过严格允许列表，列表外一律回退（见 displayIcon）。
      * 不使用模板字符串，避免任何一个字段突破 DOM 结构。
      *
      * @param {Object} button - 按钮配置对象
@@ -387,7 +400,7 @@ export const buttonManager = {
         contentEl.className = 'bubble-content';
 
         const iconEl = document.createElement('i');
-        iconEl.className = `fas fa-${isSafeIconName(data.icon) ? data.icon : UNUSABLE_ICON}`;
+        iconEl.className = `fas fa-${displayIcon(data.icon)}`;
 
         const labelEl = document.createElement('span');
         labelEl.textContent = data.message ?? '';
@@ -512,7 +525,7 @@ export const buttonManager = {
     /**
      * 创建单个图标选项（DOM 节点，不经过 HTML 字符串）
      * @param {string} value - data-value（写入 dataset，不拼字符串）
-     * @param {string} iconName - Font Awesome 图标名（须通过 isSafeIconName）
+     * @param {string} iconName - 展示字形名（须在允许列表或表现层常量内）
      * @param {string} label - 显示文本（textContent）
      * @param {boolean} selected - 是否选中
      */
@@ -523,7 +536,7 @@ export const buttonManager = {
         option.dataset.value = value;
 
         const iconEl = document.createElement("i");
-        iconEl.className = `fas fa-${isSafeIconName(iconName) ? iconName : UNUSABLE_ICON}`;
+        iconEl.className = `fas fa-${pickerGlyph(iconName)}`;
 
         const labelEl = document.createElement("span");
         labelEl.textContent = label;
@@ -537,10 +550,17 @@ export const buttonManager = {
     /**
      * 创建图标选择器（带预览的网格弹出）
      *
-     * selectedIcon 来自 LocalStorage（可控输入），会被写进
-     * `data-value` 与 `class="fas fa-<icon>"`。因此这里先过 isSafeIconName：
-     * 两道闸门都不满足的值一律按"随机"处理 —— 与"图标缺失"走同一条既有分支，
-     * 既修掉注入，也不改变任何可安全渲染的旧值。
+     * selectedIcon 来自 LocalStorage（可控输入），需要分两种用途处理：
+     *
+     * 1. **显示**：只使用允许列表内的值（displayIcon）。列表外的值回退到
+     *    FALLBACK_ICON，因此 class 的内容始终由配置决定，而不是由数据决定。
+     * 2. **保存回写**：`dataset.value` 保留**原始值**。这是"用户未主动修改
+     *    icon 时不静默丢数据"的实现方式 —— saveButtonConfig() 读的正是
+     *    dataset.value，所以"打开编辑 → 直接保存"会原样写回原值。
+     *    （这与修复前的行为一致：原实现同样把选中值直接放进 data-value。）
+     *
+     * 选中项只在值真的等于原始值时才点亮；未知值 → 没有任何选项被选中，
+     * 不会假装用户选了"随机"。
      *
      * 整个选择器用 DOM API 构建：值走 dataset，文本走 textContent。
      *
@@ -548,15 +568,18 @@ export const buttonManager = {
      * @param {string} [id] - 选择器 ID（默认按钮用）
      */
     createIconPicker(selectedIcon, id) {
-        const current =
-            isSafeIconName(selectedIcon) && selectedIcon !== "random"
+        // 保存回写载体：保持与修复前一致的回写语义（原值优先，缺失才取回退值）
+        const original =
+            typeof selectedIcon === "string" && selectedIcon
                 ? selectedIcon
-                : UNUSABLE_ICON;
+                : FALLBACK_ICON;
+        // 预览与 class 只使用允许列表内的值
+        const current = displayIcon(original);
         const randomLabel = utils.getTranslation("profile.randomIcon");
 
         const picker = document.createElement("div");
         picker.className = "icon-picker";
-        picker.dataset.value = current;
+        picker.dataset.value = original;
         if (id) picker.id = id;
 
         const trigger = document.createElement("button");
@@ -565,7 +588,7 @@ export const buttonManager = {
 
         const triggerIcon = document.createElement("i");
         const triggerIconName = current === "random" ? "shuffle" : current;
-        triggerIcon.className = `fas fa-${triggerIconName}`;
+        triggerIcon.className = `fas fa-${pickerGlyph(triggerIconName)}`;
 
         const triggerLabel = document.createElement("span");
         triggerLabel.className = "icon-picker-label";
@@ -586,7 +609,12 @@ export const buttonManager = {
 
         // "随机"选项排在图标列表之前（保持既有顺序）
         menu.appendChild(
-            this.createIconOption("random", "shuffle", randomLabel, current === "random")
+            this.createIconOption(
+                "random",
+                "shuffle",
+                randomLabel,
+                original === "random"
+            )
         );
 
         CONFIG.buttons.availableIcons.forEach(icon => {
@@ -595,7 +623,7 @@ export const buttonManager = {
                     icon,
                     icon,
                     utils.getTranslation("icons." + icon),
-                    icon === selectedIcon
+                    icon === original
                 )
             );
         });
@@ -720,6 +748,12 @@ export const buttonManager = {
         const newButtons = [];
 
         // 收集默认按钮
+        //
+        // 关于 icon 的保存兼容（CM-005 返工）：
+        // `iconPicker.dataset.value` 里放着**原始值**（可能不在允许列表内），
+        // 而不是图标预览用的回退值。这样"打开编辑 → 不碰图标 → 保存"
+        // 会原样写回原值，不会因为预览做了兜底就静默改写用户数据。
+        // 用户确实改选了图标时，dataset.value 才会变成那个新的合法值。
         CONFIG.buttons.defaultButtons.forEach((defaultBtn, index) => {
             const textInput = document.getElementById(`button${index + 1}Text`);
             const iconPicker = document.getElementById(`button${index + 1}Icon`);
@@ -736,7 +770,7 @@ export const buttonManager = {
             });
         });
 
-        // 收集自定义按钮
+        // 收集自定义按钮（icon 的保存兼容同默认按钮，见上方说明）
         document.querySelectorAll(".custom-button-form").forEach(form => {
             const text = form.querySelector(".btn-text")?.value.trim();
             const icon = form.querySelector(".icon-picker")?.dataset.value;
