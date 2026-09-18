@@ -12,6 +12,18 @@
 
 首次于 CM-002/CM-004 时期报告「5 个 `docs/*.md` 丢失」，当时原因未查明。
 
+**第 5 次在现场复现（2026-09-18 16:53）**：合并 `codex/wt-file-loss-guard` 之后立刻复检，
+一次丢 **26 个**文件 —— 是此前最严重的一次。这次留下了干净的对照证据：
+
+```text
+被删除（26）＝ docs/ 与 tools/ 下「本次合并未写入」的全部已跟踪文件
+存活  （5）＝ 本次合并写入的：docs/AI_HANDOFF.md、docs/handoff/archive/{INDEX,WORKTREE-FILE-LOSS}.md、
+                              tools/README.md、tools/check-worktree.mjs
+```
+
+「丢的恰是没被重写的」这一规律**再次精确成立**，且新加的 `check-worktree.mjs`
+第一时间检出并一键恢复，未造成任何验证中断。
+
 ## 复发时间线（四次）
 
 | 时间 | 触发的 git 操作 | 被删文件 |
@@ -20,6 +32,7 @@
 | 2026-09-17 17:57 | 治理文档 PR #2 合并 | `docs/ARCHITECTURE.md`、`DATA_FLOW.md`、`PROJECT_ANALYSIS.md`、`ROADMAP.md`、`TECH_DEBT.md` |
 | 2026-09-17 21:22 / 22:38 | CM-003 PR #3 / CM-004 合并 | `tools/storage-resilience.mjs`、`negative-storage.mjs`、`button-ids.mjs`、`negative-button-ids.mjs`、`e2e.mjs` |
 | 2026-09-18 16:27 | CM-005 + GOV-001 快进合并 | **17 个**：10 个 `docs/*.md` + 7 个 `tools/*.mjs` |
+| 2026-09-18 16:53 | 合并 `codex/wt-file-loss-guard` | **26 个**：10 个 `docs/*.md` + 6 个 `docs/handoff/archive/*.md` + 10 个 `tools/*` |
 
 ## 根因
 
@@ -79,6 +92,7 @@ git restore --staged -- <path>         # 仅当删除已被暂存时，先取消
 
 1. **`tools/check-worktree.mjs`**（2026-09-18 新增）：检出「已跟踪文件被删除」，
    `--fix` 可从 HEAD 恢复；同时会提示**已暂存**的删除（更危险，会被 commit 固化）。
+   **已实战验证**：2026-09-18 16:53 合并后立刻检出 26 个缺失并一键恢复（见上文第 5 次）。
 2. **流程纪律**：在 git 合并/检出之后、**任何 commit 之前**跑一次该脚本。
 3. **禁止 `git add -A` / `git add .`**：只按路径暂存你确实改过的文件。
    这是本仓库最容易踩的坑 —— 一次 `-A` 就会把工作区损坏变成仓库损坏。
