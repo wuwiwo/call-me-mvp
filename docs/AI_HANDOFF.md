@@ -50,43 +50,79 @@ VERIFICATION:
 任务基线：ddff168
 合并后 main：745b8d3（= origin/main，已核对一致）
 当前工作分支：main
-Human 已授权「合并后推送」（2026-09-18）；外部 AI 执行快进合并与推送，
-未修改任何业务代码。合并记录详见归档 `docs/handoff/archive/CM-005.md`。
+
+2026-09-18 晚（外部 AI）：已完成「工作区文件丢失」独立复核 + 防线入库。
+main 上新增 3 个提交（b35463f / b012893 / aeac088），**均未推送**：
+  - b35463f chore: 提交工作区防丢守卫（钩子 + 守卫脚本）
+  - b012893 chore: 补行尾策略并登记守卫工具
+  - aeac088 docs: 修正工作区文件丢失的根因（旧结论已被推翻）
+未改动任何业务代码（js/ 下零改动）。
 ```
 
 ## EXECUTION REPORT
 
-CM-005 第二轮返工已完成。外部 AI 报告：
+### CM-005（第二轮返工，已完成）
 
 - `js/modules/buttonManager.js` 改为严格 icon 允许列表；未知历史 icon 显示回退图标，但保存时保留原始值。
-- 回归断言更新为 97 项；反向验证能够同时命中注入类和允许列表类缺陷。
-- `node tools/input-safety.mjs`：97 passed / 0 failed，退出码 0。
-- `node tools/negative-input-safety.mjs`：修复版 0、回退版 1，退出码 0。
-- CM-004 `button-ids.mjs`：52/52；CM-003 `storage-resilience.mjs`：51/51；CM-002 `e2e.mjs`：29/29。
-- ESLint：0 error / 0 warning；`git diff --check`：通过。
-- 相关提交：`49bff04`、`1f62ee9`、`cf31648`、`6b626f3`、`941b098`。
+- 回归断言 97 项；反向验证能同时命中注入类和允许列表类缺陷。
+- `input-safety` 97/97、`negative-input-safety` 修复版 0 / 回退版 1、
+  `button-ids` 52/52、`storage-resilience` 51/51、`e2e` 29/29、ESLint 0/0 全部通过。
+- 合并执行：`git merge --ff-only`，`ddff168 → 745b8d3`；推送 `55d2e77..745b8d3`。
 
-本轮同时完成 GOV-001 文档拆分：原 1181 行交接文档已完整保存在 `docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-18.md`，历史任务按索引归档，未删除历史证据。
+本轮同时完成 GOV-001 文档拆分，原 1181 行交接文档完整保存在
+`docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-18.md`，未删除历史证据。
 
-合并执行（外部 AI，2026-09-18）：`git merge --ff-only`，`ddff168 → 745b8d3`；
-推送 `55d2e77..745b8d3`，远端已核对。`main` 与已验收 tip 为**同一 commit**，
-故「已验收即已验证」。合并后在 `main` 上复跑：`input-safety` 97/97、lint 0/0 通过。
+### 工作区文件丢失（2026-09-18 晚，外部 AI 独立复核后定稿）
 
-已知问题（已定位并解决，2026-09-18）：合并后发现 **17 个已跟踪文件在工作区缺失**
-（10 个 `docs/*.md` + 7 个 `tools/*.mjs`，含 CM-002/003/004 全部测试资产）。
-HEAD 内容完整、推送不受影响；三次快照稳定，非进行中操作。
-按 `AGENTS.md:141` 未做 restore/checkout，保留原状上报。
-影响：`button-ids` / `storage-resilience` / `e2e` 三个套件因文件不存在无法本地复跑（`MODULE_NOT_FOUND`）。
-同类现象此前已出现两次，均未被任何 commit 删除，建议单开任务排查根因。
-详见 `docs/handoff/archive/CM-005.md`。
+**⚠️ 本节纠正此前 `EXECUTION REPORT` 中的旧结论。**
 
-根因（有回收站证据）：**不是 git 删除的**。回收站 `$I*` 元数据完整记录了四次同类删除
-（含 `docs`/`tools` 目录本身与 `.git/*.lock`），而 git 在 Windows 上不使用回收站 ——
-是外部「安全删除」工具在合并动作前后把文件移入回收站，git 随后只重写自己需要写的文件。
-已 `git restore` 恢复全部 17 个文件，恢复后 `input-safety` 97/97、`button-ids` 52/52、
-`storage-resilience` 51/51、`e2e` 29/29、lint 0/0 全部通过。
-新增防线 `tools/check-worktree.mjs`（`--fix` 可从 HEAD 恢复）。
-完整根因与时间线见 `docs/handoff/archive/WORKTREE-FILE-LOSS.md`。
+旧结论（已推翻）：「**不是 git 删除的**，是外部安全删除工具在合并前后把文件移入回收站」。
+该说法**因果说反了** —— 父目录不是被谁顺带搬走的，**是 git 自己主动删的**。
+
+**修正后的根因**：
+
+1. 沙箱以 **DLL 注入**（`tsbx.dll` ← `cli\vendor\sandbox\5.5.5\`）进入 WorkBuddy 派生的
+   每个子进程，hook 其文件删除 API —— 这就是「为什么不经 shim 也能拦到 `os.remove` 和 `git.exe`」。
+2. 配置 `recyclebin_backup: true` 使删除被改写为「移入回收站」。
+3. git 删除工作区文件后，沿路径**逐级 `rmdir` 祖先目录**（`entry.c` 的
+   `remove_empty_directories()`），靠「目录非空 → rmdir 失败」终止循环。
+   沙箱对 `rmdir` **不校验目录是否为空** → 每级都"成功" → 终止条件失效。
+4. git 一路删到**工作树顶层目录**为止；同目录内**未被 git 重写**的已跟踪文件静默消失。
+
+**★ 头号判读陷阱（复现/排查前必读）**：
+
+| 进程状态 | `tsbx.dll` 注入 | `CODEBUDDY_SAFE_DELETE_*` | 删除行为 |
+|---|---|---|---|
+| 未提权（正常） | **是** | 齐全 | 改写为移入回收站 → **可能级联** |
+| 带 `⚠️ Sandbox bypassed (escalation-approved)` | **否** | **被剥离** | 原生语义 → **级联不可能发生** |
+
+带该标记的命令复现本 bug **一律得到假阴性**。这不是偶发噪音：配置 `default_action: "deny_write"`
+使所有写操作都要过授权闸门，通过后即无沙箱 —— 属**常态**。且**豁免向下继承**，
+会让脚本里的对照组一起失效。
+
+**治本手段已排除**：改 `tsbx_rules.json` 三组实测全部零效果 —— 常驻 `sandbox-center.exe`
+只在启动时读一次，之后不再读，且落盘时会把外部改动**覆盖回去**。配置现已还原原状
+（sha256 `1c88499c…`）。
+
+**防线（已入库并验证）**：
+
+| 文件 | 作用 |
+|---|---|
+| `tools/check-worktree.mjs` | 手动：检出缺失，`--fix` 从 HEAD 恢复 |
+| `tools/worktree-guard.mjs` | 自动：判定 `intended` vs `collateral` 并恢复 |
+| `.githooks/{post-checkout,post-merge,post-commit}` | 三个触发点 |
+| `.gitattributes` | 固定 `.githooks/*` 与 `tools/*.mjs` 为 LF |
+
+启用：`git config core.hooksPath .githooks`；关闭：`CALLME_WT_GUARD=0`。
+日志 `.workbuddy/worktree-guard.log` —— **只在真的恢复过文件时才写**，
+故「没有日志」≠「防线失效」。
+
+**独立验证结果**（scratch 仓库，手工模拟误伤后触发 post-commit）：
+`intended=0 missing=3 restored=3 failed=0`，3 个误伤全部恢复，无残留 ` D`。
+钩子连线、恢复路径、不误伤三项均通过。
+
+完整推导见 `.workbuddy/worktree-file-loss-bugreport.md` §13（根因）/ §14（配置层实测）/
+**§15（第三方独立复核）**；归档版 `docs/handoff/archive/WORKTREE-FILE-LOSS.md` 已同步修正。
 
 ## REVIEW RESULT
 
@@ -112,4 +148,23 @@ CM-005：PASS，可进入 Human 明确授权的合并与推送门禁。
 
 ## NEXT ACTION
 
-下一步：等待 Human 明确授权合并和推送；获授权后由主 AI 将 `codex/cm005-input-safety` 合并到 `main`，在合并后的 `main` 上重新运行关键验证，再推送并清理任务分支。外部 AI 在此之前保持待命，不要修改或合并 `main`。
+**待 Human 授权：推送 main 上积压的 3 个提交。**
+
+```text
+b35463f  chore: 提交工作区防丢守卫（钩子 + 守卫脚本）
+b012893  chore: 补行尾策略并登记守卫工具
+aeac088  docs: 修正工作区文件丢失的根因（旧结论已被推翻）
+```
+
+- 均为 `chore` / `docs`，**零业务代码改动**（`js/` 未动）。
+- 获授权后执行：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=... push origin main`。
+- 推送后建议清理已合并的 `codex/cm005-input-safety` 分支。
+
+**待主 AI 确认**：`EXECUTION REPORT` 中「工作区文件丢失」一节已由外部 AI 改写
+（旧根因「不是 git 删除的」已被推翻）。若主 AI 认为该结论需要更强证据，
+可在**未提权**的命令里复跑 `.workbuddy/verify_committed_guard.py`
+（它内置前置断言：先查 `tsbx.dll` 是否注入，未注入则主动 SKIP 而不给出假阴性）。
+
+**未决事项**（不阻塞）：`.githooks/` 依赖 `core.hooksPath` 这条**本地配置**——
+它在 `git config --local` 里，**不会被 clone 的人自动获得**。若希望防线对协作者也生效，
+需要写入文档或 setup 脚本。当前仓库只有 Human 一人在用，可暂不处理。
