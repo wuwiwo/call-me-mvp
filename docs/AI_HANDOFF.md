@@ -72,13 +72,21 @@ CM-005 第二轮返工已完成。外部 AI 报告：
 推送 `55d2e77..745b8d3`，远端已核对。`main` 与已验收 tip 为**同一 commit**，
 故「已验收即已验证」。合并后在 `main` 上复跑：`input-safety` 97/97、lint 0/0 通过。
 
-已知问题（阻塞，需处理）：合并后发现 **17 个已跟踪文件在工作区缺失**
+已知问题（已定位并解决，2026-09-18）：合并后发现 **17 个已跟踪文件在工作区缺失**
 （10 个 `docs/*.md` + 7 个 `tools/*.mjs`，含 CM-002/003/004 全部测试资产）。
 HEAD 内容完整、推送不受影响；三次快照稳定，非进行中操作。
 按 `AGENTS.md:141` 未做 restore/checkout，保留原状上报。
 影响：`button-ids` / `storage-resilience` / `e2e` 三个套件因文件不存在无法本地复跑（`MODULE_NOT_FOUND`）。
 同类现象此前已出现两次，均未被任何 commit 删除，建议单开任务排查根因。
 详见 `docs/handoff/archive/CM-005.md`。
+
+根因（有回收站证据）：**不是 git 删除的**。回收站 `$I*` 元数据完整记录了四次同类删除
+（含 `docs`/`tools` 目录本身与 `.git/*.lock`），而 git 在 Windows 上不使用回收站 ——
+是外部「安全删除」工具在合并动作前后把文件移入回收站，git 随后只重写自己需要写的文件。
+已 `git restore` 恢复全部 17 个文件，恢复后 `input-safety` 97/97、`button-ids` 52/52、
+`storage-resilience` 51/51、`e2e` 29/29、lint 0/0 全部通过。
+新增防线 `tools/check-worktree.mjs`（`--fix` 可从 HEAD 恢复）。
+完整根因与时间线见 `docs/handoff/archive/WORKTREE-FILE-LOSS.md`。
 
 ## REVIEW RESULT
 
