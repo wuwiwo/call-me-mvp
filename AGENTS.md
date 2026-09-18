@@ -134,7 +134,9 @@ NEXT ACTION
 - 主 AI 在 `REVIEW RESULT` 写入 PASS、CONDITIONAL PASS 或 NEEDS REWORK 及具体意见。
 - 主 AI 在 `NEXT ACTION` 写入下一步；外部 AI 只执行明确写出的动作。
 - 新任务开始时，主 AI 更新同一个 `docs/AI_HANDOFF.md`，不再为同一轮任务要求 Human 转发独立长报告。
-- 历史任务的完整验收证据可以保留在 `tools/` 或其他归档文档，但当前协作状态只以 `docs/AI_HANDOFF.md` 为准。
+- `docs/AI_HANDOFF.md` 是当前状态面板，只允许一组固定的 H2 区块：`CURRENT TASK`、`EXECUTION STATUS`、`EXECUTION REPORT`、`REVIEW RESULT`、`NEXT ACTION`。不得把已完成任务的流水账继续追加到该文件。
+- 历史任务的协作记录统一归档到 `docs/handoff/archive/`，由 `INDEX.md` 索引；CM-002、CM-003、CM-004 等每个任务使用独立归档文件。完整测试证据继续保留在 `tools/` 或其他证据文件中，不在当前面板重复粘贴。
+- 归档迁移必须先保留原文快照，再逐段核对任务、状态、报告和验收；不得删除历史证据。读取当前状态时只读 `docs/AI_HANDOFF.md`，只有追溯历史时才读取 `docs/handoff/archive/`。
 - 如果该文件没有待执行任务，外部 AI 必须保持待命，不得自行修改代码。
 - 共享工作区是实时状态：主 AI 正在写入或提交交接文档时，外部 AI 可能短暂看到 `M`、已暂存或尚未同步的状态。发现这种瞬时状态时，先重新读取 `git status`、实际 `HEAD` 和 `docs/AI_HANDOFF.md`；不得把一次快照当成冲突、覆盖或要求 Human 做基线选择。若第二次读取仍有未归属改动，保留原状并报告，不得 reset、checkout、clean 或覆盖。
 
