@@ -45,7 +45,7 @@ VERIFICATION:
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW
+状态：PASS — CM-005 已通过主 AI 独立验收
 任务分支：codex/cm005-input-safety
 任务基线：ddff168
 任务分支最新提交：941b098
@@ -81,8 +81,20 @@ GOV-001 文档治理：PASS。
 - CM-002、CM-003、CM-004 及既有治理记录已迁入归档索引；完整原文快照保留。
 - `AGENTS.md` 已明确当前面板、归档目录和读取规则。
 
-CM-005：待主 AI 独立验收。外部报告不等于通过。
+CM-005：PASS，可进入 Human 明确授权的合并与推送门禁。
+
+主 AI 独立验收记录（2026-09-18）：
+
+- `node tools/input-safety.mjs`：97 passed / 0 failed，退出码 0。
+- `node tools/negative-input-safety.mjs`：修复版退出码 0；回退版退出码 1，命中 17 条注入类和 4 条允许列表类失败，源码已还原。
+- `node tools/button-ids.mjs`：52 passed / 0 failed，退出码 0。
+- `node tools/storage-resilience.mjs`：51 passed / 0 failed，退出码 0。
+- `node tools/e2e.mjs`：29 passed / 0 failed，退出码 0。
+- `npm run lint`：0 error / 0 warning，退出码 0。
+- `git diff --check`：通过。
+- 源码复核确认：用户输入未进入动态 HTML；icon 仅允许配置闭集和 `random`；未知历史 icon 安全回退且原值保留；历史 `_status` 仅允许 `success`/`error`。
+- CM-005 任务分支相对 `ddff168` 的业务改动范围为 `buttonManager.js`、`history.js` 和对应验证资产；无业务范围外修改。
 
 ## NEXT ACTION
 
-主 AI 切回 `codex/cm005-input-safety`，独立复核 CM-005 的代码、diff 和测试；通过后再由 Human 明确授权合并。外部 AI 在此之前保持待命，不要修改或合并 `main`。
+下一步：等待 Human 明确授权合并和推送；获授权后由主 AI 将 `codex/cm005-input-safety` 合并到 `main`，在合并后的 `main` 上重新运行关键验证，再推送并清理任务分支。外部 AI 在此之前保持待命，不要修改或合并 `main`。
