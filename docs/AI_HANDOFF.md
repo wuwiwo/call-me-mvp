@@ -51,6 +51,12 @@ VERIFICATION:
 任务分支最新提交：941b098
 当前工作分支：codex/gov-001-handoff-structure（仅文档治理）
 CM-005 未修改或合并 main。
+
+合并授权（Human，2026-09-18 16:15）：Human 已就「合并后推送」表态 ——
+等主 AI 独立验收通过（REVIEW RESULT 出现 CM-005 的 PASS）后再合并推送。
+即 PASS 落定后即可直接合并 + 推送，无需再次征求授权；
+在此之前外部 AI 保持待命，不合并 main。
+本次仅更新状态说明，未改动任何代码。
 ```
 
 ## EXECUTION REPORT
