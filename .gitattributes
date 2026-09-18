@@ -1,0 +1,12 @@
+# 行尾策略
+#
+# 本仓 core.autocrlf=true，工作区默认 CRLF、仓库内 LF。
+# 但下面这些文件必须是 LF —— 它们是给 sh / git 直接执行的脚本，
+# 行尾不确定会带来隐蔽故障（虽然实测 MSYS 的 sh 能容忍 CRLF，
+# 但那是环境容忍度，不是契约；显式声明后行为可移植且可预期）。
+
+# git 钩子：sh 脚本，shebang 必须干净
+.githooks/* text eol=lf
+
+# Node 脚本：保持 LF，避免与本机 CRLF 环境交互时产生噪音 diff
+tools/*.mjs text eol=lf

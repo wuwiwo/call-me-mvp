@@ -39,8 +39,19 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-button-ids.mjs` | CM-004：反向验证 |
 | `input-safety.mjs` | CM-005：动态用户输入注入防护 + 严格图标允许列表，97 项断言 |
 | `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
-| `check-worktree.mjs` | 环境防护：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
+| `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
+| `worktree-guard.mjs` | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤 |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
+
+> ### ⚠️ 复现/排查工作区文件丢失前必读
+> 命令若带 `Sandbox bypassed (escalation-approved)` 标记，该进程**未被注入 `tsbx.dll`**，
+> 删除走原生语义、不进回收站、**级联不可能发生** → 任何"阴性结果"都是**假阴性**。
+> 这不是偶发噪音：沙箱 `default_action: "deny_write"` 使**所有写操作都要过授权闸门**，通过后即无沙箱。
+> 详见 [`../docs/handoff/archive/WORKTREE-FILE-LOSS.md`](../docs/handoff/archive/WORKTREE-FILE-LOSS.md)
+> 的「根因（修正版）」与报告 `.workbuddy/worktree-file-loss-bugreport.md` §15。
+>
+> `tools/worktree-guard.mjs` 的日志 `.workbuddy/worktree-guard.log`
+> **只在真的恢复过文件时才写** —— 「没有日志」不代表防线失效。
 
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
 > 它们是**运行时证据**，脚本自身（含全部断言清单）才是可追溯的复核依据。
@@ -295,21 +306,50 @@ FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missi
 > 脚本因此额外断言：修复版汇总为 `0 failed`，且回退版失败项中
 > **同时**包含注入类与允许列表类关键字。
 
-### `check-worktree.mjs`（环境防护，非任务测试）
+### `check-worktree.mjs` / `worktree-guard.mjs`（环境防护，非任务测试）
 
-本仓库在 Windows 上反复出现**已跟踪文件在工作区被外部工具移入回收站**的问题
-（四次：2026-09-17 16:51 / 17:57 / 21:22-22:38，2026-09-18 16:27 丢 17 个）。
+本仓库在 Windows 上反复出现**已跟踪文件在工作区被级联删除**的问题
+（2026-09-17 三次，2026-09-18 16:27 丢 17 个、16:53 丢 26 个）。
 根因、证据与完整时间线见
 [`../docs/handoff/archive/WORKTREE-FILE-LOSS.md`](../docs/handoff/archive/WORKTREE-FILE-LOSS.md)。
 
+**根因一句话**：git 删除工作区文件后会沿路径**逐级 `rmdir` 祖先目录**，靠「目录非空 → 失败」终止；
+本机沙箱把删除改写为「移入回收站」且**不校验目录是否为空**，终止条件失效 → git 一路删到工作树顶层，
+同目录内**未被 git 重写**的已跟踪文件就此静默消失。
+
+两个脚本分工：
+
 ```bash
-node tools/check-worktree.mjs          # 只检查：有缺失则列出并 exit 1
-node tools/check-worktree.mjs --fix    # 从 HEAD 自动恢复，复检后 exit 0
+# 手动：切换/合并后主动检查，--fix 从 HEAD 恢复
+node tools/check-worktree.mjs
+node tools/check-worktree.mjs --fix
+
+# 自动：由 git 钩子驱动（需先 git config core.hooksPath .githooks）
+node tools/worktree-guard.mjs post-checkout <prev> <new> <flag>
+node tools/worktree-guard.mjs post-merge <squash>
+node tools/worktree-guard.mjs post-commit
 ```
+
+`worktree-guard.mjs` 的判定规则：
+
+```text
+intended   = git diff --diff-filter=D <prev> <new>   # 本次操作本来就要删的 → 不恢复
+missing    = 索引里已跟踪、但工作区已不存在的文件
+collateral = missing - intended                       # 级联误伤 → git restore
+```
+
+**用 `CALLME_WT_GUARD=0` 可临时关闭守卫。**
+
+**日志**：`.workbuddy/worktree-guard.log`。**只有在真的恢复过文件时才会写** ——
+`collateral` 为空时脚本直接退出，不产生日志。所以「没有日志」≠「防线失效」，
+反之「有日志」才说明发生过误伤。
 
 **用法纪律**：在 git 合并/检出之后、**任何 commit 之前**跑一次。
 若看到 ` D` 条目，**先恢复再继续** —— 不要带着缺失状态跑验证（会误判成代码回归），
 更不要 `git add -A`（会把工作区损坏固化进历史）。
+
+> ⚠️ **`.githooks/*` 与 `tools/worktree-guard.mjs` 属于防线本体，必须纳入版本控制。**
+> 若它们被级联 bug 或 `git clean` 清掉，**防线会静默失效且没有任何提示**。
 
 ## 环境注意事项
 
