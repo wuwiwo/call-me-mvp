@@ -45,18 +45,13 @@ VERIFICATION:
 ## EXECUTION STATUS
 
 ```text
-状态：PASS — CM-005 已通过主 AI 独立验收
-任务分支：codex/cm005-input-safety
+状态：MERGED — CM-005 已通过验收，已合并进 main 并推送
+任务分支：codex/cm005-input-safety（已合并，待清理）
 任务基线：ddff168
-任务分支最新提交：941b098
-当前工作分支：codex/gov-001-handoff-structure（仅文档治理）
-CM-005 未修改或合并 main。
-
-合并授权（Human，2026-09-18 16:15）：Human 已就「合并后推送」表态 ——
-等主 AI 独立验收通过（REVIEW RESULT 出现 CM-005 的 PASS）后再合并推送。
-即 PASS 落定后即可直接合并 + 推送，无需再次征求授权；
-在此之前外部 AI 保持待命，不合并 main。
-本次仅更新状态说明，未改动任何代码。
+合并后 main：745b8d3（= origin/main，已核对一致）
+当前工作分支：main
+Human 已授权「合并后推送」（2026-09-18）；外部 AI 执行快进合并与推送，
+未修改任何业务代码。合并记录详见归档 `docs/handoff/archive/CM-005.md`。
 ```
 
 ## EXECUTION REPORT
@@ -72,6 +67,18 @@ CM-005 第二轮返工已完成。外部 AI 报告：
 - 相关提交：`49bff04`、`1f62ee9`、`cf31648`、`6b626f3`、`941b098`。
 
 本轮同时完成 GOV-001 文档拆分：原 1181 行交接文档已完整保存在 `docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-18.md`，历史任务按索引归档，未删除历史证据。
+
+合并执行（外部 AI，2026-09-18）：`git merge --ff-only`，`ddff168 → 745b8d3`；
+推送 `55d2e77..745b8d3`，远端已核对。`main` 与已验收 tip 为**同一 commit**，
+故「已验收即已验证」。合并后在 `main` 上复跑：`input-safety` 97/97、lint 0/0 通过。
+
+已知问题（阻塞，需处理）：合并后发现 **17 个已跟踪文件在工作区缺失**
+（10 个 `docs/*.md` + 7 个 `tools/*.mjs`，含 CM-002/003/004 全部测试资产）。
+HEAD 内容完整、推送不受影响；三次快照稳定，非进行中操作。
+按 `AGENTS.md:141` 未做 restore/checkout，保留原状上报。
+影响：`button-ids` / `storage-resilience` / `e2e` 三个套件因文件不存在无法本地复跑（`MODULE_NOT_FOUND`）。
+同类现象此前已出现两次，均未被任何 commit 删除，建议单开任务排查根因。
+详见 `docs/handoff/archive/CM-005.md`。
 
 ## REVIEW RESULT
 
