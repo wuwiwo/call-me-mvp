@@ -1,0 +1,16 @@
+#!/bin/sh
+# 工作区防丢守卫 —— 提交后恢复被级联删除的已跟踪文件。
+# 覆盖 `git rm <深层文件>` 触发的级联（该路径不经过 post-checkout/post-merge）。
+# 背景见 tools/worktree-guard.mjs 头部注释。
+# 用 CALLME_WT_GUARD=0 可临时关闭。
+[ "${CALLME_WT_GUARD:-1}" = "0" ] && exit 0
+
+TOP=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+
+NODE=node
+command -v node >/dev/null 2>&1 || NODE="/c/Program Files/nodejs/node.exe"
+[ -x "$NODE" ] || NODE="/c/Users/dd/.workbuddy/binaries/node/versions/22.22.2-3/node.exe"
+[ -x "$NODE" ] || exit 0
+
+"$NODE" "$TOP/tools/worktree-guard.mjs" post-commit "$@" || exit 0
+exit 0
