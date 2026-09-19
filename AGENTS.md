@@ -284,6 +284,8 @@ LocalStorage key：
 
 ```text
 npm run lint
+npm test            # = node tools/run-all.mjs：lint + 7 个回归套件 + check-worktree（串行）
+npm run test:quick  # 快速路径：仅 lint + check-worktree
 npm run format:check
 npm run format
 ```
@@ -291,8 +293,10 @@ npm run format
 当前事实：
 
 - `npm run lint` 已有基线并应在代码任务中运行。
+- `npm test`（CM-009）是统一测试入口，全量约 4–8 分钟；各套件也可单独跑（见 `tools/README.md`）。
+- CI：`.github/workflows/ci.yml`（CM-009）在 push(main)/PR 时跑 lint + 全部回归套件；反向验证脚本（`negative-*.mjs`）属手工工具，不进 CI。
 - `npm run format:check` 当前未通过；它报告多个既有文件格式问题。不要把批量格式化混入业务修复。
-- 没有 `npm test`、单元测试、集成测试、E2E 测试或 GitHub Actions。`TESTING.md` 是手工检查清单，不是自动化测试。
+- `TESTING.md` 是手工检查清单；自动化回归以 `tools/` 下的套件为准。
 - 项目无构建步骤，静态文件可由任意静态服务器提供。
 
 ## 任务卡模板
