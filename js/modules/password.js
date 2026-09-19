@@ -1,14 +1,39 @@
 // /src/modules/password.js
-// 密码验证模块（简单访问控制）
+//
+// 访问提示模块。
+//
+// ⚠️ 这是 **UI 级访问提示，不是安全边界**：密码与有效期都写在前端源码里，
+// 任何能打开页面的人（读源码、开 DevTools、清 LocalStorage）都能绕过。
+// 完整的资产 / 对手 / 结论见 `docs/SECURITY.md`。
+// 因此本模块（及其文案）**不得**声称或暗示「保护 / 安全 / 加密 / 授权」。
 import { utils } from './utils.js';
+import { CONFIG } from './config.js';
 
+// LocalStorage key：**名称与格式保持不变**（数据兼容），所以留在本模块。
 const PASSWORD_KEY = 'accessPassword';
 const PASSWORD_TIMESTAMP_KEY = 'passwordSetTime';
-const PASSWORD_EXPIRY_DAYS = 7; // 7天过期
+
+// 密码与有效期的**唯一来源是 `CONFIG.password`**（config.js）。
+// 本模块不再各自硬编码一份：历史上 config.js 与本模块各存了一份默认密码
+// 与过期天数，两处独立维护，改一处就会不一致。
+// （此处刻意不写出历史字面量：验收要求 `grep 默认密码 js/` 只命中 config.js。）
+
+/** 默认密码：取自唯一来源；配置缺失或类型不对时退化为空串（不抛异常，也不放行任意输入）。 */
+function defaultPassword() {
+    const v = CONFIG.password && CONFIG.password.defaultPassword;
+    return typeof v === 'string' ? v : '';
+}
+
+/** 有效期（毫秒）：取自唯一来源；天数非法或 ≤ 0 时按 0 处理（即立即需要重新验证）。 */
+function expiryMs() {
+    const days = CONFIG.password ? Number(CONFIG.password.expiryDays) : NaN;
+    const safeDays = Number.isFinite(days) && days > 0 ? days : 0;
+    return safeDays * 24 * 60 * 60 * 1000;
+}
 
 export const password = {
     elements: null,
-    correctPassword: '666888', 
+
     // 初始化
     init(domElements) {
         this.elements = domElements;
@@ -19,20 +44,28 @@ export const password = {
         }
     },
 
-    // 检查密码是否过期
+    // 检查是否需要重新验证（没有记录 / 已过期 / 记录损坏）
+    //
+    // 关于「记录损坏」：原实现直接用 `parseInt` 的结果参与比较，而
+    // `Date.now() - NaN` 是 NaN、`NaN > x` 恒为 false ——
+    // 也就是**时间戳损坏时反而永远不要求验证**。对一道闸门来说，
+    // 坏数据应当倾向于要求验证，故显式把 NaN 判为「已过期」。
     isPasswordExpired() {
         const setTime = localStorage.getItem(PASSWORD_TIMESTAMP_KEY);
-        
-        // 如果没有设置时间，说明从未设置过密码
+
+        // 没有记录（key 不存在，或值为空串）→ 视为从未验证过
         if (!setTime) {
             return true;
         }
 
-        const now = Date.now();
-        const setTimeParsed = parseInt(setTime);
-        const expiryTime = PASSWORD_EXPIRY_DAYS * 24 * 60 * 60 * 1000; // 7天的毫秒数
-        
-        return (now - setTimeParsed) > expiryTime;
+        const setTimeParsed = parseInt(setTime, 10);
+
+        // 时间戳损坏（非数字 / NaN / Infinity）→ 按「已过期」处理
+        if (!Number.isFinite(setTimeParsed)) {
+            return true;
+        }
+
+        return Date.now() - setTimeParsed > expiryMs();
     },
 
     // 显示密码输入模态框
@@ -115,8 +148,9 @@ export const password = {
 
     // 验证密码
     verify(inputPassword) {
-        // 获取当前密码（可能是默认密码或用户设置的密码）
-        const storedPassword = localStorage.getItem(PASSWORD_KEY) || this.correctPassword;
+        // 获取当前密码（可能是用户设置的密码，否则回退默认密码）
+        // 默认密码来自**唯一来源** CONFIG.password.defaultPassword
+        const storedPassword = localStorage.getItem(PASSWORD_KEY) || defaultPassword();
         return inputPassword === storedPassword;
     },
 
@@ -154,10 +188,11 @@ export const password = {
         const setTime = localStorage.getItem(PASSWORD_TIMESTAMP_KEY);
         if (!setTime) return 0;
 
-        const now = Date.now();
-        const setTimeParsed = parseInt(setTime);
-        const expiryTime = PASSWORD_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-        const remaining = expiryTime - (now - setTimeParsed);
+        const setTimeParsed = parseInt(setTime, 10);
+        // 记录损坏 → 没有"剩余天数"可言（与 isPasswordExpired 的判定一致）
+        if (!Number.isFinite(setTimeParsed)) return 0;
+
+        const remaining = expiryMs() - (Date.now() - setTimeParsed);
 
         return Math.max(0, Math.ceil(remaining / (24 * 60 * 60 * 1000)));
     }

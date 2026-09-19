@@ -20,7 +20,12 @@ export const CONFIG = {
     emojiOptions: ["🐶", "🐱", "🦊", "🐯", "🦁", "🐨", "🐵", "🐧", "🦄", "🐟"], // 可选emoji头像
     notificationDuration: 4000, // 通知显示时间(毫秒)
     
-    // 密码验证配置
+    // 访问提示配置 —— **密码配置的唯一来源**
+    //
+    // ⚠️ 这是 UI 级访问提示，不是安全边界：值就写在这份前端源码里，
+    // 任何能打开页面的人都能看到并绕过。详见 docs/SECURITY.md。
+    // `js/modules/password.js` 从这里读取默认密码与有效期，
+    // **不要在其他模块再硬编码一份**（历史上两处独立维护过，已收敛）。
     password: {
         defaultPassword: "666888", // 默认密码
         expiryDays: 7 // 密码过期天数
