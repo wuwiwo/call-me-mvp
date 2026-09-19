@@ -51,13 +51,11 @@ onboarding.reset();
 - 🔧 **易于修改** - 可通过代码或控制台修改密码
 
 **默认密码：**
-```
-666888
-```
+默认值见 `js/modules/config.js` 的 `CONFIG.password.defaultPassword`（前端源码，打开页面即可查看）。
 
 **使用方法：**
 1. 打开页面后显示密码输入框
-2. 输入密码（默认：666888）
+2. 输入密码（默认值见 `config.js`）
 3. 点击"验证"按钮或按回车键
 4. 验证通过后正常使用应用
 
@@ -154,12 +152,21 @@ onboarding: {
 位置：`js/modules/password.js`
 
 ```javascript
-const PASSWORD_EXPIRY_DAYS = 7;  // 过期天数
-
-export const password = {
-    correctPassword: '666888',   // 默认密码
+// js/modules/config.js（密码配置的唯一来源）
+export const CONFIG = {
+    password: {
+        defaultPassword: "<默认密码，前端源码可见，非安全边界>",
+        expiryDays: 7              // 过期天数
+    },
     // ...
 };
+
+// js/modules/password.js（只读取，不再硬编码）
+import { CONFIG } from './config.js';
+function defaultPassword() {
+    const v = CONFIG.password && CONFIG.password.defaultPassword;
+    return typeof v === 'string' ? v : '';
+}
 ```
 
 ---
@@ -225,8 +232,8 @@ password.showPasswordModal();
 ```
 
 **Q: 忘记密码？**
-- 默认密码：`666888`
-- 或联系管理员获取新密码
+- 默认密码写在 `js/modules/config.js` 里（`CONFIG.password.defaultPassword`），打开页面查看源码即可看到
+- 也可打开浏览器控制台执行 `password.setPassword('新密码')` 自行设置
 
 **Q: 密码不过期？**
 ```javascript

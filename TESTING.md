@@ -67,7 +67,7 @@
    - ✅ 显示提示信息
 
 2. **密码验证测试**
-   - 输入正确密码（默认：`666888`）：
+   - 输入正确密码（默认值见 `js/modules/config.js` 的 `CONFIG.password.defaultPassword`）：
      - ✅ 模态框关闭
      - ✅ 可以正常使用应用
      - ✅ 记录设置时间到 localStorage

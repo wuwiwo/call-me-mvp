@@ -199,10 +199,10 @@ export const TRANSLATIONS = {
 ### 🔐 密码验证（首次使用）
 
 1. 打开页面后会显示密码输入框
-2. 输入访问密码（默认：`666888`）
-3. 点击“验证”或按回车键
+2. 输入访问密码（默认值见 `js/modules/config.js` 的 `CONFIG.password.defaultPassword`）
+3. 点击"验证"或按回车键
 4. 验证通过后即可正常使用
-5. **注意**：密码每 7 天自动过期，需要重新输入
+5. **注意**：密码每 7 天自动过期（本地时间戳比较，清 LocalStorage 即重置），需要重新输入。这是 UI 级访问提示，不是安全边界 —— 详见 `docs/SECURITY.md`。
 
 ### 🎓 新手引导（首次使用）
 
@@ -339,13 +339,13 @@ A: 确保浏览器允许自动播放音频，或检查音频文件路径。
 A: 打开浏览器控制台执行：`localStorage.removeItem('lastClickTime')`，然后刷新页面。
 
 ### Q: 密码忘记了怎么办？
-A: 默认密码是 `666888`。如果需要修改，打开浏览器控制台执行：`password.setPassword('新密码')`
+A: 默认密码写在 `js/modules/config.js` 里（`CONFIG.password.defaultPassword`），打开页面查看源码即可看到。如果需要修改，打开浏览器控制台执行：`password.setPassword('新密码')`。这只是 UI 级访问提示，不是安全边界 —— 详见 `docs/SECURITY.md`。
 
 ### Q: 如何重新显示新手引导？
 A: 打开浏览器控制台执行：`localStorage.removeItem('onboardingCompleted')`，然后刷新页面
 
 ### Q: 如何修改密码过期时间？
-A: 在 `js/modules/password.js` 中修改 `PASSWORD_EXPIRY_DAYS` 的值（单位：天）
+A: 在 `js/modules/config.js` 中修改 `CONFIG.password.expiryDays` 的值（单位：天）
 
 ---
 ---

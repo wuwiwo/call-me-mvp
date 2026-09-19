@@ -53,7 +53,7 @@
 ### 核心功能
 - [x] 密码输入模态框
 - [x] 密码验证逻辑
-- [x] 默认密码：`666888`
+- [x] 默认密码：见 `js/modules/config.js` 的 `CONFIG.password.defaultPassword`（前端源码可见，非安全边界）
 - [x] 7 天自动过期机制
 - [x] 验证成功/失败处理
 - [x] 错误提示显示
@@ -220,7 +220,7 @@ password.js
 
 ### 快速开始
 1. 打开项目预览地址
-2. 输入密码（默认：666888）
+2. 输入密码（默认值见 `js/modules/config.js` 的 `CONFIG.password.defaultPassword`）
 3. 自动显示新手引导
 4. 完成引导或点击跳过
 5. 正常使用应用

@@ -112,7 +112,7 @@ password.init()
   -> 读 passwordSetTime
   -> 无时间或超过 7 天 -> 动态插入密码 modal
 输入 -> verify()
-  -> 比较 localStorage.accessPassword 或前端默认 666888
+  -> 比较 localStorage.accessPassword 或 CONFIG.password.defaultPassword
   -> 成功：写 passwordSetTime，移除 modal
 ```
 
