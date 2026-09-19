@@ -237,7 +237,7 @@ LocalStorage key：
 - `state.js`、`main.js`、`buttonManager.js`、`notification.js`：冷却状态只读 `state.canClick`；冷却转换与 `lastClickTime` 写入由 `countdown.js` 独占（CM-006）。
 - `history.html`：只加载 `history.js`，由其自行调用 `language.init()`（CM-007）。
 - `notification.js`：已读回执轮询句柄化、可取消；新发送先 `stopReceiptPolling()` 使旧轮询失效，同一时刻活跃轮询 ≤ 1（CM-008）。
-- `config.js` 与 `password.js`：密码配置的重复定义已收敛为单一来源 `CONFIG.password`（CM-010）；`password.js` 不再硬编码默认密码与过期天数，损坏的 `passwordSetTime` 按「已过期」处理（fail-closed）。**剩余**：音效配置没有明确的 `notifications.error` 音效资源，`soundManager.playNotificationSound(false)` 访问未配置路径（CM-001-TD-08 余项，待后续任务）。
+- `config.js` 与 `password.js`：密码配置的重复定义已收敛为单一来源 `CONFIG.password`（CM-010）；`password.js` 不再硬编码默认密码与过期天数，损坏的 `passwordSetTime` 按「已过期」处理（fail-closed）。音效配置 `notifications.error` 已补上（CM-001-TD-08，`sounds/error-notification.wav`），`sounds.js` 的 `playNotificationSound` 加了防御性检查（配置缺失时 `console.warn` + return，不传 undefined 给 `play()`）。
 
 ## 修改流程
 
