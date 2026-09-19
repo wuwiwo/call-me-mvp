@@ -8,6 +8,7 @@
 为首次访问的用户提供交互式教程，帮助用户快速了解和使用应用的各项功能。
 
 **主要特性：**
+
 - ✨ **自动触发** - 首次访问时自动显示
 - 📝 **8 步完整引导** - 涵盖所有核心功能
 - 🎯 **元素高亮** - 引导步骤中自动高亮相关界面元素
@@ -16,6 +17,7 @@
 - 💾 **状态记录** - 完成后不再重复显示
 
 **引导步骤：**
+
 1. 👋 欢迎介绍
 2. 📝 设置用户资料指引
 3. 🎯 通知按钮使用说明
@@ -26,6 +28,7 @@
 8. 🎉 准备就绪
 
 **如何重新显示引导：**
+
 ```javascript
 // 方法 1: 浏览器控制台执行
 localStorage.removeItem('onboardingCompleted');
@@ -43,6 +46,7 @@ onboarding.reset();
 提供简单的访问控制功能，通过密码验证才能使用应用，密码每周自动过期。
 
 **主要特性：**
+
 - 🔒 **访问控制** - 输入正确密码才能使用应用
 - ⏰ **自动过期** - 密码 7 天后自动失效
 - ⌨️ **便捷输入** - 支持回车键快速验证
@@ -54,6 +58,7 @@ onboarding.reset();
 默认值见 `js/modules/config.js` 的 `CONFIG.password.defaultPassword`（前端源码，打开页面即可查看）。
 
 **使用方法：**
+
 1. 打开页面后显示密码输入框
 2. 输入密码（默认值见 `config.js`）
 3. 点击"验证"按钮或按回车键
@@ -78,20 +83,23 @@ password.isPasswordExpired();
 **修改默认密码：**
 
 方法 1：直接修改代码
+
 ```javascript
 // 文件：js/modules/password.js
 export const password = {
-    correctPassword: 'YOUR_NEW_PASSWORD', // 修改这里
+    correctPassword: 'YOUR_NEW_PASSWORD' // 修改这里
     // ...
 };
 ```
 
 方法 2：浏览器控制台
+
 ```javascript
 password.setPassword('new_password');
 ```
 
 **修改过期时间：**
+
 ```javascript
 // 文件：js/modules/password.js
 const PASSWORD_EXPIRY_DAYS = 7; // 修改这个值（单位：天）
@@ -102,14 +110,17 @@ const PASSWORD_EXPIRY_DAYS = 7; // 修改这个值（单位：天）
 ## 📁 新增文件清单
 
 ### 模块文件
+
 - `js/modules/onboarding.js` - 新手引导模块
 - `js/modules/password.js` - 密码验证模块
 
 ### 文档文件
+
 - `TESTING.md` - 详细测试指南
 - `NEW_FEATURES.md` - 本文件
 
 ### 修改文件
+
 - `js/main.js` - 集成新模块
 - `js/modules/config.js` - 添加配置项
 - `js/modules/translations.js` - 添加多语言翻译
@@ -121,6 +132,7 @@ const PASSWORD_EXPIRY_DAYS = 7; // 修改这个值（单位：天）
 ## 🎨 UI 展示
 
 ### 新手引导界面
+
 - 居中模态框，圆角设计
 - 半透明遮罩层，带模糊效果
 - 脉冲动画高亮目标元素
@@ -128,6 +140,7 @@ const PASSWORD_EXPIRY_DAYS = 7; // 修改这个值（单位：天）
 - 双按钮操作（跳过/下一步）
 
 ### 密码验证界面
+
 - 与现有模态框风格一致
 - 密码输入框自动聚焦
 - 错误提示（红色，3秒自动消失）
@@ -139,6 +152,7 @@ const PASSWORD_EXPIRY_DAYS = 7; // 修改这个值（单位：天）
 ## 🔧 配置选项
 
 ### 新手引导配置
+
 位置：`js/modules/config.js`
 
 ```javascript
@@ -149,15 +163,16 @@ onboarding: {
 ```
 
 ### 密码验证配置
+
 位置：`js/modules/password.js`
 
 ```javascript
 // js/modules/config.js（密码配置的唯一来源）
 export const CONFIG = {
     password: {
-        defaultPassword: "<默认密码，前端源码可见，非安全边界>",
-        expiryDays: 7              // 过期天数
-    },
+        defaultPassword: '<默认密码，前端源码可见，非安全边界>',
+        expiryDays: 7 // 过期天数
+    }
     // ...
 };
 
@@ -174,12 +189,14 @@ function defaultPassword() {
 ## 💡 使用场景
 
 ### 新手引导适用场景
+
 - ✅ 新用户首次访问
 - ✅ 功能更新后重新引导
 - ✅ 用户请求重新查看
 - ✅ 培训或演示用途
 
 ### 密码验证适用场景
+
 - ✅ 团队内部工具访问控制
 - ✅ 防止未授权用户访问
 - ✅ 定期更换访问凭证
@@ -190,11 +207,13 @@ function defaultPassword() {
 ## ⚠️ 注意事项
 
 ### 新手引导
+
 1. **页面结构变化** - 如果界面大幅调整，需要更新引导步骤
 2. **动态元素** - 某些动态生成的元素可能无法高亮
 3. **移动端体验** - 已优化移动端显示，但建议在真实设备上测试
 
 ### 密码验证
+
 1. **安全性提醒** - 这是简单访问控制，不适用于高安全场景
 2. **密码存储** - 密码存储在 localStorage，用户可以查看
 3. **过期机制** - 基于本地时间，用户可以修改系统时间绕过
@@ -207,6 +226,7 @@ function defaultPassword() {
 ### 新手引导问题
 
 **Q: 引导不显示？**
+
 ```javascript
 // 检查引导状态
 console.log(localStorage.getItem('onboardingCompleted'));
@@ -216,26 +236,31 @@ location.reload();
 ```
 
 **Q: 高亮元素不正确？**
+
 - 检查 `onboarding.js` 中的 `steps` 配置
 - 确保 `highlight` 字段对应的元素 ID 存在
 
 **Q: 多语言不生效？**
+
 - 检查 `translations.js` 中是否有对应语言的翻译
 - 确保 `onboarding` 部分的翻译完整
 
 ### 密码验证问题
 
 **Q: 密码验证不显示？**
+
 ```javascript
 // 强制显示密码框
 password.showPasswordModal();
 ```
 
 **Q: 忘记密码？**
+
 - 默认密码写在 `js/modules/config.js` 里（`CONFIG.password.defaultPassword`），打开页面查看源码即可看到
 - 也可打开浏览器控制台执行 `password.setPassword('新密码')` 自行设置
 
 **Q: 密码不过期？**
+
 ```javascript
 // 检查设置时间
 console.log(localStorage.getItem('passwordSetTime'));
@@ -261,6 +286,7 @@ location.reload();
 ## 🚀 后续优化建议
 
 ### 新手引导
+
 - [ ] 添加引导动画效果
 - [ ] 支持视频引导
 - [ ] 添加进度保存功能
@@ -268,6 +294,7 @@ location.reload();
 - [ ] 添加引导数据分析
 
 ### 密码验证
+
 - [ ] 支持后端验证
 - [ ] 添加密码强度检查
 - [ ] 支持多用户密码
@@ -279,6 +306,7 @@ location.reload();
 ## 📞 技术支持
 
 如有问题或建议，请：
+
 1. 查看 `TESTING.md` 详细测试指南
 2. 查看 `README.md` 项目文档
 3. 检查浏览器控制台错误信息

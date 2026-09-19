@@ -54,17 +54,17 @@ export const state = {
 
     isRequestPending: false,
     currentLang: 'zh',
-    
+
     init() {
         // 从localStorage加载用户资料
         // 损坏或类型错误时回退为 null（未注册），不阻断启动
         this.userProfile = readJsonSafe(
             'userProfile',
             null,
-            v => v !== null && typeof v === 'object' && !Array.isArray(v)
+            (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
         );
-        
-// 从localStorage加载语言设置（使用新的键名）
+
+        // 从localStorage加载语言设置（使用新的键名）
         const savedLang = localStorage.getItem('appLanguage');
         if (savedLang) {
             this.currentLang = savedLang;

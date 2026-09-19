@@ -24,61 +24,55 @@
 // 本机注意：HTTP_PROXY 会劫持回环请求 → Chrome 带 --no-proxy-server；
 //           静态服务器必须与浏览器同进程；CDP 端口默认 9449
 //           （避开与 CM-004/006 重复的 9446、以及落在动态端口范围的 9445）。
-import http from "node:http";
-import { spawn } from "node:child_process";
-import {
-    createReadStream,
-    mkdirSync,
-    readFileSync,
-    statSync,
-    writeFileSync,
-} from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { resolveChrome } from "./chrome-path.mjs";
+import http from 'node:http';
+import { spawn } from 'node:child_process';
+import { createReadStream, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { resolveChrome } from './chrome-path.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, '..');
 
 const SERVE_PORT = Number(process.env.CM008_PORT || 8899);
-const EXTERNAL = process.env.CM008_NO_SERVER === "1";
+const EXTERNAL = process.env.CM008_NO_SERVER === '1';
 const BASE = process.env.CM008_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM008_CDP_PORT || 9449);
 // Chrome 路径解析已统一到 tools/chrome-path.mjs（CM-009）：
 // CM008_CHROME > CHROME_PATH > 常见安装位置 > which
 const CHROME = resolveChrome(process.env.CM008_CHROME);
-const PROFILE = path.join(os.tmpdir(), "cm008-receipt-profile");
+const PROFILE = path.join(os.tmpdir(), 'cm008-receipt-profile');
 
-const LOG_PATH = process.env.CM008_LOG || "";
+const LOG_PATH = process.env.CM008_LOG || '';
 const logLines = [];
 {
     const raw = console.log.bind(console);
     console.log = (...a) => {
-        const s = a.join(" ");
+        const s = a.join(' ');
         logLines.push(s);
         raw(s);
     };
 }
 
 const MIME = {
-    ".html": "text/html; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".mjs": "text/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8'
 };
 
 let staticServer = null;
 if (!EXTERNAL) {
     await new Promise((resolve, reject) => {
         staticServer = http.createServer((req, res) => {
-            let rel = decodeURIComponent(req.url.split("?")[0]);
-            if (rel === "/") rel = "/index.html";
+            let rel = decodeURIComponent(req.url.split('?')[0]);
+            if (rel === '/') rel = '/index.html';
             const fp = path.join(ROOT, rel);
             if (!fp.startsWith(ROOT)) {
                 res.writeHead(403);
-                res.end("forbidden");
+                res.end('forbidden');
                 return;
             }
             let st;
@@ -86,81 +80,81 @@ if (!EXTERNAL) {
                 st = statSync(fp);
             } catch {
                 res.writeHead(404);
-                res.end("not found");
+                res.end('not found');
                 return;
             }
             if (!st.isFile()) {
                 res.writeHead(404);
-                res.end("not found");
+                res.end('not found');
                 return;
             }
             res.writeHead(200, {
-                "Content-Type": MIME[path.extname(fp)] || "application/octet-stream",
-                "Cache-Control": "no-store",
+                'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream',
+                'Cache-Control': 'no-store'
             });
             createReadStream(fp).pipe(res);
         });
-        staticServer.on("error", reject);
-        staticServer.listen(SERVE_PORT, "127.0.0.1", () => resolve());
+        staticServer.on('error', reject);
+        staticServer.listen(SERVE_PORT, '127.0.0.1', () => resolve());
     });
 }
 
 const cleanEnv = { ...process.env };
 for (const k of Object.keys(cleanEnv)) if (/proxy/i.test(k)) delete cleanEnv[k];
-cleanEnv.NO_PROXY = "127.0.0.1,localhost";
-cleanEnv.no_proxy = "127.0.0.1,localhost";
+cleanEnv.NO_PROXY = '127.0.0.1,localhost';
+cleanEnv.no_proxy = '127.0.0.1,localhost';
 
 mkdirSync(PROFILE, { recursive: true });
 const chromeProc = spawn(
     CHROME,
     [
-        "--headless=new",
+        '--headless=new',
         `--remote-debugging-port=${CDP_PORT}`,
         `--user-data-dir=${PROFILE}`,
-        "--no-first-run",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--no-proxy-server",
-        "--proxy-bypass-list=<-loopback>",
-        "about:blank",
+        '--no-first-run',
+        '--disable-gpu',
+        '--no-sandbox',
+        '--no-proxy-server',
+        '--proxy-bypass-list=<-loopback>',
+        'about:blank'
     ],
-    { stdio: "ignore", env: cleanEnv }
+    { stdio: 'ignore', env: cleanEnv }
 );
 
 function httpGetJson(pathname) {
     return new Promise((resolve, reject) => {
         const req = http.get(
-            { host: "127.0.0.1", port: CDP_PORT, path: pathname, timeout: 4000 },
-            res => {
-                let body = "";
-                res.setEncoding("utf8");
-                res.on("data", c => (body += c));
-                res.on("end", () => {
+            { host: '127.0.0.1', port: CDP_PORT, path: pathname, timeout: 4000 },
+            (res) => {
+                let body = '';
+                res.setEncoding('utf8');
+                res.on('data', (c) => (body += c));
+                res.on('end', () => {
                     try {
                         resolve(JSON.parse(body));
                     } catch {
-                        reject(new Error("bad json: " + body.slice(0, 120)));
+                        reject(new Error('bad json: ' + body.slice(0, 120)));
                     }
                 });
             }
         );
-        req.on("timeout", () => req.destroy(new Error("timeout")));
-        req.on("error", reject);
+        req.on('timeout', () => req.destroy(new Error('timeout')));
+        req.on('error', reject);
     });
 }
 
 async function getWsUrl() {
     for (let i = 0; i < 60; i++) {
         try {
-            const j = await httpGetJson("/json/version");
+            const j = await httpGetJson('/json/version');
             if (j.webSocketDebuggerUrl)
-                return j.webSocketDebuggerUrl.replace("localhost", "127.0.0.1");
+                return j.webSocketDebuggerUrl.replace('localhost', '127.0.0.1');
         } catch {
             /* retry */
         }
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
     }
-    throw new Error("CDP 未就绪：Chrome 是否启动？端口 " + CDP_PORT);
+    throw new Error('CDP 未就绪：Chrome 是否启动？端口 ' + CDP_PORT);
 }
 
 class CDP {
@@ -168,7 +162,7 @@ class CDP {
         this.ws = ws;
         this.id = 0;
         this.pending = new Map();
-        ws.addEventListener("message", ev => {
+        ws.addEventListener('message', (ev) => {
             const msg = JSON.parse(ev.data);
             if (msg.id && this.pending.has(msg.id)) {
                 const { resolve, reject } = this.pending.get(msg.id);
@@ -188,49 +182,47 @@ class CDP {
             setTimeout(() => {
                 if (this.pending.has(id)) {
                     this.pending.delete(id);
-                    reject(new Error("timeout: " + method));
+                    reject(new Error('timeout: ' + method));
                 }
             }, 20000);
         });
     }
 }
 
-console.log("=== CM-008 回执轮询生命周期回归 ===\n");
+console.log('=== CM-008 回执轮询生命周期回归 ===\n');
 
 const ws = new WebSocket(await getWsUrl());
 await new Promise((res, rej) => {
-    ws.addEventListener("open", res);
-    ws.addEventListener("error", rej);
+    ws.addEventListener('open', res);
+    ws.addEventListener('error', rej);
 });
 const cdp = new CDP(ws);
 
-const { targetInfos } = await cdp.send("Target.getTargets");
-let target = targetInfos.find(t => t.type === "page");
+const { targetInfos } = await cdp.send('Target.getTargets');
+let target = targetInfos.find((t) => t.type === 'page');
 if (!target) {
-    const r = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const r = await cdp.send('Target.createTarget', { url: 'about:blank' });
     target = { targetId: r.targetId };
 }
-const { sessionId } = await cdp.send("Target.attachToTarget", {
+const { sessionId } = await cdp.send('Target.attachToTarget', {
     targetId: target.targetId,
-    flatten: true,
+    flatten: true
 });
 const S = sessionId;
-await cdp.send("Page.enable", {}, S);
-await cdp.send("Runtime.enable", {}, S);
+await cdp.send('Page.enable', {}, S);
+await cdp.send('Runtime.enable', {}, S);
 
 const pageErrors = [];
-ws.addEventListener("message", ev => {
+ws.addEventListener('message', (ev) => {
     const m = JSON.parse(ev.data);
-    if (m.method === "Runtime.exceptionThrown") {
+    if (m.method === 'Runtime.exceptionThrown') {
         pageErrors.push(
-            m.params.exceptionDetails.exception?.description ||
-                m.params.exceptionDetails.text
+            m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text
         );
     }
-    if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") {
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
         pageErrors.push(
-            "console.error: " +
-                m.params.args.map(a => a.value ?? a.description).join(" ")
+            'console.error: ' + m.params.args.map((a) => a.value ?? a.description).join(' ')
         );
     }
 });
@@ -290,57 +282,55 @@ const INSTRUMENT = `
     };
 })();
 `;
-await cdp.send("Page.addScriptToEvaluateOnNewDocument", { source: INSTRUMENT }, S);
+await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: INSTRUMENT }, S);
 
-const ver = await httpGetJson("/json/version");
-console.log("[环境]");
-console.log("  测试 URL :", BASE);
-console.log("  Chrome   :", ver.Browser);
-console.log("  CDP 端口 :", CDP_PORT);
-console.log("");
+const ver = await httpGetJson('/json/version');
+console.log('[环境]');
+console.log('  测试 URL :', BASE);
+console.log('  Chrome   :', ver.Browser);
+console.log('  CDP 端口 :', CDP_PORT);
+console.log('');
 
 async function evalJs(expr) {
     const r = await cdp.send(
-        "Runtime.evaluate",
+        'Runtime.evaluate',
         { expression: expr, returnByValue: true, awaitPromise: true },
         S
     );
     if (r.exceptionDetails) {
         throw new Error(
-            "页面内异常: " +
-                (r.exceptionDetails.exception?.description ||
-                    r.exceptionDetails.text)
+            '页面内异常: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text)
         );
     }
     return r.result.value;
 }
 
 async function goto(url) {
-    await cdp.send("Page.navigate", { url }, S);
+    await cdp.send('Page.navigate', { url }, S);
     for (let i = 0; i < 80; i++) {
         try {
-            if ((await evalJs("document.readyState")) === "complete") break;
+            if ((await evalJs('document.readyState')) === 'complete') break;
         } catch {
             /* navigating */
         }
-        await new Promise(r => setTimeout(r, 120));
+        await new Promise((r) => setTimeout(r, 120));
     }
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 400));
 }
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let pass = 0;
 let fail = 0;
 const failedItems = [];
-function check(name, cond, extra = "") {
+function check(name, cond, extra = '') {
     if (cond) {
         pass++;
         console.log(`  PASS  ${name}`);
     } else {
         fail++;
-        failedItems.push(name + (extra ? " -> " + extra : ""));
-        console.log(`  FAIL  ${name}${extra ? " -> " + extra : ""}`);
+        failedItems.push(name + (extra ? ' -> ' + extra : ''));
+        console.log(`  FAIL  ${name}${extra ? ' -> ' + extra : ''}`);
     }
 }
 
@@ -392,7 +382,7 @@ async function openApp() {
         localStorage.setItem('passwordSetTime', String(Date.now()));
         return true;
     })()`);
-    await goto(BASE + "/index.html");
+    await goto(BASE + '/index.html');
 }
 
 /** 设置桩的读取策略；null = 永不匹配 */
@@ -432,161 +422,158 @@ async function sendViaModule() {
     })()`);
 }
 
-await goto(BASE + "/index.html");
+await goto(BASE + '/index.html');
 
 // ── 前置：能力探测与环境确认 ──
-console.log("─".repeat(64));
-console.log("S0 前置：模块接口与 JSONBin 配置");
-console.log("─".repeat(64));
+console.log('─'.repeat(64));
+console.log('S0 前置：模块接口与 JSONBin 配置');
+console.log('─'.repeat(64));
 await openApp();
 let s = await snap();
-check("快照可取（模块可导入）", !s.error, s.error || "");
-check("配置里有 JSONBin binUrl（否则轮询不会启动）", s.binUrlPresent === true,
-    String(s.binUrlPresent));
+check('快照可取（模块可导入）', !s.error, s.error || '');
+check(
+    '配置里有 JSONBin binUrl（否则轮询不会启动）',
+    s.binUrlPresent === true,
+    String(s.binUrlPresent)
+);
 const duration = s.notificationDuration;
-console.log(`  （通知 toast 时长 notificationDuration = ${duration}；`
-    + `与轮询的 2000ms 是否相同会影响定时器计数的解释）`);
+console.log(
+    `  （通知 toast 时长 notificationDuration = ${duration}；` +
+        `与轮询的 2000ms 是否相同会影响定时器计数的解释）`
+);
 
 // ── S1 单次发送：读到 read ──
-console.log("\n" + "─".repeat(64));
-console.log("S1 单次发送：读到 read");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S1 单次发送：读到 read');
+console.log('─'.repeat(64));
 await openApp();
 await setReadFor(null); // 先设为永不匹配
 const t1 = await clickSend();
-check("发送按钮可点击", t1 === "ok", String(t1));
+check('发送按钮可点击', t1 === 'ok', String(t1));
 await wait(300);
 s = await snap();
-check("发送后立刻是 sent 状态", s.cls === "receipt-status sent", String(s.cls));
-check("发送后有轮询在等待（pollArmed = true）", s.pollArmed === true,
-    String(s.pollArmed));
+check('发送后立刻是 sent 状态', s.cls === 'receipt-status sent', String(s.cls));
+check('发送后有轮询在等待（pollArmed = true）', s.pollArmed === true, String(s.pollArmed));
 // 把读取策略切成本次消息，下一次轮询即可命中
 await setReadFor(s.lastMsgId);
 const tS1 = Date.now();
 await wait(2600);
 s = await snap();
-check("读到 read → 状态条为 read", s.cls === "receipt-status read", String(s.cls));
-check("read 文案已本地化写入", typeof s.text === "string" && s.text.length > 0,
-    JSON.stringify(s.text));
-check("命中后轮询不再排队（pollArmed = false）", s.pollArmed === false,
-    String(s.pollArmed));
+check('读到 read → 状态条为 read', s.cls === 'receipt-status read', String(s.cls));
 check(
-    "节奏：约 2s 内命中（1 次 bin 请求）",
+    'read 文案已本地化写入',
+    typeof s.text === 'string' && s.text.length > 0,
+    JSON.stringify(s.text)
+);
+check('命中后轮询不再排队（pollArmed = false）', s.pollArmed === false, String(s.pollArmed));
+check(
+    '节奏：约 2s 内命中（1 次 bin 请求）',
     s.binCalls === 1 && Date.now() - tS1 < 4000,
     `binCalls=${s.binCalls}, elapsed≈${Date.now() - tS1}ms`
 );
 
 // ── S2 单次发送：始终读不到 → timeout ──
-console.log("\n" + "─".repeat(64));
-console.log("S2 单次发送：始终读不到 → 15 次后 timeout（约 32s）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S2 单次发送：始终读不到 → 15 次后 timeout（约 32s）');
+console.log('─'.repeat(64));
 await openApp();
 await setReadFor(null);
 const t2 = await clickSend();
-check("发送按钮可点击", t2 === "ok", String(t2));
+check('发送按钮可点击', t2 === 'ok', String(t2));
 await wait(300);
 s = await snap();
-check("轮询已启动", s.pollArmed === true, String(s.pollArmed));
-check("尚未超时（仍为 sent）", s.cls === "receipt-status sent", String(s.cls));
+check('轮询已启动', s.pollArmed === true, String(s.pollArmed));
+check('尚未超时（仍为 sent）', s.cls === 'receipt-status sent', String(s.cls));
 
 const tS2 = Date.now();
 await wait(35000);
 s = await snap();
 const elapsed2 = Date.now() - tS2;
-check("超时后状态条为 timeout", s.cls === "receipt-status timeout", String(s.cls));
-check("timeout 文案已写入", typeof s.text === "string" && s.text.length > 0,
-    JSON.stringify(s.text));
+check('超时后状态条为 timeout', s.cls === 'receipt-status timeout', String(s.cls));
 check(
-    "节奏不变：共 15 次 bin 请求",
-    s.binCalls === 15,
-    String(s.binCalls)
+    'timeout 文案已写入',
+    typeof s.text === 'string' && s.text.length > 0,
+    JSON.stringify(s.text)
 );
-check(
-    "超时耗时约 30-36s",
-    elapsed2 >= 28000 && elapsed2 <= 42000,
-    `${elapsed2}ms`
-);
-check("超时后轮询不再排队", s.pollArmed === false, String(s.pollArmed));
+check('节奏不变：共 15 次 bin 请求', s.binCalls === 15, String(s.binCalls));
+check('超时耗时约 30-36s', elapsed2 >= 28000 && elapsed2 <= 42000, `${elapsed2}ms`);
+check('超时后轮询不再排队', s.pollArmed === false, String(s.pollArmed));
 
 // ── S3 并发打断（核心）──
-console.log("\n" + "─".repeat(64));
-console.log("S3 并发打断：第二次发送时第一次轮询仍在进行");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S3 并发打断：第二次发送时第一次轮询仍在进行');
+console.log('─'.repeat(64));
 await openApp();
 await setReadFor(null); // 第一次：永不匹配，让轮询持续跑
 const t3 = Date.now();
 const first = await sendViaModule();
-check("第一次发送成功", first === "true", String(first));
+check('第一次发送成功', first === 'true', String(first));
 await wait(5000); // 第一次轮询已进行约 2 次
 s = await snap();
 const firstMsgId = s.lastMsgId;
 const firstGen = s.generation;
 const binCallsAfterFirst = s.binCalls;
-check("第一次轮询仍在进行（pollArmed = true）", s.pollArmed === true,
-    String(s.pollArmed));
-check("第一次已发出 ≥1 次 bin 请求", binCallsAfterFirst >= 1,
-    String(binCallsAfterFirst));
+check('第一次轮询仍在进行（pollArmed = true）', s.pollArmed === true, String(s.pollArmed));
+check('第一次已发出 ≥1 次 bin 请求', binCallsAfterFirst >= 1, String(binCallsAfterFirst));
 
 // 第二次发送：此时第一次轮询仍在跑
 const second = await sendViaModule();
-check("第二次发送成功", second === "true", String(second));
+check('第二次发送成功', second === 'true', String(second));
 await wait(300);
 s = await snap();
 const secondMsgId = s.lastMsgId;
-check("第二次发送的 msgId 与第一次不同", secondMsgId && secondMsgId !== firstMsgId,
-    `${firstMsgId} vs ${secondMsgId}`);
-check("第二次发送后状态条从 sent 重新开始",
-    s.cls === "receipt-status sent", String(s.cls));
 check(
-    "旧轮询已被失效（代际自增）",
-    typeof s.generation === "number" &&
-        typeof firstGen === "number" &&
-        s.generation > firstGen,
+    '第二次发送的 msgId 与第一次不同',
+    secondMsgId && secondMsgId !== firstMsgId,
+    `${firstMsgId} vs ${secondMsgId}`
+);
+check('第二次发送后状态条从 sent 重新开始', s.cls === 'receipt-status sent', String(s.cls));
+check(
+    '旧轮询已被失效（代际自增）',
+    typeof s.generation === 'number' && typeof firstGen === 'number' && s.generation > firstGen,
     `${firstGen} -> ${s.generation}`
 );
-check("同一时刻活跃轮询 ≤ 1（仍只有一个轮询在等待）",
-    s.pollArmed === true, String(s.pollArmed));
+check('同一时刻活跃轮询 ≤ 1（仍只有一个轮询在等待）', s.pollArmed === true, String(s.pollArmed));
 
 // 让第二次能读到
 await setReadFor(secondMsgId);
 const binBeforeRead = s.binCalls;
 await wait(2600);
 s = await snap();
-check("第二次发送读到 read → 状态条为 read",
-    s.cls === "receipt-status read", String(s.cls));
+check('第二次发送读到 read → 状态条为 read', s.cls === 'receipt-status read', String(s.cls));
 const binCallsWhenRead = s.binCalls;
-check("第二次读取确实发生了（bin 请求增加）",
+check(
+    '第二次读取确实发生了（bin 请求增加）',
     binCallsWhenRead > binBeforeRead,
-    `${binBeforeRead} -> ${binCallsWhenRead}`);
+    `${binBeforeRead} -> ${binCallsWhenRead}`
+);
 
 // ★ 关键：等到第一次轮询原本会超时的时刻（第一次发送后约 32s），
 //   若旧轮询没被取消，它的 timeout 分支会把状态条改写成 timeout。
 const needWait = Math.max(0, 34000 - (Date.now() - t3));
-console.log(`  （第一次发送已过去约 ${Date.now() - t3}ms，`
-    + `再等 ${Math.round(needWait / 1000)}s 越过它的原超时点）`);
+console.log(
+    `  （第一次发送已过去约 ${Date.now() - t3}ms，` +
+        `再等 ${Math.round(needWait / 1000)}s 越过它的原超时点）`
+);
 await wait(needWait + 1000);
 s = await snap();
 check(
-    "★ 旧轮询的超时分支未覆盖新状态条（仍为 read）",
-    s.cls === "receipt-status read",
+    '★ 旧轮询的超时分支未覆盖新状态条（仍为 read）',
+    s.cls === 'receipt-status read',
     String(s.cls)
 );
-check(
-    "★ 旧轮询已停止发请求（bin 请求 ≤ 6）",
-    s.binCalls <= 6,
-    `binCalls=${s.binCalls}`
-);
-check("最终无活跃轮询", s.pollArmed === false, String(s.pollArmed));
+check('★ 旧轮询已停止发请求（bin 请求 ≤ 6）', s.binCalls <= 6, `binCalls=${s.binCalls}`);
+check('最终无活跃轮询', s.pollArmed === false, String(s.pollArmed));
 console.log(
-    `  （本次共 ${s.binCalls} 次 bin 请求。判定依据：第一次轮询在交接前约 2 次、`
-    + `第二次轮询读到 read 只需 1 次 → 约 3 次；`
-    + `若第一次轮询仍存活，它会一直跑到第 15 次，总数会到 15 次以上）`
+    `  （本次共 ${s.binCalls} 次 bin 请求。判定依据：第一次轮询在交接前约 2 次、` +
+        `第二次轮询读到 read 只需 1 次 → 约 3 次；` +
+        `若第一次轮询仍存活，它会一直跑到第 15 次，总数会到 15 次以上）`
 );
 
 // ── S4 宽容语义 ──
-console.log("\n" + "─".repeat(64));
-console.log("S4 宽容语义：msgId 为空 / binUrl 缺失");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S4 宽容语义：msgId 为空 / binUrl 缺失');
+console.log('─'.repeat(64));
 await openApp();
 const s4base = await evalJs(`(async () => {
     const { notification } = await import('/js/modules/notification.js');
@@ -610,10 +597,9 @@ try {
 } catch {
     /* ignore */
 }
-check("msgId 为空/缺失时不抛异常", s4.threw === null, String(s4.threw));
-check("msgId 为空时不启动轮询（未新增定时器）", s4.newTimeouts === 0,
-    String(s4.newTimeouts));
-check("msgId 为空时不发 bin 请求", s4.binCalls === 0, String(s4.binCalls));
+check('msgId 为空/缺失时不抛异常', s4.threw === null, String(s4.threw));
+check('msgId 为空时不启动轮询（未新增定时器）', s4.newTimeouts === 0, String(s4.newTimeouts));
+check('msgId 为空时不发 bin 请求', s4.binCalls === 0, String(s4.binCalls));
 
 const s4b = await evalJs(`(async () => {
     const { CONFIG } = await import('/js/modules/config.js');
@@ -640,26 +626,23 @@ try {
 } catch {
     /* ignore */
 }
-check("binUrl 缺失时不抛异常", s4bObj.threw === null, String(s4bObj.threw));
-check("binUrl 缺失时不启动轮询", s4bObj.newTimeouts === 0,
-    String(s4bObj.newTimeouts));
-check("binUrl 缺失时不发 bin 请求", s4bObj.binCalls === 0,
-    String(s4bObj.binCalls));
-check("CONFIG.jsonBin 已被测试还原", s4bObj.restored === true,
-    String(s4bObj.restored));
+check('binUrl 缺失时不抛异常', s4bObj.threw === null, String(s4bObj.threw));
+check('binUrl 缺失时不启动轮询', s4bObj.newTimeouts === 0, String(s4bObj.newTimeouts));
+check('binUrl 缺失时不发 bin 请求', s4bObj.binCalls === 0, String(s4bObj.binCalls));
+check('CONFIG.jsonBin 已被测试还原', s4bObj.restored === true, String(s4bObj.restored));
 
 // ── S5 可取消性：stop 之后旧回调不得再写状态条 ──
-console.log("\n" + "─".repeat(64));
-console.log("S5 可取消性：stopReceiptPolling 之后状态条不再被改写");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S5 可取消性：stopReceiptPolling 之后状态条不再被改写');
+console.log('─'.repeat(64));
 await openApp();
 await setReadFor(null);
 const t5 = await clickSend();
-check("发送可点击", t5 === "ok", String(t5));
+check('发送可点击', t5 === 'ok', String(t5));
 await wait(2600);
 s = await snap();
-check("轮询进行中", s.pollArmed === true, String(s.pollArmed));
-check("代际字段可读", typeof s.generation === "number", String(s.generation));
+check('轮询进行中', s.pollArmed === true, String(s.pollArmed));
+check('代际字段可读', typeof s.generation === 'number', String(s.generation));
 
 if (s.hasStop === true) {
     // 显式置成一个可识别的状态，然后停止轮询并等待越过原超时点
@@ -672,31 +655,33 @@ if (s.hasStop === true) {
     const binAtStop = (await snap()).binCalls;
     await wait(35000);
     s = await snap();
-    check("stop 后状态条保持 read（未被旧轮询改写为 timeout）",
-        s.cls === "receipt-status read", String(s.cls));
-    check("stop 后不再发 bin 请求", s.binCalls === binAtStop,
-        `${binAtStop} -> ${s.binCalls}`);
-    check("stop 后无活跃轮询", s.pollArmed === false, String(s.pollArmed));
-    check("stop 后 timer 句柄被清空", s.pollArmed === false, String(s.pollArmed));
+    check(
+        'stop 后状态条保持 read（未被旧轮询改写为 timeout）',
+        s.cls === 'receipt-status read',
+        String(s.cls)
+    );
+    check('stop 后不再发 bin 请求', s.binCalls === binAtStop, `${binAtStop} -> ${s.binCalls}`);
+    check('stop 后无活跃轮询', s.pollArmed === false, String(s.pollArmed));
+    check('stop 后 timer 句柄被清空', s.pollArmed === false, String(s.pollArmed));
 } else {
-    check("提供 stopReceiptPolling 接口", false,
-        "旧实现没有该接口（反向验证时会命中此条）");
+    check('提供 stopReceiptPolling 接口', false, '旧实现没有该接口（反向验证时会命中此条）');
 }
 
 // ── S6 定时器计数（辅助证据）──
-console.log("\n" + "─".repeat(64));
-console.log("S6 定时器计数（辅助证据）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S6 定时器计数（辅助证据）');
+console.log('─'.repeat(64));
 await openApp();
 await setReadFor(null);
 await sendViaModule();
 await wait(500);
 s = await snap();
-console.log(`  （待触发的 2000ms 定时器：${s.pending2s}；`
-    + `notificationDuration = ${s.notificationDuration}）`);
+console.log(
+    `  （待触发的 2000ms 定时器：${s.pending2s}；` +
+        `notificationDuration = ${s.notificationDuration}）`
+);
 // 用轮询自身的 timer 句柄做权威判断；待触发计数作为辅助（toast 等可能各占一个）
-check("轮询句柄非空（权威：只有一个轮询在等）", s.pollArmed === true,
-    String(s.pollArmed));
+check('轮询句柄非空（权威：只有一个轮询在等）', s.pollArmed === true, String(s.pollArmed));
 const pendingTolerance = s.notificationDuration === 2000 ? 2 : 1;
 check(
     `待触发的 2000ms 定时器 ≤ ${pendingTolerance}（辅助，容忍 toast）`,
@@ -708,22 +693,20 @@ const before = s.pending2s;
 await sendViaModule();
 await wait(500);
 s = await snap();
-check("第二次发送后待触发计数未叠加（旧 timer 已 clear）",
+check(
+    '第二次发送后待触发计数未叠加（旧 timer 已 clear）',
     s.pending2s <= before + pendingTolerance,
-    `${before} -> ${s.pending2s}`);
-check("第二次发送后仍只有一个轮询句柄", s.pollArmed === true,
-    String(s.pollArmed));
+    `${before} -> ${s.pending2s}`
+);
+check('第二次发送后仍只有一个轮询句柄', s.pollArmed === true, String(s.pollArmed));
 
 // ── S7 同源性扫描：参数遮蔽已修 + 状态条写入点唯一 ──
-console.log("\n" + "─".repeat(64));
-console.log("S7 同源性：参数遮蔽与状态条写入点");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S7 同源性：参数遮蔽与状态条写入点');
+console.log('─'.repeat(64));
 // 源码扫描在 **Node 侧**做：页面里的 window.fetch 已被测试桩替换，
 // 不能用它去取源文件（桩返回的对象没有 .text()）。
-const src = readFileSync(
-    path.join(ROOT, "js/modules/notification.js"),
-    "utf8"
-);
+const src = readFileSync(path.join(ROOT, 'js/modules/notification.js'), 'utf8');
 const countIn = (hay, needle) => {
     let n = 0;
     let i = 0;
@@ -734,52 +717,62 @@ const countIn = (hay, needle) => {
     return n;
 };
 const sc = {
-    hasShadowParam: src.indexOf("setReceiptStatus(state)") !== -1,
-    hasRenamedParam: src.indexOf("setReceiptStatus(statusName)") !== -1,
+    hasShadowParam: src.indexOf('setReceiptStatus(state)') !== -1,
+    hasRenamedParam: src.indexOf('setReceiptStatus(statusName)') !== -1,
     // 注意：`this.receiptPollTimer = setTimeout(poll, 2000)` 也**包含**
     // `setTimeout(poll, 2000)` 这个子串，所以"裸调用"要用差值算，
     // 否则会把已被句柄接住的那两处误计成裸调用。
     bareSetTimeoutInPoll:
-        countIn(src, "setTimeout(poll, 2000)") -
-        countIn(src, "= setTimeout(poll, 2000)"),
-    handledSetTimeout: countIn(src, "= setTimeout(poll, 2000)"),
-    hasStop: src.indexOf("stopReceiptPolling()") !== -1,
-    clearCalls: countIn(src, "clearTimeout(this.receiptPollTimer)"),
-    terminalNullOut: countIn(src, "this.receiptPollTimer = null;"),
+        countIn(src, 'setTimeout(poll, 2000)') - countIn(src, '= setTimeout(poll, 2000)'),
+    handledSetTimeout: countIn(src, '= setTimeout(poll, 2000)'),
+    hasStop: src.indexOf('stopReceiptPolling()') !== -1,
+    clearCalls: countIn(src, 'clearTimeout(this.receiptPollTimer)'),
+    terminalNullOut: countIn(src, 'this.receiptPollTimer = null;')
 };
-check("不再有遮蔽模块 state 的参数名", sc.hasShadowParam === false,
-    `hasShadowParam=${sc.hasShadowParam}`);
-check("参数已重命名为 statusName", sc.hasRenamedParam === true,
-    `hasRenamedParam=${sc.hasRenamedParam}`);
-check("轮询的 setTimeout 全部被句柄接住",
+check(
+    '不再有遮蔽模块 state 的参数名',
+    sc.hasShadowParam === false,
+    `hasShadowParam=${sc.hasShadowParam}`
+);
+check(
+    '参数已重命名为 statusName',
+    sc.hasRenamedParam === true,
+    `hasRenamedParam=${sc.hasRenamedParam}`
+);
+check(
+    '轮询的 setTimeout 全部被句柄接住',
     sc.bareSetTimeoutInPoll === 0 && sc.handledSetTimeout === 2,
-    `bare=${sc.bareSetTimeoutInPoll}, handled=${sc.handledSetTimeout}`);
-check("存在停止接口与 clearTimeout 调用",
+    `bare=${sc.bareSetTimeoutInPoll}, handled=${sc.handledSetTimeout}`
+);
+check(
+    '存在停止接口与 clearTimeout 调用',
     sc.hasStop === true && sc.clearCalls >= 1,
-    `hasStop=${sc.hasStop}, clearCalls=${sc.clearCalls}`);
-check("终态会清空句柄（stop 1 处 + 两个终态各 1 处，至少 3 处）",
+    `hasStop=${sc.hasStop}, clearCalls=${sc.clearCalls}`
+);
+check(
+    '终态会清空句柄（stop 1 处 + 两个终态各 1 处，至少 3 处）',
     sc.terminalNullOut >= 3,
-    `terminalNullOut=${sc.terminalNullOut}`);
+    `terminalNullOut=${sc.terminalNullOut}`
+);
 
 // ── S8 页面异常 ──
-console.log("\n" + "─".repeat(64));
-console.log("S8 页面异常检查");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S8 页面异常检查');
+console.log('─'.repeat(64));
 const uniqErr = [...new Set(pageErrors)];
-check("全流程无未捕获异常 / console.error", uniqErr.length === 0,
-    uniqErr.join(" | "));
+check('全流程无未捕获异常 / console.error', uniqErr.length === 0, uniqErr.join(' | '));
 
-console.log("\n=== 结果 ===");
+console.log('\n=== 结果 ===');
 console.log(`环境：${ver.Browser}`);
 console.log(`URL ：${BASE}/index.html`);
 console.log(`断言：${pass} passed, ${fail} failed`);
 if (failedItems.length) {
-    console.log("失败项：");
-    failedItems.forEach(f => console.log("  - " + f));
+    console.log('失败项：');
+    failedItems.forEach((f) => console.log('  - ' + f));
 }
 if (uniqErr.length) {
-    console.log("页面错误：");
-    uniqErr.forEach(e => console.log("  - " + e));
+    console.log('页面错误：');
+    uniqErr.forEach((e) => console.log('  - ' + e));
 }
 
 ws.close();
@@ -795,7 +788,7 @@ try {
 }
 if (LOG_PATH) {
     try {
-        writeFileSync(LOG_PATH, logLines.join("\n") + "\n", "utf8");
+        writeFileSync(LOG_PATH, logLines.join('\n') + '\n', 'utf8');
         process.stderr.write(`\n[日志] 已写入 ${LOG_PATH}\n`);
     } catch (e) {
         process.stderr.write(`\n[日志] 写入失败：${e.message}\n`);

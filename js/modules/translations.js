@@ -2,362 +2,362 @@
 export const TRANSLATIONS = {
     zh: {
         common: {
-            title: "CALL ME",
-            unregistered: "未绑定用户",
-            success: "成功",
-            failure: "失败",
-            confirm: "确认",
-            cancel: "取消"
+            title: 'CALL ME',
+            unregistered: '未绑定用户',
+            success: '成功',
+            failure: '失败',
+            confirm: '确认',
+            cancel: '取消'
         },
         mainPage: {
-            subtitle: "点击下方按钮，我会立即收到通知",
-            bubble1: "快上线",
-            bubble2: "补护盾",
-            bubble3: "紧急情况",
-            bubble4: "领奖品",
-            countdownText: "请等待 {seconds} 秒后再试",
-            cooldownMsg: "冷却中，{seconds}秒后可再次发送"
+            subtitle: '点击下方按钮，我会立即收到通知',
+            bubble1: '快上线',
+            bubble2: '补护盾',
+            bubble3: '紧急情况',
+            bubble4: '领奖品',
+            countdownText: '请等待 {seconds} 秒后再试',
+            cooldownMsg: '冷却中，{seconds}秒后可再次发送'
         },
         notification: {
-            successMsg: "已发送！",
-            errorMsg: "发送失败: {error}"
+            successMsg: '已发送！',
+            errorMsg: '发送失败: {error}'
         },
         receipt: {
-            sent: "已发送，等待回执~",
-            read: "ok~收到啦👌",
-            timeout: "可能不在线Q-Q"
+            sent: '已发送，等待回执~',
+            read: 'ok~收到啦👌',
+            timeout: '可能不在线Q-Q'
         },
         profile: {
-            bindTitle: "绑定账号",
-            editTitle: "编辑资料",
-            nicknamePlaceholder: "输入你的昵称",
-            saveBtn: "保存信息",
-            avatarLabel: "选择头像",
-            customButton: "自定义按钮",
-            buttonTextPlaceholder: "按钮文字(最多{maxLength}字)",
-            randomIcon: "随机图标",
-            confirmReset: "确定要重置为默认按钮吗？"
+            bindTitle: '绑定账号',
+            editTitle: '编辑资料',
+            nicknamePlaceholder: '输入你的昵称',
+            saveBtn: '保存信息',
+            avatarLabel: '选择头像',
+            customButton: '自定义按钮',
+            buttonTextPlaceholder: '按钮文字(最多{maxLength}字)',
+            randomIcon: '随机图标',
+            confirmReset: '确定要重置为默认按钮吗？'
         },
         time: {
-            justNow: "刚刚",
-            minutesAgo: "{minutes}分钟前",
-            hoursMinutesAgo: "{hours}小时{minutes}分钟前",
-            daysHoursAgo: "{days}天{hours}小时前",
-            daysAgo: "{days}天前"
+            justNow: '刚刚',
+            minutesAgo: '{minutes}分钟前',
+            hoursMinutesAgo: '{hours}小时{minutes}分钟前',
+            daysHoursAgo: '{days}天{hours}小时前',
+            daysAgo: '{days}天前'
         },
         history: {
-            title: "历史记录",
-            pageTitle: "通知历史",
-            backTitle: "返回",
-            clearTitle: "清除记录",
-            cleared: "历史记录已清除",
-            webhookLabel: "Webhook",
-            empty: "暂无历史记录",
-            timeFormat: "YYYY年MM月DD日 HH:mm:ss"
+            title: '历史记录',
+            pageTitle: '通知历史',
+            backTitle: '返回',
+            clearTitle: '清除记录',
+            cleared: '历史记录已清除',
+            webhookLabel: 'Webhook',
+            empty: '暂无历史记录',
+            timeFormat: 'YYYY年MM月DD日 HH:mm:ss'
         },
         password: {
-            title: "🔐 访问验证",
-            label: "请输入访问密码",
-            placeholder: "输入密码",
-            hint: "提示：这只是防止误触的访问提示，任何能打开本页的人都能绕过它",
-            verifyBtn: "验证",
-            errorEmpty: "请输入密码",
-            errorWrong: "密码错误，请重试"
+            title: '🔐 访问验证',
+            label: '请输入访问密码',
+            placeholder: '输入密码',
+            hint: '提示：这只是防止误触的访问提示，任何能打开本页的人都能绕过它',
+            verifyBtn: '验证',
+            errorEmpty: '请输入密码',
+            errorWrong: '密码错误，请重试'
         },
         onboarding: {
-            skip: "跳过",
-            next: "下一步",
-            start: "开始使用"
+            skip: '跳过',
+            next: '下一步',
+            start: '开始使用'
         },
         icons: {
-            "bolt": "闪电",
-            "bell": "铃铛",
-            "exclamation-triangle": "警告",
-            "shield-alt": "护盾",
-            "fire": "火焰",
-            "clock": "时钟",
-            "running": "奔跑",
-            "heartbeat": "心跳",
-            "phone": "电话",
-            "comment-dots": "消息",
-            "envelope": "邮件",
-            "bullhorn": "广播",
-            "hand-paper": "举手",
-            "star": "星标",
-            "flag": "旗帜",
-            "gift": "礼物",
-            "mug-hot": "热饮",
-            "utensils": "用餐"
+            bolt: '闪电',
+            bell: '铃铛',
+            'exclamation-triangle': '警告',
+            'shield-alt': '护盾',
+            fire: '火焰',
+            clock: '时钟',
+            running: '奔跑',
+            heartbeat: '心跳',
+            phone: '电话',
+            'comment-dots': '消息',
+            envelope: '邮件',
+            bullhorn: '广播',
+            'hand-paper': '举手',
+            star: '星标',
+            flag: '旗帜',
+            gift: '礼物',
+            'mug-hot': '热饮',
+            utensils: '用餐'
         }
     },
     en: {
         common: {
-            title: "CALL ME",
-            unregistered: "Unregistered",
-            success: "Success",
-            failure: "Failure",
-            confirm: "Confirm",
-            cancel: "Cancel"
+            title: 'CALL ME',
+            unregistered: 'Unregistered',
+            success: 'Success',
+            failure: 'Failure',
+            confirm: 'Confirm',
+            cancel: 'Cancel'
         },
         mainPage: {
-            subtitle: "Click the button below to notify me immediately",
-            bubble1: "Get online",
-            bubble2: "Shield up",
-            bubble3: "Emergency",
-            bubble4: "Claim rewards",
-            countdownText: "Please wait {seconds} seconds",
-            cooldownMsg: "Cooldown, try again in {seconds}s"
+            subtitle: 'Click the button below to notify me immediately',
+            bubble1: 'Get online',
+            bubble2: 'Shield up',
+            bubble3: 'Emergency',
+            bubble4: 'Claim rewards',
+            countdownText: 'Please wait {seconds} seconds',
+            cooldownMsg: 'Cooldown, try again in {seconds}s'
         },
         notification: {
-            successMsg: "Sent！",
-            errorMsg: "Failed to send: {error}"
+            successMsg: 'Sent！',
+            errorMsg: 'Failed to send: {error}'
         },
         receipt: {
-            sent: "Sent, waiting for reply~",
-            read: "ok~Got it👌",
-            timeout: "Might be offline Q-Q"
+            sent: 'Sent, waiting for reply~',
+            read: 'ok~Got it👌',
+            timeout: 'Might be offline Q-Q'
         },
         profile: {
-            bindTitle: "Bind Account",
-            editTitle: "Edit Profile",
-            nicknamePlaceholder: "Enter your nickname",
-            saveBtn: "Save Profile",
-            avatarLabel: "Choose Avatar",
-            customButton: "Custom Button",
-            buttonTextPlaceholder: "Button text (max {maxLength} chars)",
-            randomIcon: "Random icon",
-            confirmReset: "Reset to default buttons?"
+            bindTitle: 'Bind Account',
+            editTitle: 'Edit Profile',
+            nicknamePlaceholder: 'Enter your nickname',
+            saveBtn: 'Save Profile',
+            avatarLabel: 'Choose Avatar',
+            customButton: 'Custom Button',
+            buttonTextPlaceholder: 'Button text (max {maxLength} chars)',
+            randomIcon: 'Random icon',
+            confirmReset: 'Reset to default buttons?'
         },
         time: {
-            justNow: "just now",
-            minutesAgo: "{minutes}min ago",
-            hoursMinutesAgo: "{hours}h {minutes}min ago",
-            daysHoursAgo: "{days}d {hours}h ago",
-            daysAgo: "{days}d ago"
+            justNow: 'just now',
+            minutesAgo: '{minutes}min ago',
+            hoursMinutesAgo: '{hours}h {minutes}min ago',
+            daysHoursAgo: '{days}d {hours}h ago',
+            daysAgo: '{days}d ago'
         },
         history: {
-            title: "History",
-            pageTitle: "Notification History",
-            backTitle: "Back",
-            clearTitle: "Clear records",
-            cleared: "History cleared",
-            webhookLabel: "Webhook URL",
-            empty: "No history records",
-            timeFormat: "MM/DD/YYYY HH:mm:ss"
+            title: 'History',
+            pageTitle: 'Notification History',
+            backTitle: 'Back',
+            clearTitle: 'Clear records',
+            cleared: 'History cleared',
+            webhookLabel: 'Webhook URL',
+            empty: 'No history records',
+            timeFormat: 'MM/DD/YYYY HH:mm:ss'
         },
         password: {
-            title: "🔐 Access Verification",
-            label: "Please enter access password",
-            placeholder: "Enter password",
-            hint: "Note: this is only an access prompt to prevent accidental taps; anyone who can open this page can bypass it.",
-            verifyBtn: "Verify",
-            errorEmpty: "Please enter password",
-            errorWrong: "Incorrect password, please try again"
+            title: '🔐 Access Verification',
+            label: 'Please enter access password',
+            placeholder: 'Enter password',
+            hint: 'Note: this is only an access prompt to prevent accidental taps; anyone who can open this page can bypass it.',
+            verifyBtn: 'Verify',
+            errorEmpty: 'Please enter password',
+            errorWrong: 'Incorrect password, please try again'
         },
         onboarding: {
-            skip: "Skip",
-            next: "Next",
-            start: "Start"
+            skip: 'Skip',
+            next: 'Next',
+            start: 'Start'
         },
         icons: {
-            "bolt": "Lightning",
-            "bell": "Bell",
-            "exclamation-triangle": "Warning",
-            "shield-alt": "Shield",
-            "fire": "Fire",
-            "clock": "Clock",
-            "running": "Running",
-            "heartbeat": "Heartbeat",
-            "phone": "Phone",
-            "comment-dots": "Message",
-            "envelope": "Email",
-            "bullhorn": "Broadcast",
-            "hand-paper": "Raise Hand",
-            "star": "Star",
-            "flag": "Flag",
-            "gift": "Gift",
-            "mug-hot": "Hot Drink",
-            "utensils": "Meal"
+            bolt: 'Lightning',
+            bell: 'Bell',
+            'exclamation-triangle': 'Warning',
+            'shield-alt': 'Shield',
+            fire: 'Fire',
+            clock: 'Clock',
+            running: 'Running',
+            heartbeat: 'Heartbeat',
+            phone: 'Phone',
+            'comment-dots': 'Message',
+            envelope: 'Email',
+            bullhorn: 'Broadcast',
+            'hand-paper': 'Raise Hand',
+            star: 'Star',
+            flag: 'Flag',
+            gift: 'Gift',
+            'mug-hot': 'Hot Drink',
+            utensils: 'Meal'
         }
     },
     ja: {
         common: {
-            title: "コールミー",
-            unregistered: "未登録ユーザー",
-            success: "成功",
-            failure: "失敗",
-            confirm: "確認",
-            cancel: "キャンセル"
+            title: 'コールミー',
+            unregistered: '未登録ユーザー',
+            success: '成功',
+            failure: '失敗',
+            confirm: '確認',
+            cancel: 'キャンセル'
         },
         mainPage: {
-            subtitle: "下のボタンをクリックすると、すぐに通知が届きます",
-            bubble1: "オンラインに",
-            bubble2: "シールド補充",
-            bubble3: "緊急事態",
-            bubble4: "報酬受取",
-            countdownText: "{seconds}秒お待ちください",
-            cooldownMsg: "クールダウン中、{seconds}秒後に再試行"
+            subtitle: '下のボタンをクリックすると、すぐに通知が届きます',
+            bubble1: 'オンラインに',
+            bubble2: 'シールド補充',
+            bubble3: '緊急事態',
+            bubble4: '報酬受取',
+            countdownText: '{seconds}秒お待ちください',
+            cooldownMsg: 'クールダウン中、{seconds}秒後に再試行'
         },
         notification: {
-            successMsg: "送信しました！",
-            errorMsg: "送信失敗: {error}"
+            successMsg: '送信しました！',
+            errorMsg: '送信失敗: {error}'
         },
         receipt: {
-            sent: "送信済み、返信待ち~",
-            read: "ok~受け取った👌",
-            timeout: "オフラインかも Q-Q"
+            sent: '送信済み、返信待ち~',
+            read: 'ok~受け取った👌',
+            timeout: 'オフラインかも Q-Q'
         },
         profile: {
-            bindTitle: "アカウント登録",
-            editTitle: "プロフィール編集",
-            nicknamePlaceholder: "ニックネームを入力",
-            saveBtn: "情報を保存",
-            avatarLabel: "アバターを選択",
-            customButton: "カスタムボタン",
-            buttonTextPlaceholder: "ボタンテキスト(最大{maxLength}文字)",
-            randomIcon: "ランダムアイコン",
-            confirmReset: "デフォルトボタンにリセットしますか？"
+            bindTitle: 'アカウント登録',
+            editTitle: 'プロフィール編集',
+            nicknamePlaceholder: 'ニックネームを入力',
+            saveBtn: '情報を保存',
+            avatarLabel: 'アバターを選択',
+            customButton: 'カスタムボタン',
+            buttonTextPlaceholder: 'ボタンテキスト(最大{maxLength}文字)',
+            randomIcon: 'ランダムアイコン',
+            confirmReset: 'デフォルトボタンにリセットしますか？'
         },
         time: {
-            justNow: "たった今",
-            minutesAgo: "{minutes}分前",
-            hoursMinutesAgo: "{hours}時間{minutes}分前",
-            daysHoursAgo: "{days}日{hours}時間前",
-            daysAgo: "{days}日前"
+            justNow: 'たった今',
+            minutesAgo: '{minutes}分前',
+            hoursMinutesAgo: '{hours}時間{minutes}分前',
+            daysHoursAgo: '{days}日{hours}時間前',
+            daysAgo: '{days}日前'
         },
         history: {
-            title: "履歴",
-            pageTitle: "通知履歴",
-            backTitle: "戻る",
-            clearTitle: "記録を消去",
-            cleared: "履歴を消去しました",
-            webhookLabel: "Webhook URL",
-            empty: "履歴がありません",
-            timeFormat: "YYYY年MM月DD日 HH:mm:ss"
+            title: '履歴',
+            pageTitle: '通知履歴',
+            backTitle: '戻る',
+            clearTitle: '記録を消去',
+            cleared: '履歴を消去しました',
+            webhookLabel: 'Webhook URL',
+            empty: '履歴がありません',
+            timeFormat: 'YYYY年MM月DD日 HH:mm:ss'
         },
         password: {
-            title: "🔐 アクセス認証",
-            label: "アクセスメールワードを入力してください",
-            placeholder: "パスワードを入力",
-            hint: "ヒント：これは誤操作を防ぐための合図にすぎず、このページを開ける人は誰でも回避できます。",
-            verifyBtn: "認証",
-            errorEmpty: "パスワードを入力してください",
-            errorWrong: "パスワードが間違っています。再度お試しください"
+            title: '🔐 アクセス認証',
+            label: 'アクセスメールワードを入力してください',
+            placeholder: 'パスワードを入力',
+            hint: 'ヒント：これは誤操作を防ぐための合図にすぎず、このページを開ける人は誰でも回避できます。',
+            verifyBtn: '認証',
+            errorEmpty: 'パスワードを入力してください',
+            errorWrong: 'パスワードが間違っています。再度お試しください'
         },
         onboarding: {
-            skip: "スキップ",
-            next: "次へ",
-            start: "開始"
+            skip: 'スキップ',
+            next: '次へ',
+            start: '開始'
         },
         icons: {
-            "bolt": "雷",
-            "bell": "ベル",
-            "exclamation-triangle": "警告",
-            "shield-alt": "シールド",
-            "fire": "炎",
-            "clock": "時計",
-            "running": "走る",
-            "heartbeat": "鼓動",
-            "phone": "電話",
-            "comment-dots": "メッセージ",
-            "envelope": "メール",
-            "bullhorn": "放送",
-            "hand-paper": "挙手",
-            "star": "スター",
-            "flag": "旗",
-            "gift": "ギフト",
-            "mug-hot": "ホットドリンク",
-            "utensils": "食事"
+            bolt: '雷',
+            bell: 'ベル',
+            'exclamation-triangle': '警告',
+            'shield-alt': 'シールド',
+            fire: '炎',
+            clock: '時計',
+            running: '走る',
+            heartbeat: '鼓動',
+            phone: '電話',
+            'comment-dots': 'メッセージ',
+            envelope: 'メール',
+            bullhorn: '放送',
+            'hand-paper': '挙手',
+            star: 'スター',
+            flag: '旗',
+            gift: 'ギフト',
+            'mug-hot': 'ホットドリンク',
+            utensils: '食事'
         }
     },
     ko: {
         common: {
-            title: "콜 미",
-            unregistered: "미등록 사용자",
-            success: "성공",
-            failure: "실패",
-            confirm: "확인",
-            cancel: "취소"
+            title: '콜 미',
+            unregistered: '미등록 사용자',
+            success: '성공',
+            failure: '실패',
+            confirm: '확인',
+            cancel: '취소'
         },
         mainPage: {
-            subtitle: "아래 버튼을 클릭하면 즉시 알림이 전송됩니다",
-            bubble1: "빨리 접속",
-            bubble2: "실드 충전",
-            bubble3: "긴급 상황",
-            bubble4: "보상 수령",
-            countdownText: "{seconds}초 기다려 주세요",
-            cooldownMsg: "쿨다운 중, {seconds}초 후 다시 시도"
+            subtitle: '아래 버튼을 클릭하면 즉시 알림이 전송됩니다',
+            bubble1: '빨리 접속',
+            bubble2: '실드 충전',
+            bubble3: '긴급 상황',
+            bubble4: '보상 수령',
+            countdownText: '{seconds}초 기다려 주세요',
+            cooldownMsg: '쿨다운 중, {seconds}초 후 다시 시도'
         },
         notification: {
-            successMsg: "전송 완료！",
-            errorMsg: "전송 실패: {error}"
+            successMsg: '전송 완료！',
+            errorMsg: '전송 실패: {error}'
         },
         receipt: {
-            sent: "전송됨, 응답 대기~",
-            read: "ok~받았어👌",
-            timeout: "오프라인일수도 Q-Q"
+            sent: '전송됨, 응답 대기~',
+            read: 'ok~받았어👌',
+            timeout: '오프라인일수도 Q-Q'
         },
         profile: {
-            bindTitle: "계정 등록",
-            editTitle: "프로필 수정",
-            nicknamePlaceholder: "닉네임을 입력하세요",
-            saveBtn: "정보 저장",
-            avatarLabel: "아바타 선택",
-            customButton: "커스텀 버튼",
-            buttonTextPlaceholder: "버튼 텍스트(최대 {maxLength}자)",
-            randomIcon: "랜덤 아이콘",
-            confirmReset: "기본 버튼으로 초기화하시겠습니까？"
+            bindTitle: '계정 등록',
+            editTitle: '프로필 수정',
+            nicknamePlaceholder: '닉네임을 입력하세요',
+            saveBtn: '정보 저장',
+            avatarLabel: '아바타 선택',
+            customButton: '커스텀 버튼',
+            buttonTextPlaceholder: '버튼 텍스트(최대 {maxLength}자)',
+            randomIcon: '랜덤 아이콘',
+            confirmReset: '기본 버튼으로 초기화하시겠습니까？'
         },
         time: {
-            justNow: "방금",
-            minutesAgo: "{minutes}분 전",
-            hoursMinutesAgo: "{hours}시간 {minutes}분 전",
-            daysHoursAgo: "{days}일 {hours}시간 전",
-            daysAgo: "{days}일 전"
+            justNow: '방금',
+            minutesAgo: '{minutes}분 전',
+            hoursMinutesAgo: '{hours}시간 {minutes}분 전',
+            daysHoursAgo: '{days}일 {hours}시간 전',
+            daysAgo: '{days}일 전'
         },
         history: {
-            title: "기록",
-            pageTitle: "알림 기록",
-            backTitle: "뒤로",
-            clearTitle: "기록 지우기",
-            cleared: "기록이 지워졌습니다",
-            webhookLabel: "Webhook 주소",
-            empty: "기록이 없습니다",
-            timeFormat: "YYYY년 MM월 DD일 HH:mm:ss"
+            title: '기록',
+            pageTitle: '알림 기록',
+            backTitle: '뒤로',
+            clearTitle: '기록 지우기',
+            cleared: '기록이 지워졌습니다',
+            webhookLabel: 'Webhook 주소',
+            empty: '기록이 없습니다',
+            timeFormat: 'YYYY년 MM월 DD일 HH:mm:ss'
         },
         password: {
-            title: "🔐 액세스 인증",
-            label: "액세스 비밀번호를 입력하세요",
-            placeholder: "비밀번호 입력",
-            hint: "안내: 실수로 누르는 것을 막기 위한 접근 안내일 뿐이며, 이 페이지를 열 수 있는 사람은 누구나 우회할 수 있습니다.",
-            verifyBtn: "인증",
-            errorEmpty: "비밀번호를 입력하세요",
-            errorWrong: "잘못된 비밀번호입니다. 다시 시도하세요"
+            title: '🔐 액세스 인증',
+            label: '액세스 비밀번호를 입력하세요',
+            placeholder: '비밀번호 입력',
+            hint: '안내: 실수로 누르는 것을 막기 위한 접근 안내일 뿐이며, 이 페이지를 열 수 있는 사람은 누구나 우회할 수 있습니다.',
+            verifyBtn: '인증',
+            errorEmpty: '비밀번호를 입력하세요',
+            errorWrong: '잘못된 비밀번호입니다. 다시 시도하세요'
         },
         onboarding: {
-            skip: "건너뛰기",
-            next: "다음",
-            start: "시작"
+            skip: '건너뛰기',
+            next: '다음',
+            start: '시작'
         },
         icons: {
-            "bolt": "번개",
-            "bell": "종",
-            "exclamation-triangle": "경고",
-            "shield-alt": "방패",
-            "fire": "불",
-            "clock": "시계",
-            "running": "달리기",
-            "heartbeat": "심장",
-            "phone": "전화",
-            "comment-dots": "메시지",
-            "envelope": "이메일",
-            "bullhorn": "방송",
-            "hand-paper": "손들기",
-            "star": "별",
-            "flag": "깃발",
-            "gift": "선물",
-            "mug-hot": "뜨거운 음료",
-            "utensils": "식사"
+            bolt: '번개',
+            bell: '종',
+            'exclamation-triangle': '경고',
+            'shield-alt': '방패',
+            fire: '불',
+            clock: '시계',
+            running: '달리기',
+            heartbeat: '심장',
+            phone: '전화',
+            'comment-dots': '메시지',
+            envelope: '이메일',
+            bullhorn: '방송',
+            'hand-paper': '손들기',
+            star: '별',
+            flag: '깃발',
+            gift: '선물',
+            'mug-hot': '뜨거운 음료',
+            utensils: '식사'
         }
     }
 };

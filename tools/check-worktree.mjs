@@ -41,24 +41,24 @@
 // 因此：合并/检出之后、提交之前，先跑本脚本。
 //
 // 依赖：仅 Node 内置模块。
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
-const FIX = process.argv.includes("--fix");
+const ROOT = path.resolve(__dirname, '..');
+const FIX = process.argv.includes('--fix');
 
 function git(args) {
-    return execFileSync("git", args, {
+    return execFileSync('git', args, {
         cwd: ROOT,
-        encoding: "utf8",
-        maxBuffer: 32 * 1024 * 1024,
+        encoding: 'utf8',
+        maxBuffer: 32 * 1024 * 1024
     });
 }
 
-const porcelain = git(["status", "--porcelain"]);
-const lines = porcelain.split(/\r?\n/).filter(l => l.trim());
+const porcelain = git(['status', '--porcelain']);
+const lines = porcelain.split(/\r?\n/).filter((l) => l.trim());
 
 // ` D` = 工作区已删除、未暂存（本次要处理的典型症状）
 // `D ` = 已暂存删除（更危险：一个 commit 就会固化）
@@ -67,43 +67,43 @@ const stagedDeleted = [];
 for (const l of lines) {
     const code = l.slice(0, 2);
     const p = l.slice(3).trim();
-    if (code === " D") unstagedDeleted.push(p);
-    else if (code === "D ") stagedDeleted.push(p);
-    else if (code === "DD") stagedDeleted.push(p);
+    if (code === ' D') unstagedDeleted.push(p);
+    else if (code === 'D ') stagedDeleted.push(p);
+    else if (code === 'DD') stagedDeleted.push(p);
 }
 
-console.log("=== 工作区完整性检查 ===");
+console.log('=== 工作区完整性检查 ===');
 console.log(`仓库：${ROOT}`);
-console.log("");
+console.log('');
 
 if (unstagedDeleted.length === 0 && stagedDeleted.length === 0) {
-    console.log("未发现被删除的已跟踪文件。工作区正常。");
+    console.log('未发现被删除的已跟踪文件。工作区正常。');
     process.exit(0);
 }
 
 if (unstagedDeleted.length) {
     console.log(`发现 ${unstagedDeleted.length} 个已跟踪文件在工作区缺失（未暂存）：`);
-    unstagedDeleted.forEach(p => console.log("   D " + p));
-    console.log("");
+    unstagedDeleted.forEach((p) => console.log('   D ' + p));
+    console.log('');
 }
 if (stagedDeleted.length) {
     console.log(`发现 ${stagedDeleted.length} 个已跟踪文件的删除已被暂存：`);
-    stagedDeleted.forEach(p => console.log("   D  " + p));
-    console.log("");
-    console.log("注意：已暂存的删除会被下一次 commit 固化。除非这是有意删除，应先恢复。");
-    console.log("");
+    stagedDeleted.forEach((p) => console.log('   D  ' + p));
+    console.log('');
+    console.log('注意：已暂存的删除会被下一次 commit 固化。除非这是有意删除，应先恢复。');
+    console.log('');
 }
 
-console.log("这是本仓库的已知环境问题（外部工具把文件移入回收站）。");
-console.log("内容仍在 HEAD 中，可完整恢复。详见 docs/handoff/archive/WORKTREE-FILE-LOSS.md");
-console.log("");
+console.log('这是本仓库的已知环境问题（外部工具把文件移入回收站）。');
+console.log('内容仍在 HEAD 中，可完整恢复。详见 docs/handoff/archive/WORKTREE-FILE-LOSS.md');
+console.log('');
 
 if (!FIX) {
-    console.log("未做改动。要自动恢复，请运行：");
-    console.log("   node tools/check-worktree.mjs --fix");
-    console.log("");
-    console.log("提示：在 git 合并/检出之后、任何 commit 之前跑一次本脚本。");
-    console.log("切勿用 `git add -A` —— 那会把工作区损坏一起提交。");
+    console.log('未做改动。要自动恢复，请运行：');
+    console.log('   node tools/check-worktree.mjs --fix');
+    console.log('');
+    console.log('提示：在 git 合并/检出之后、任何 commit 之前跑一次本脚本。');
+    console.log('切勿用 `git add -A` —— 那会把工作区损坏一起提交。');
     process.exit(1);
 }
 
@@ -112,20 +112,20 @@ if (targets.length) {
     console.log(`--fix：从 HEAD 恢复 ${targets.length} 个路径…`);
     // 先取消暂存的删除，再把工作区文件恢复出来
     if (stagedDeleted.length) {
-        git(["restore", "--staged", "--", ...stagedDeleted]);
+        git(['restore', '--staged', '--', ...stagedDeleted]);
     }
-    git(["restore", "--", ...targets]);
-    console.log("恢复完成。");
+    git(['restore', '--', ...targets]);
+    console.log('恢复完成。');
 }
 
-const after = git(["status", "--porcelain"])
+const after = git(['status', '--porcelain'])
     .split(/\r?\n/)
-    .filter(l => /^( D|D |DD)/.test(l));
-console.log("");
+    .filter((l) => /^( D|D |DD)/.test(l));
+console.log('');
 if (after.length === 0) {
-    console.log("复检通过：已无被删除的已跟踪文件。");
+    console.log('复检通过：已无被删除的已跟踪文件。');
     process.exit(0);
 }
 console.log(`复检仍有 ${after.length} 个未恢复：`);
-after.forEach(l => console.log("   " + l));
+after.forEach((l) => console.log('   ' + l));
 process.exit(1);

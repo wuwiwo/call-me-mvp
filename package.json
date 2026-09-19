@@ -1,23 +1,23 @@
 {
-  "name": "call-me-mvp",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Notion 风格的通知推送工具",
-  "type": "module",
-  "scripts": {
-    "lint": "node node_modules/eslint/bin/eslint.js .",
-    "lint:fix": "node node_modules/eslint/bin/eslint.js . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "node tools/run-all.mjs",
-    "test:all": "node tools/run-all.mjs",
-    "test:quick": "node tools/run-all.mjs --skip-browser"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.6.0",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.7.0",
-    "prettier": "^3.9.4"
-  }
+    "name": "call-me-mvp",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Notion 风格的通知推送工具",
+    "type": "module",
+    "scripts": {
+        "lint": "node node_modules/eslint/bin/eslint.js .",
+        "lint:fix": "node node_modules/eslint/bin/eslint.js . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "test": "node tools/run-all.mjs",
+        "test:all": "node tools/run-all.mjs",
+        "test:quick": "node tools/run-all.mjs --skip-browser"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.6.0",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.7.0",
+        "prettier": "^3.9.4"
+    }
 }

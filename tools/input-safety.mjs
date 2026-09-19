@@ -33,39 +33,39 @@
 //   3. 容器内不存在任何 on* 事件属性
 //   4. 恶意串以**字面文本**形式出现在 textContent 中
 //      （证明是被当作文本渲染，而不是被过滤掉或当作 HTML 解析）
-import http from "node:http";
-import { spawn } from "node:child_process";
-import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { resolveChrome } from "./chrome-path.mjs";
+import http from 'node:http';
+import { spawn } from 'node:child_process';
+import { createReadStream, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { resolveChrome } from './chrome-path.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, '..');
 
 const SERVE_PORT = Number(process.env.CM005_PORT || 8899);
-const EXTERNAL = process.env.CM005_NO_SERVER === "1";
+const EXTERNAL = process.env.CM005_NO_SERVER === '1';
 const BASE = process.env.CM005_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM005_CDP_PORT || 9447);
 // Chrome 路径解析已统一到 tools/chrome-path.mjs（CM-009）：
 // CM005_CHROME > CHROME_PATH > 常见安装位置 > which
 const CHROME = resolveChrome(process.env.CM005_CHROME);
-const PROFILE = path.join(os.tmpdir(), "cm005-input-safety-profile");
-const LOG_PATH = process.env.CM005_LOG || "";
+const PROFILE = path.join(os.tmpdir(), 'cm005-input-safety-profile');
+const LOG_PATH = process.env.CM005_LOG || '';
 
 const MIME = {
-    ".html": "text/html; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".mjs": "text/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".mp3": "audio/mpeg",
-    ".wav": "audio/wav",
-    ".m4a": "audio/mp4",
-    ".png": "image/png",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon'
 };
 
 // ── 自带静态服务器（与浏览器同进程） ──
@@ -73,12 +73,12 @@ let staticServer = null;
 function startStaticServer() {
     return new Promise((resolve, reject) => {
         staticServer = http.createServer((req, res) => {
-            let rel = decodeURIComponent(req.url.split("?")[0]);
-            if (rel === "/") rel = "/index.html";
+            let rel = decodeURIComponent(req.url.split('?')[0]);
+            if (rel === '/') rel = '/index.html';
             const fp = path.join(ROOT, rel);
             if (!fp.startsWith(ROOT)) {
                 res.writeHead(403);
-                res.end("forbidden");
+                res.end('forbidden');
                 return;
             }
             let st;
@@ -86,22 +86,22 @@ function startStaticServer() {
                 st = statSync(fp);
             } catch {
                 res.writeHead(404);
-                res.end("not found");
+                res.end('not found');
                 return;
             }
             if (!st.isFile()) {
                 res.writeHead(404);
-                res.end("not found");
+                res.end('not found');
                 return;
             }
             res.writeHead(200, {
-                "Content-Type": MIME[path.extname(fp)] || "application/octet-stream",
-                "Cache-Control": "no-store",
+                'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream',
+                'Cache-Control': 'no-store'
             });
             createReadStream(fp).pipe(res);
         });
-        staticServer.on("error", reject);
-        staticServer.listen(SERVE_PORT, "127.0.0.1", () => resolve());
+        staticServer.on('error', reject);
+        staticServer.listen(SERVE_PORT, '127.0.0.1', () => resolve());
     });
 }
 
@@ -110,8 +110,8 @@ const cleanEnv = { ...process.env };
 for (const k of Object.keys(cleanEnv)) {
     if (/proxy/i.test(k)) delete cleanEnv[k];
 }
-cleanEnv.NO_PROXY = "127.0.0.1,localhost";
-cleanEnv.no_proxy = "127.0.0.1,localhost";
+cleanEnv.NO_PROXY = '127.0.0.1,localhost';
+cleanEnv.no_proxy = '127.0.0.1,localhost';
 
 if (!EXTERNAL) {
     await startStaticServer();
@@ -121,53 +121,53 @@ mkdirSync(PROFILE, { recursive: true });
 const chromeProc = spawn(
     CHROME,
     [
-        "--headless=new",
+        '--headless=new',
         `--remote-debugging-port=${CDP_PORT}`,
         `--user-data-dir=${PROFILE}`,
-        "--no-first-run",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--no-proxy-server",
-        "--proxy-bypass-list=<-loopback>",
-        "about:blank",
+        '--no-first-run',
+        '--disable-gpu',
+        '--no-sandbox',
+        '--no-proxy-server',
+        '--proxy-bypass-list=<-loopback>',
+        'about:blank'
     ],
-    { stdio: "ignore", env: cleanEnv }
+    { stdio: 'ignore', env: cleanEnv }
 );
 
 function httpGetJson(pathname) {
     return new Promise((resolve, reject) => {
         const req = http.get(
-            { host: "127.0.0.1", port: CDP_PORT, path: pathname, timeout: 4000 },
-            res => {
-                let body = "";
-                res.setEncoding("utf8");
-                res.on("data", c => (body += c));
-                res.on("end", () => {
+            { host: '127.0.0.1', port: CDP_PORT, path: pathname, timeout: 4000 },
+            (res) => {
+                let body = '';
+                res.setEncoding('utf8');
+                res.on('data', (c) => (body += c));
+                res.on('end', () => {
                     try {
                         resolve(JSON.parse(body));
                     } catch {
-                        reject(new Error("bad json: " + body.slice(0, 120)));
+                        reject(new Error('bad json: ' + body.slice(0, 120)));
                     }
                 });
             }
         );
-        req.on("timeout", () => req.destroy(new Error("timeout")));
-        req.on("error", reject);
+        req.on('timeout', () => req.destroy(new Error('timeout')));
+        req.on('error', reject);
     });
 }
 
 async function getWsUrl() {
     for (let i = 0; i < 60; i++) {
         try {
-            const j = await httpGetJson("/json/version");
+            const j = await httpGetJson('/json/version');
             if (j.webSocketDebuggerUrl)
-                return j.webSocketDebuggerUrl.replace("localhost", "127.0.0.1");
+                return j.webSocketDebuggerUrl.replace('localhost', '127.0.0.1');
         } catch {
             /* retry */
         }
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
     }
-    throw new Error("CDP 未就绪：Chrome 是否启动？端口 " + CDP_PORT);
+    throw new Error('CDP 未就绪：Chrome 是否启动？端口 ' + CDP_PORT);
 }
 
 class CDP {
@@ -175,7 +175,7 @@ class CDP {
         this.ws = ws;
         this.id = 0;
         this.pending = new Map();
-        ws.addEventListener("message", ev => {
+        ws.addEventListener('message', (ev) => {
             const msg = JSON.parse(ev.data);
             if (msg.id && this.pending.has(msg.id)) {
                 const { resolve, reject } = this.pending.get(msg.id);
@@ -195,7 +195,7 @@ class CDP {
             setTimeout(() => {
                 if (this.pending.has(id)) {
                     this.pending.delete(id);
-                    reject(new Error("timeout: " + method));
+                    reject(new Error('timeout: ' + method));
                 }
             }, 20000);
         });
@@ -204,76 +204,72 @@ class CDP {
 
 const out = [];
 function log(...a) {
-    const line = a.join(" ");
+    const line = a.join(' ');
     out.push(line);
     console.log(line);
 }
 
-log("=== CM-005 动态用户输入注入防护回归验证 ===");
-log("");
+log('=== CM-005 动态用户输入注入防护回归验证 ===');
+log('');
 
 const wsUrl = await getWsUrl();
 const ws = new WebSocket(wsUrl);
 await new Promise((res, rej) => {
-    ws.addEventListener("open", res);
-    ws.addEventListener("error", rej);
+    ws.addEventListener('open', res);
+    ws.addEventListener('error', rej);
 });
 const cdp = new CDP(ws);
 
-const { targetInfos } = await cdp.send("Target.getTargets");
-let target = targetInfos.find(t => t.type === "page");
+const { targetInfos } = await cdp.send('Target.getTargets');
+let target = targetInfos.find((t) => t.type === 'page');
 if (!target) {
-    const r = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const r = await cdp.send('Target.createTarget', { url: 'about:blank' });
     target = { targetId: r.targetId };
 }
-const { sessionId } = await cdp.send("Target.attachToTarget", {
+const { sessionId } = await cdp.send('Target.attachToTarget', {
     targetId: target.targetId,
-    flatten: true,
+    flatten: true
 });
 const S = sessionId;
 
-await cdp.send("Page.enable", {}, S);
-await cdp.send("Runtime.enable", {}, S);
+await cdp.send('Page.enable', {}, S);
+await cdp.send('Runtime.enable', {}, S);
 
 // 采集未捕获异常与 console.error
 let pageErrors = [];
-ws.addEventListener("message", ev => {
+ws.addEventListener('message', (ev) => {
     const m = JSON.parse(ev.data);
-    if (m.method === "Runtime.exceptionThrown") {
+    if (m.method === 'Runtime.exceptionThrown') {
         pageErrors.push(
-            "exceptionThrown: " +
-                (m.params.exceptionDetails.exception?.description ||
-                    m.params.exceptionDetails.text)
+            'exceptionThrown: ' +
+                (m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text)
         );
     }
-    if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") {
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
         pageErrors.push(
-            "console.error: " +
-                m.params.args.map(a => a.value ?? a.description).join(" ")
+            'console.error: ' + m.params.args.map((a) => a.value ?? a.description).join(' ')
         );
     }
 });
 
-const ver = await httpGetJson("/json/version");
-log("[环境]");
-log("  测试 URL :", BASE);
-log("  Chrome   :", CHROME);
-log("  浏览器   :", ver.Browser);
-log("  CDP 端口 :", CDP_PORT);
-log("  断言模式 : CM-005 输入安全");
-log("");
+const ver = await httpGetJson('/json/version');
+log('[环境]');
+log('  测试 URL :', BASE);
+log('  Chrome   :', CHROME);
+log('  浏览器   :', ver.Browser);
+log('  CDP 端口 :', CDP_PORT);
+log('  断言模式 : CM-005 输入安全');
+log('');
 
 async function evalJs(expr) {
     const r = await cdp.send(
-        "Runtime.evaluate",
+        'Runtime.evaluate',
         { expression: expr, returnByValue: true, awaitPromise: true },
         S
     );
     if (r.exceptionDetails) {
         throw new Error(
-            "页面内异常: " +
-                (r.exceptionDetails.exception?.description ||
-                    r.exceptionDetails.text)
+            '页面内异常: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text)
         );
     }
     return r.result.value;
@@ -289,51 +285,51 @@ async function evalJsSafe(expr) {
 }
 
 async function goto(url) {
-    await cdp.send("Page.navigate", { url }, S);
+    await cdp.send('Page.navigate', { url }, S);
     for (let i = 0; i < 60; i++) {
         try {
-            if ((await evalJs("document.readyState")) === "complete") break;
+            if ((await evalJs('document.readyState')) === 'complete') break;
         } catch {
             /* navigating */
         }
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise((r) => setTimeout(r, 150));
     }
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 400));
 }
 
 let pass = 0;
 let fail = 0;
 const failedItems = [];
-function check(name, cond, extra = "") {
+function check(name, cond, extra = '') {
     if (cond) {
         pass++;
         log(`  PASS  ${name}`);
     } else {
         fail++;
-        failedItems.push(name + (extra ? " -> " + extra : ""));
-        log(`  FAIL  ${name}${extra ? " -> " + extra : ""}`);
+        failedItems.push(name + (extra ? ' -> ' + extra : ''));
+        log(`  FAIL  ${name}${extra ? ' -> ' + extra : ''}`);
     }
 }
 
-const ONB = "onboardingCompleted";
+const ONB = 'onboardingCompleted';
 
 // ── 恶意载荷 ──
 const P = {
-    scriptTag: "<script>window.__pwned=1</script>",
+    scriptTag: '<script>window.__pwned=1</script>',
     imgOnerror: '<img src=x onerror="window.__pwned=1">',
     attrBreak: '"><img src=x onerror="window.__pwned=1">',
     eventAttr: '" onmouseover="window.__pwned=1',
     eventAttrSingle: "' onfocus='window.__pwned=1",
-    svgOnload: "<svg/onload=window.__pwned=1>",
-    structBreak: '</span><b id="inj">INJECTED</b>',
+    svgOnload: '<svg/onload=window.__pwned=1>',
+    structBreak: '</span><b id="inj">INJECTED</b>'
 };
 
 // 恶意 icon：都必须在"安全 token"字符集之外
 const ICON_P = {
     attrBreak: 'bolt"><img src=x onerror="window.__pwned=1">',
-    withSpace: "bolt onmouseover=window.__pwned=1",
+    withSpace: 'bolt onmouseover=window.__pwned=1',
     quoteOnly: 'bolt"',
-    slash: "bolt/onload",
+    slash: 'bolt/onload'
 };
 
 // 只允许形如 fa-bolt / fa-exclamation-triangle 的 class 尾巴（形态检查）
@@ -343,34 +339,34 @@ const ICON_CLASS_RE = /^fas fa-[a-z0-9][a-z0-9-]*$/;
 // 这里刻意**硬编码副本**而不是从页面读取：如果实现方偷偷往白名单里加了值，
 // 硬编码的副本才能真正把它暴露出来。
 const AVAILABLE_ICONS = [
-    "bolt",
-    "bell",
-    "exclamation-triangle",
-    "shield-alt",
-    "fire",
-    "clock",
-    "running",
-    "heartbeat",
-    "phone",
-    "comment-dots",
-    "envelope",
-    "bullhorn",
-    "hand-paper",
-    "star",
-    "flag",
-    "gift",
-    "mug-hot",
-    "utensils",
+    'bolt',
+    'bell',
+    'exclamation-triangle',
+    'shield-alt',
+    'fire',
+    'clock',
+    'running',
+    'heartbeat',
+    'phone',
+    'comment-dots',
+    'envelope',
+    'bullhorn',
+    'hand-paper',
+    'star',
+    'flag',
+    'gift',
+    'mug-hot',
+    'utensils'
 ];
 
 // 严格允许列表 = 可选图标 + "random" 语义。
 // 白名单外的值不允许变成 class，一律渲染为 FALLBACK_ICON。
-const ALLOWED_ICONS = new Set([...AVAILABLE_ICONS, "random"]);
-const FALLBACK_ICON = "random";
+const ALLOWED_ICONS = new Set([...AVAILABLE_ICONS, 'random']);
+const FALLBACK_ICON = 'random';
 // 首页按钮渲染 "random" 用 fa-random（修复前的既有行为，保持不变）
-const FALLBACK_CLASS = "fas fa-random";
+const FALLBACK_CLASS = 'fas fa-random';
 // 选择器预览 "random" 用 fa-shuffle（修复前的既有表现层常量，保持不变）
-const PICKER_FALLBACK_CLASS = "fas fa-shuffle";
+const PICKER_FALLBACK_CLASS = 'fas fa-shuffle';
 
 /**
  * 注入 storage 后加载指定页面。
@@ -378,23 +374,18 @@ const PICKER_FALLBACK_CLASS = "fas fa-shuffle";
  * 避免 Chrome profile 跨运行残留脏数据。
  */
 async function injectAndLoad(page, pairs) {
-    await goto(BASE + "/index.html");
+    await goto(BASE + '/index.html');
     await evalJs(`localStorage.clear(); true`);
     const setExpr =
-        "(() => {" +
+        '(() => {' +
         Object.entries(pairs)
             .filter(([, v]) => v !== null)
-            .map(
-                ([k, v]) =>
-                    `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(
-                        v
-                    )});`
-            )
-            .join("") +
-        "return true;})()";
+            .map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
+            .join('') +
+        'return true;})()';
     await evalJs(setExpr);
     pageErrors = [];
-    await goto(BASE + "/" + page);
+    await goto(BASE + '/' + page);
 }
 
 /** 生成"容器审计"表达式：四类注入证据一次取回 */
@@ -427,90 +418,92 @@ async function audit(rootSel) {
 
 /** 四类注入证据的统一断言 */
 function checkNoInjection(label, a) {
-    check(`${label}：无元素注入（无 SCRIPT/IMG/SVG 等）`, a.badTags.length === 0, JSON.stringify(a.badTags));
-    check(`${label}：无事件属性注入（无 on* 属性）`, a.badAttrs.length === 0, JSON.stringify(a.badAttrs));
+    check(
+        `${label}：无元素注入（无 SCRIPT/IMG/SVG 等）`,
+        a.badTags.length === 0,
+        JSON.stringify(a.badTags)
+    );
+    check(
+        `${label}：无事件属性注入（无 on* 属性）`,
+        a.badAttrs.length === 0,
+        JSON.stringify(a.badAttrs)
+    );
     check(`${label}：脚本/事件未执行（__pwned 未设置）`, a.pwned === false, String(a.pwned));
 }
 
 async function openModal() {
     await evalJs(`document.getElementById("editButtons").click(); true`);
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200));
 }
 
 // ─────────────────────────────────────────────────────────
-log("[用例1] 首页按钮渲染：恶意 message 与恶意 icon");
-await injectAndLoad("index.html", {
-    [ONB]: "true",
+log('[用例1] 首页按钮渲染：恶意 message 与恶意 icon');
+await injectAndLoad('index.html', {
+    [ONB]: 'true',
     buttonConfig: JSON.stringify({
         buttons: [
-            { id: "quick_online", message: P.scriptTag, icon: ICON_P.attrBreak },
-            { id: "emergency", message: P.imgOnerror, icon: "bolt" },
+            { id: 'quick_online', message: P.scriptTag, icon: ICON_P.attrBreak },
+            { id: 'emergency', message: P.imgOnerror, icon: 'bolt' }
         ],
-        activeGroup: "default",
-    }),
+        activeGroup: 'default'
+    })
 });
 
 {
-    const a = await audit(".bubble-container");
-    const n = await evalJs(
-        `document.querySelectorAll(".bubble-container .bubble-btn").length`
-    );
-    check("首页渲染 2 个按钮", n === 2, String(n));
-    checkNoInjection("首页按钮容器", a);
+    const a = await audit('.bubble-container');
+    const n = await evalJs(`document.querySelectorAll(".bubble-container .bubble-btn").length`);
+    check('首页渲染 2 个按钮', n === 2, String(n));
+    checkNoInjection('首页按钮容器', a);
     check(
-        "恶意 message（script 标签）以字面文本显示",
+        '恶意 message（script 标签）以字面文本显示',
         a.text.includes(P.scriptTag),
         a.text.slice(0, 120)
     );
     check(
-        "恶意 message（img onerror）以字面文本显示",
+        '恶意 message（img onerror）以字面文本显示',
         a.text.includes(P.imgOnerror),
         a.text.slice(0, 120)
     );
-    check("无 #inj 注入元素", !a.html.includes('id="inj"'), "含 id=inj");
+    check('无 #inj 注入元素', !a.html.includes('id="inj"'), '含 id=inj');
 
     // 恶意 icon 只能落到安全 class
     const cls = await evalJs(`(() => {
         const i = document.querySelector(".bubble-container .bubble-btn .bubble-content i");
         return i ? i.className : "(no i)";
     })()`);
+    check('恶意 icon 不进入 class（仅安全 token）', ICON_CLASS_RE.test(cls), cls);
     check(
-        "恶意 icon 不进入 class（仅安全 token）",
-        ICON_CLASS_RE.test(cls),
-        cls
-    );
-    check(
-        "恶意 icon 未突破属性（class 中无引号/尖括号）",
-        !/["'<>=\s]/.test(cls.replace(/^fas fa-/, "")),
+        '恶意 icon 未突破属性（class 中无引号/尖括号）',
+        !/["'<>=\s]/.test(cls.replace(/^fas fa-/, '')),
         cls
     );
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例2] 按钮编辑表单：恶意 message 经 value 回显");
-await injectAndLoad("index.html", {
-    [ONB]: "true",
+log('');
+log('[用例2] 按钮编辑表单：恶意 message 经 value 回显');
+await injectAndLoad('index.html', {
+    [ONB]: 'true',
     buttonConfig: JSON.stringify({
         buttons: [
-            { id: "quick_online", message: P.attrBreak, icon: "bolt" },
-            { id: "emergency", message: P.eventAttrSingle, icon: "bell" },
+            { id: 'quick_online', message: P.attrBreak, icon: 'bolt' },
+            { id: 'emergency', message: P.eventAttrSingle, icon: 'bell' }
         ],
-        activeGroup: "default",
-    }),
+        activeGroup: 'default'
+    })
 });
 await openModal();
 
 {
-    const a = await audit("#buttonEditModal");
-    checkNoInjection("编辑弹窗", a);
+    const a = await audit('#buttonEditModal');
+    checkNoInjection('编辑弹窗', a);
 
     const v1 = await evalJs(`(() => {
         const el = document.getElementById("button1Text");
         return el ? el.value : "(missing)";
     })()`);
     check(
-        "表单 value 完整回显恶意 message（未被截断/逃逸）",
+        '表单 value 完整回显恶意 message（未被截断/逃逸）',
         v1 === P.attrBreak,
         JSON.stringify(v1)
     );
@@ -519,43 +512,35 @@ await openModal();
         const el = document.getElementById("button2Text");
         return el ? el.value : "(missing)";
     })()`);
-    check(
-        "表单 value 完整回显单引号载荷",
-        v2 === P.eventAttrSingle,
-        JSON.stringify(v2)
-    );
+    check('表单 value 完整回显单引号载荷', v2 === P.eventAttrSingle, JSON.stringify(v2));
 
     const attrs = await evalJs(`(() => {
         const el = document.getElementById("button1Text");
         if (!el) return "(missing)";
         return JSON.stringify(Array.from(el.attributes).map(a => a.name));
     })()`);
-    check(
-        "文本 input 未被注入额外属性",
-        !/on/i.test(attrs) && !attrs.includes("onfocus"),
-        attrs
-    );
+    check('文本 input 未被注入额外属性', !/on/i.test(attrs) && !attrs.includes('onfocus'), attrs);
 
     const inpCount = await evalJs(
         `document.querySelectorAll("#defaultButtonsArea input.btn-text").length`
     );
-    check("默认按钮表单各含 1 个文本输入", inpCount === 2, String(inpCount));
+    check('默认按钮表单各含 1 个文本输入', inpCount === 2, String(inpCount));
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例3] 恶意 icon：不注入 class，且不静默丢失原值");
+log('');
+log('[用例3] 恶意 icon：不注入 class，且不静默丢失原值');
 // 本用例必须独立注入恶意 icon —— 不能复用上一用例的合法配置，
 // 否则断言只会跑在 `bolt`/`bell` 上，形成"看起来通过"的覆盖盲区。
-await injectAndLoad("index.html", {
-    [ONB]: "true",
+await injectAndLoad('index.html', {
+    [ONB]: 'true',
     buttonConfig: JSON.stringify({
         buttons: [
-            { id: "quick_online", message: "恶意图标按钮", icon: ICON_P.attrBreak },
-            { id: "emergency", message: "正常按钮", icon: "bell" },
+            { id: 'quick_online', message: '恶意图标按钮', icon: ICON_P.attrBreak },
+            { id: 'emergency', message: '正常按钮', icon: 'bell' }
         ],
-        activeGroup: "default",
-    }),
+        activeGroup: 'default'
+    })
 });
 {
     // 首页渲染阶段：恶意 icon 必须先被拦下
@@ -563,15 +548,11 @@ await injectAndLoad("index.html", {
         const i = document.querySelector(".bubble-container .bubble-btn .bubble-content i");
         return i ? i.className : "(no i)";
     })()`);
+    check('首页：恶意 icon 回退为允许列表内的图标', homeCls === FALLBACK_CLASS, homeCls);
     check(
-        "首页：恶意 icon 回退为允许列表内的图标",
-        homeCls === FALLBACK_CLASS,
-        homeCls
-    );
-    check(
-        "首页：恶意 icon 的载荷片段未进入 class",
-        !homeCls.replace(/^fas fa-/, "").includes("onerror") &&
-            !/["'<>\s]/.test(homeCls.replace(/^fas fa-/, "")),
+        '首页：恶意 icon 的载荷片段未进入 class',
+        !homeCls.replace(/^fas fa-/, '').includes('onerror') &&
+            !/["'<>\s]/.test(homeCls.replace(/^fas fa-/, '')),
         homeCls
     );
 
@@ -582,7 +563,7 @@ await injectAndLoad("index.html", {
         return p ? p.dataset.value : "(missing)";
     })()`);
     check(
-        "选择器 dataset.value 保留原始值（保存回写载体）",
+        '选择器 dataset.value 保留原始值（保存回写载体）',
         idVal === ICON_P.attrBreak,
         JSON.stringify(idVal)
     );
@@ -600,28 +581,28 @@ await injectAndLoad("index.html", {
         })()`)
     );
     check(
-        "触发按钮图标 class 为回退值（选择器用 shuffle 表现随机语义）",
+        '触发按钮图标 class 为回退值（选择器用 shuffle 表现随机语义）',
         iconClasses && iconClasses.trigger === PICKER_FALLBACK_CLASS,
         JSON.stringify(iconClasses && iconClasses.trigger)
     );
     check(
-        "下拉箭头 class 保持既有值",
-        iconClasses && iconClasses.caret === "fas fa-chevron-down icon-picker-caret",
+        '下拉箭头 class 保持既有值',
+        iconClasses && iconClasses.caret === 'fas fa-chevron-down icon-picker-caret',
         JSON.stringify(iconClasses && iconClasses.caret)
     );
     check(
-        "全部选项图标 class 均为安全图标名",
+        '全部选项图标 class 均为安全图标名',
         iconClasses &&
             iconClasses.options.length > 0 &&
-            iconClasses.options.every(c => ICON_CLASS_RE.test(c)),
+            iconClasses.options.every((c) => ICON_CLASS_RE.test(c)),
         JSON.stringify(iconClasses && iconClasses.options)
     );
     check(
-        "未知值不点亮任何选项（不假装用户选了随机）",
+        '未知值不点亮任何选项（不假装用户选了随机）',
         (await evalJs(
             `document.querySelectorAll("#button1Icon .icon-picker-option.selected").length`
         )) === 0,
-        "存在被选中的选项"
+        '存在被选中的选项'
     );
 
     // 任一 <i> 的 class 都必须匹配"安全图标名（可带 caret 后缀）"这一唯一形态
@@ -637,7 +618,7 @@ await injectAndLoad("index.html", {
         });
         return JSON.stringify(bad);
     })()`);
-    check("无任何 <i> 的 class 携带注入片段", anyBadIcon === "[]", anyBadIcon);
+    check('无任何 <i> 的 class 携带注入片段', anyBadIcon === '[]', anyBadIcon);
 }
 
 // 保存：恶意原值必须**保留**（用户没有主动改图标），且渲染仍安全
@@ -647,26 +628,22 @@ await injectAndLoad("index.html", {
         const raw = localStorage.getItem("buttonConfig");
         return raw;
     })()`);
-    check("含恶意 icon 的配置保存不抛异常", saved.ok === true, saved.ok ? "" : saved.error);
+    check('含恶意 icon 的配置保存不抛异常', saved.ok === true, saved.ok ? '' : saved.error);
     if (saved.ok) {
         const cfg = JSON.parse(saved.value);
-        const icons = (cfg.buttons || []).map(b => b.icon);
+        const icons = (cfg.buttons || []).map((b) => b.icon);
         check(
-            "未改动图标时原值被原样保留（不静默丢数据）",
+            '未改动图标时原值被原样保留（不静默丢数据）',
             icons[0] === ICON_P.attrBreak,
             JSON.stringify(icons[0])
         );
-        check(
-            "同一批其他按钮的 icon 未被牵连",
-            icons[1] === "bell",
-            JSON.stringify(icons[1])
-        );
+        check('同一批其他按钮的 icon 未被牵连', icons[1] === 'bell', JSON.stringify(icons[1]));
     }
 
     // 重新加载后渲染仍必须是安全 class（原值保留 ≠ 原值被当 class 用）
-    await goto(BASE + "/index.html");
-    const a = await audit(".bubble-container");
-    checkNoInjection("保存并重载后的首页", a);
+    await goto(BASE + '/index.html');
+    const a = await audit('.bubble-container');
+    checkNoInjection('保存并重载后的首页', a);
     const reloadedCls = JSON.parse(
         await evalJs(`JSON.stringify(
             Array.from(document.querySelectorAll(".bubble-container .bubble-btn .bubble-content i"))
@@ -674,32 +651,33 @@ await injectAndLoad("index.html", {
         )`)
     );
     check(
-        "重载后全部图标 class 均在允许列表内",
-        reloadedCls.length > 0 && reloadedCls.every(c => ALLOWED_ICONS.has(c.replace("fas fa-", ""))),
+        '重载后全部图标 class 均在允许列表内',
+        reloadedCls.length > 0 &&
+            reloadedCls.every((c) => ALLOWED_ICONS.has(c.replace('fas fa-', ''))),
         JSON.stringify(reloadedCls)
     );
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例3b] 严格允许列表：白名单外的历史值不进入 class，且保存保留原值");
+log('');
+log('[用例3b] 严格允许列表：白名单外的历史值不进入 class，且保存保留原值');
 // 主指挥 AI 初审给出的具体反例：不在 availableIcons 中的 `not-configured`
 // 曾被渲染成 `fa-not-configured`。这里把它作为断言的核心输入。
 // 同时放入 `circle`（saveButtonConfig 的防御性默认值、无翻译键）与一个合法值做对照。
-await injectAndLoad("index.html", {
-    [ONB]: "true",
+await injectAndLoad('index.html', {
+    [ONB]: 'true',
     buttonConfig: JSON.stringify({
         buttons: [
-            { id: "quick_online", message: "白名单外一", icon: "not-configured" },
-            { id: "emergency", message: "白名单外二", icon: "circle" },
+            { id: 'quick_online', message: '白名单外一', icon: 'not-configured' },
+            { id: 'emergency', message: '白名单外二', icon: 'circle' },
             {
-                id: "custom_1700000000777",
-                message: "合法对照",
-                icon: "fire",
-            },
+                id: 'custom_1700000000777',
+                message: '合法对照',
+                icon: 'fire'
+            }
         ],
-        activeGroup: "default",
-    }),
+        activeGroup: 'default'
+    })
 });
 {
     const cls = JSON.parse(
@@ -709,32 +687,26 @@ await injectAndLoad("index.html", {
         )`)
     );
     check(
-        "白名单外的 not-configured 不渲染为 fa-not-configured",
+        '白名单外的 not-configured 不渲染为 fa-not-configured',
         cls[0] === FALLBACK_CLASS,
         JSON.stringify(cls[0])
     );
     check(
-        "白名单外的 circle 同样回退（无对应翻译键，不进入 class）",
+        '白名单外的 circle 同样回退（无对应翻译键，不进入 class）',
         cls[1] === FALLBACK_CLASS,
         JSON.stringify(cls[1])
     );
+    check('白名单内的 fire 正常渲染', cls[2] === 'fas fa-fire', JSON.stringify(cls[2]));
+
+    const html = await evalJs(`document.querySelector(".bubble-container").innerHTML`);
     check(
-        "白名单内的 fire 正常渲染",
-        cls[2] === "fas fa-fire",
-        JSON.stringify(cls[2])
+        '整段 HTML 中不出现 fa-not-configured',
+        !html.includes('not-configured'),
+        'HTML 含 not-configured'
     );
 
-    const html = await evalJs(
-        `document.querySelector(".bubble-container").innerHTML`
-    );
-    check(
-        "整段 HTML 中不出现 fa-not-configured",
-        !html.includes("not-configured"),
-        "HTML 含 not-configured"
-    );
-
-    const a = await audit(".bubble-container");
-    checkNoInjection("白名单外图标下的首页", a);
+    const a = await audit('.bubble-container');
+    checkNoInjection('白名单外图标下的首页', a);
 }
 
 {
@@ -754,30 +726,22 @@ await injectAndLoad("index.html", {
         })()`)
     );
     check(
-        "默认按钮选择器保留白名单外的原值",
-        pickers.p1 === "not-configured",
+        '默认按钮选择器保留白名单外的原值',
+        pickers.p1 === 'not-configured',
         JSON.stringify(pickers.p1)
     );
     check(
-        "未知值的选择器预览回退为随机字形（表现层常量）",
+        '未知值的选择器预览回退为随机字形（表现层常量）',
         pickers.p1Trigger === PICKER_FALLBACK_CLASS,
         JSON.stringify(pickers.p1Trigger)
     );
+    check('未知值不点亮任何选项', pickers.p1Selected === 0, String(pickers.p1Selected));
     check(
-        "未知值不点亮任何选项",
-        pickers.p1Selected === 0,
-        String(pickers.p1Selected)
-    );
-    check(
-        "另一个白名单外的原值（circle）同样被保留",
-        pickers.p2 === "circle",
+        '另一个白名单外的原值（circle）同样被保留',
+        pickers.p2 === 'circle',
         JSON.stringify(pickers.p2)
     );
-    check(
-        "合法值的选择器原值不受影响",
-        pickers.custom === "fire",
-        JSON.stringify(pickers.custom)
-    );
+    check('合法值的选择器原值不受影响', pickers.custom === 'fire', JSON.stringify(pickers.custom));
 
     // 白名单完整性：选择器提供的可选值必须恰好等于 availableIcons 契约
     const offered = JSON.parse(
@@ -786,19 +750,19 @@ await injectAndLoad("index.html", {
                 .map(o => o.dataset.value)
         )`)
     );
-    const offeredIcons = offered.filter(v => v !== "random");
+    const offeredIcons = offered.filter((v) => v !== 'random');
     check(
-        "选择器提供的图标数量等于 availableIcons",
+        '选择器提供的图标数量等于 availableIcons',
         offeredIcons.length === AVAILABLE_ICONS.length,
         JSON.stringify(offeredIcons.length)
     );
     check(
-        "选择器提供的图标集合与 availableIcons 完全一致",
+        '选择器提供的图标集合与 availableIcons 完全一致',
         JSON.stringify(offeredIcons) === JSON.stringify(AVAILABLE_ICONS),
         JSON.stringify(offeredIcons)
     );
     check(
-        "每个选项的图标 class 与自身 data-value 一致",
+        '每个选项的图标 class 与自身 data-value 一致',
         (await evalJs(`(() => {
             const bad = [];
             document.querySelectorAll("#button1Icon .icon-picker-option").forEach(o => {
@@ -807,8 +771,8 @@ await injectAndLoad("index.html", {
                 if (o.querySelector("i").className !== expect) bad.push(v);
             });
             return JSON.stringify(bad);
-        })()`)) === "[]",
-        "存在 class 与 data-value 不一致的选项"
+        })()`)) === '[]',
+        '存在 class 与 data-value 不一致的选项'
     );
 }
 
@@ -818,25 +782,17 @@ await injectAndLoad("index.html", {
         document.getElementById("saveButtons").click();
         return localStorage.getItem("buttonConfig");
     })()`);
-    check("白名单外图标下保存不抛异常", saved.ok === true, saved.ok ? "" : saved.error);
+    check('白名单外图标下保存不抛异常', saved.ok === true, saved.ok ? '' : saved.error);
     if (saved.ok) {
         const cfg = JSON.parse(saved.value);
-        const icons = (cfg.buttons || []).map(b => b.icon);
+        const icons = (cfg.buttons || []).map((b) => b.icon);
         check(
-            "未改动图标时 not-configured 被原样保留",
-            icons[0] === "not-configured",
+            '未改动图标时 not-configured 被原样保留',
+            icons[0] === 'not-configured',
             JSON.stringify(icons[0])
         );
-        check(
-            "未改动图标时 circle 被原样保留",
-            icons[1] === "circle",
-            JSON.stringify(icons[1])
-        );
-        check(
-            "合法 icon 不受影响",
-            icons[2] === "fire",
-            JSON.stringify(icons[2])
-        );
+        check('未改动图标时 circle 被原样保留', icons[1] === 'circle', JSON.stringify(icons[1]));
+        check('合法 icon 不受影响', icons[2] === 'fire', JSON.stringify(icons[2]));
     }
 }
 
@@ -854,27 +810,23 @@ await injectAndLoad("index.html", {
             selected: p.querySelectorAll(".icon-picker-option.selected").length,
         });
     })()`);
-    check("可选择合法图标（点击不抛异常）", clicked.ok === true, clicked.ok ? "" : clicked.error);
+    check('可选择合法图标（点击不抛异常）', clicked.ok === true, clicked.ok ? '' : clicked.error);
     if (clicked.ok) {
         const r = JSON.parse(clicked.value);
-        check("主动选择后 dataset.value 变为新值", r.value === "star", JSON.stringify(r.value));
-        check("主动选择后预览图标更新", r.trigger === "fas fa-star", JSON.stringify(r.trigger));
-        check("主动选择后恰好有一项被点亮", r.selected === 1, String(r.selected));
+        check('主动选择后 dataset.value 变为新值', r.value === 'star', JSON.stringify(r.value));
+        check('主动选择后预览图标更新', r.trigger === 'fas fa-star', JSON.stringify(r.trigger));
+        check('主动选择后恰好有一项被点亮', r.selected === 1, String(r.selected));
     }
     const saved = await evalJsSafe(`(() => {
         document.getElementById("saveButtons").click();
         return localStorage.getItem("buttonConfig");
     })()`);
     if (saved.ok) {
-        const icons = (JSON.parse(saved.value).buttons || []).map(b => b.icon);
+        const icons = (JSON.parse(saved.value).buttons || []).map((b) => b.icon);
+        check('主动改选后写入的是新图标', icons[0] === 'star', JSON.stringify(icons[0]));
         check(
-            "主动改选后写入的是新图标",
-            icons[0] === "star",
-            JSON.stringify(icons[0])
-        );
-        check(
-            "未触碰的其他按钮仍保留原值",
-            icons[1] === "circle" && icons[2] === "fire",
+            '未触碰的其他按钮仍保留原值',
+            icons[1] === 'circle' && icons[2] === 'fire',
             JSON.stringify(icons)
         );
     }
@@ -882,22 +834,22 @@ await injectAndLoad("index.html", {
 
 // icon 字段完全缺失时：显示回退、回写取回退值（与修复前一致）
 {
-    await injectAndLoad("index.html", {
-        [ONB]: "true",
+    await injectAndLoad('index.html', {
+        [ONB]: 'true',
         buttonConfig: JSON.stringify({
             buttons: [
-                { id: "quick_online", message: "无图标字段" },
-                { id: "emergency", message: "有图标", icon: "bell" },
+                { id: 'quick_online', message: '无图标字段' },
+                { id: 'emergency', message: '有图标', icon: 'bell' }
             ],
-            activeGroup: "default",
-        }),
+            activeGroup: 'default'
+        })
     });
 
     const homeCls = await evalJs(`(() => {
         const i = document.querySelector(".bubble-container .bubble-btn .bubble-content i");
         return i ? i.className : "(no i)";
     })()`);
-    check("icon 缺失时首页渲染回退图标", homeCls === FALLBACK_CLASS, homeCls);
+    check('icon 缺失时首页渲染回退图标', homeCls === FALLBACK_CLASS, homeCls);
 
     await openModal();
     const picker = JSON.parse(
@@ -911,12 +863,12 @@ await injectAndLoad("index.html", {
         })()`)
     );
     check(
-        "icon 缺失时回写值取回退值",
+        'icon 缺失时回写值取回退值',
         picker && picker.value === FALLBACK_ICON,
         JSON.stringify(picker && picker.value)
     );
     check(
-        "icon 缺失时选择器预览为回退字形",
+        'icon 缺失时选择器预览为回退字形',
         picker && picker.trigger === PICKER_FALLBACK_CLASS,
         JSON.stringify(picker && picker.trigger)
     );
@@ -926,9 +878,9 @@ await injectAndLoad("index.html", {
         return localStorage.getItem("buttonConfig");
     })()`);
     if (saved.ok) {
-        const icons = (JSON.parse(saved.value).buttons || []).map(b => b.icon);
+        const icons = (JSON.parse(saved.value).buttons || []).map((b) => b.icon);
         check(
-            "icon 缺失时保存写入回退值，不写出空值",
+            'icon 缺失时保存写入回退值，不写出空值',
             icons[0] === FALLBACK_ICON,
             JSON.stringify(icons[0])
         );
@@ -936,74 +888,68 @@ await injectAndLoad("index.html", {
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例4] 自定义按钮表单：恶意 message 与 icon");
-await injectAndLoad("index.html", {
-    [ONB]: "true",
+log('');
+log('[用例4] 自定义按钮表单：恶意 message 与 icon');
+await injectAndLoad('index.html', {
+    [ONB]: 'true',
     buttonConfig: JSON.stringify({
         buttons: [
-            { id: "quick_online", message: "默认一", icon: "bolt" },
-            { id: "emergency", message: "默认二", icon: "bell" },
+            { id: 'quick_online', message: '默认一', icon: 'bolt' },
+            { id: 'emergency', message: '默认二', icon: 'bell' },
             {
-                id: "custom_1700000000900",
+                id: 'custom_1700000000900',
                 message: P.structBreak,
-                icon: ICON_P.withSpace,
-            },
+                icon: ICON_P.withSpace
+            }
         ],
-        activeGroup: "default",
-    }),
+        activeGroup: 'default'
+    })
 });
 await openModal();
 
 {
-    const a = await audit("#buttonEditModal");
-    checkNoInjection("含自定义按钮的编辑弹窗", a);
+    const a = await audit('#buttonEditModal');
+    checkNoInjection('含自定义按钮的编辑弹窗', a);
 
-    const cnt = await evalJs(
-        `document.querySelectorAll(".custom-button-form").length`
-    );
-    check("渲染 1 个自定义按钮表单", cnt === 1, String(cnt));
+    const cnt = await evalJs(`document.querySelectorAll(".custom-button-form").length`);
+    check('渲染 1 个自定义按钮表单', cnt === 1, String(cnt));
 
     const cv = await evalJs(`(() => {
         const f = document.querySelector(".custom-button-form");
         return f ? f.querySelector(".btn-text").value : "(missing)";
     })()`);
-    check(
-        "自定义表单 value 完整回显结构注入载荷",
-        cv === P.structBreak,
-        JSON.stringify(cv)
-    );
+    check('自定义表单 value 完整回显结构注入载荷', cv === P.structBreak, JSON.stringify(cv));
 
     const labelCount = await evalJs(`(() => {
         const f = document.querySelector(".custom-button-form");
         return f ? f.querySelectorAll(".form-header label").length : -1;
     })()`);
-    check("自定义表单标签未被结构注入破坏", labelCount === 1, String(labelCount));
+    check('自定义表单标签未被结构注入破坏', labelCount === 1, String(labelCount));
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例5] 历史渲染：恶意 nickname / message / emoji / webhook");
-await injectAndLoad("history.html", {
-    [ONB]: "true",
+log('');
+log('[用例5] 历史渲染：恶意 nickname / message / emoji / webhook');
+await injectAndLoad('history.html', {
+    [ONB]: 'true',
     notificationHistory: JSON.stringify([
         {
-            timestamp: "2026-09-17T10:00:00.000Z",
+            timestamp: '2026-09-17T10:00:00.000Z',
             message: P.imgOnerror,
             nickname: P.scriptTag,
             emoji: P.svgOnload,
-            _status: "error",
-            webhook: P.attrBreak,
-        },
-    ]),
+            _status: 'error',
+            webhook: P.attrBreak
+        }
+    ])
 });
 
 {
-    const a = await audit("#historyList");
+    const a = await audit('#historyList');
     const n = await evalJs(`document.querySelectorAll("#historyList .history-item").length`);
-    check("历史渲染 1 条记录", n === 1, String(n));
-    checkNoInjection("历史列表", a);
-    check("历史列表无 #inj 注入元素", !a.html.includes('id="inj"'), "含 id=inj");
+    check('历史渲染 1 条记录', n === 1, String(n));
+    checkNoInjection('历史列表', a);
+    check('历史列表无 #inj 注入元素', !a.html.includes('id="inj"'), '含 id=inj');
 
     const fields = await evalJs(`(() => {
         const item = document.querySelector("#historyList .history-item");
@@ -1017,58 +963,58 @@ await injectAndLoad("history.html", {
         });
     })()`);
     const f = JSON.parse(fields);
-    check("恶意 nickname 以字面文本显示", f.name === P.scriptTag, JSON.stringify(f.name));
-    check("恶意 message 以字面文本显示", f.msg === P.imgOnerror, JSON.stringify(f.msg));
-    check("恶意 emoji 以字面文本显示", f.emoji === P.svgOnload, JSON.stringify(f.emoji));
+    check('恶意 nickname 以字面文本显示', f.name === P.scriptTag, JSON.stringify(f.name));
+    check('恶意 message 以字面文本显示', f.msg === P.imgOnerror, JSON.stringify(f.msg));
+    check('恶意 emoji 以字面文本显示', f.emoji === P.svgOnload, JSON.stringify(f.emoji));
     check(
-        "恶意 webhook 以字面文本显示（error 态）",
+        '恶意 webhook 以字面文本显示（error 态）',
         f.err === `Webhook: ${P.attrBreak}`,
         JSON.stringify(f.err)
     );
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例6] 历史 _status：未知值不突破 class，success/error 不回归");
-await injectAndLoad("history.html", {
-    [ONB]: "true",
+log('');
+log('[用例6] 历史 _status：未知值不突破 class，success/error 不回归');
+await injectAndLoad('history.html', {
+    [ONB]: 'true',
     notificationHistory: JSON.stringify([
         {
-            timestamp: "2026-09-17T10:00:00.000Z",
-            message: "恶意状态",
-            nickname: "甲",
-            emoji: "👤",
+            timestamp: '2026-09-17T10:00:00.000Z',
+            message: '恶意状态',
+            nickname: '甲',
+            emoji: '👤',
             _status: 'error" onload="window.__pwned=1',
-            webhook: "http://x.invalid",
+            webhook: 'http://x.invalid'
         },
         {
-            timestamp: "2026-09-17T10:01:00.000Z",
-            message: "合法错误",
-            nickname: "乙",
-            emoji: "👤",
-            _status: "error",
-            webhook: "http://example.invalid/hook",
+            timestamp: '2026-09-17T10:01:00.000Z',
+            message: '合法错误',
+            nickname: '乙',
+            emoji: '👤',
+            _status: 'error',
+            webhook: 'http://example.invalid/hook'
         },
         {
-            timestamp: "2026-09-17T10:02:00.000Z",
-            message: "合法成功",
-            nickname: "丙",
-            emoji: "👤",
-            _status: "success",
-            webhook: "http://example.invalid/hook",
+            timestamp: '2026-09-17T10:02:00.000Z',
+            message: '合法成功',
+            nickname: '丙',
+            emoji: '👤',
+            _status: 'success',
+            webhook: 'http://example.invalid/hook'
         },
         {
-            timestamp: "2026-09-17T10:03:00.000Z",
-            message: "状态缺失",
-            nickname: "丁",
-            emoji: "👤",
-        },
-    ]),
+            timestamp: '2026-09-17T10:03:00.000Z',
+            message: '状态缺失',
+            nickname: '丁',
+            emoji: '👤'
+        }
+    ])
 });
 
 {
-    const a = await audit("#historyList");
-    checkNoInjection("历史列表（含恶意 _status）", a);
+    const a = await audit('#historyList');
+    checkNoInjection('历史列表（含恶意 _status）', a);
 
     const classes = JSON.parse(
         await evalJs(`JSON.stringify(
@@ -1076,62 +1022,58 @@ await injectAndLoad("history.html", {
                 .map(el => el.className)
         )`)
     );
-    check("历史渲染 4 条记录", classes.length === 4, JSON.stringify(classes));
+    check('历史渲染 4 条记录', classes.length === 4, JSON.stringify(classes));
     check(
-        "未知 _status 不产生状态 class（仅 history-item）",
-        classes[0] === "history-item",
+        '未知 _status 不产生状态 class（仅 history-item）',
+        classes[0] === 'history-item',
         JSON.stringify(classes[0])
     );
     check(
-        "合法 error 仍为 history-item error",
-        classes[1] === "history-item error",
+        '合法 error 仍为 history-item error',
+        classes[1] === 'history-item error',
         JSON.stringify(classes[1])
     );
     check(
-        "合法 success 仍为 history-item success",
-        classes[2] === "history-item success",
+        '合法 success 仍为 history-item success',
+        classes[2] === 'history-item success',
         JSON.stringify(classes[2])
     );
     check(
-        "_status 缺失时不产生状态 class",
-        classes[3] === "history-item",
+        '_status 缺失时不产生状态 class',
+        classes[3] === 'history-item',
         JSON.stringify(classes[3])
     );
 
     const errBlocks = await evalJs(
         `document.querySelectorAll("#historyList .history-error").length`
     );
-    check(
-        "仅合法 error 记录显示 Webhook 行（2 条 → 1 条）",
-        errBlocks === 1,
-        String(errBlocks)
-    );
+    check('仅合法 error 记录显示 Webhook 行（2 条 → 1 条）', errBlocks === 1, String(errBlocks));
 
     const unknownClass = classes[0];
     check(
-        "未知 _status 未把任意字符串带进 class",
-        !unknownClass.includes("onload") && !unknownClass.includes('"'),
+        '未知 _status 未把任意字符串带进 class',
+        !unknownClass.includes('onload') && !unknownClass.includes('"'),
         unknownClass
     );
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例7] 合法数据不回归：图标渲染 / 文本 / 随机图标");
-await injectAndLoad("index.html", {
-    [ONB]: "true",
+log('');
+log('[用例7] 合法数据不回归：图标渲染 / 文本 / 随机图标');
+await injectAndLoad('index.html', {
+    [ONB]: 'true',
     buttonConfig: JSON.stringify({
         buttons: [
-            { id: "quick_online", message: "合法按钮一", icon: "fire" },
-            { id: "emergency", message: "合法按钮二", icon: "random" },
+            { id: 'quick_online', message: '合法按钮一', icon: 'fire' },
+            { id: 'emergency', message: '合法按钮二', icon: 'random' },
             {
-                id: "custom_1700000000100",
-                message: "合法自定义",
-                icon: "star",
-            },
+                id: 'custom_1700000000100',
+                message: '合法自定义',
+                icon: 'star'
+            }
         ],
-        activeGroup: "default",
-    }),
+        activeGroup: 'default'
+    })
 });
 
 {
@@ -1141,13 +1083,21 @@ await injectAndLoad("index.html", {
                 .map(i => i.className)
         )`)
     );
-    check("合法 icon fire 渲染为 fas fa-fire", icons[0] === "fas fa-fire", JSON.stringify(icons[0]));
     check(
-        "合法 icon random 保持既有渲染 fas fa-random",
-        icons[1] === "fas fa-random",
+        '合法 icon fire 渲染为 fas fa-fire',
+        icons[0] === 'fas fa-fire',
+        JSON.stringify(icons[0])
+    );
+    check(
+        '合法 icon random 保持既有渲染 fas fa-random',
+        icons[1] === 'fas fa-random',
         JSON.stringify(icons[1])
     );
-    check("合法 icon star 渲染为 fas fa-star", icons[2] === "fas fa-star", JSON.stringify(icons[2]));
+    check(
+        '合法 icon star 渲染为 fas fa-star',
+        icons[2] === 'fas fa-star',
+        JSON.stringify(icons[2])
+    );
 
     const texts = JSON.parse(
         await evalJs(`JSON.stringify(
@@ -1156,8 +1106,8 @@ await injectAndLoad("index.html", {
         )`)
     );
     check(
-        "合法按钮文案完整显示",
-        texts[0] === "合法按钮一" && texts[1] === "合法按钮二" && texts[2] === "合法自定义",
+        '合法按钮文案完整显示',
+        texts[0] === '合法按钮一' && texts[1] === '合法按钮二' && texts[2] === '合法自定义',
         JSON.stringify(texts)
     );
 
@@ -1165,11 +1115,7 @@ await injectAndLoad("index.html", {
         const btns = document.querySelectorAll(".bubble-container .bubble-btn");
         return JSON.stringify(Array.from(btns).map(b => b.getAttribute("data-button-index")));
     })()`);
-    check(
-        "按钮 data-button-index 完整（可点击前提）",
-        clickable === '["0","1","2"]',
-        clickable
-    );
+    check('按钮 data-button-index 完整（可点击前提）', clickable === '["0","1","2"]', clickable);
 
     // 图标选择器：合法 icon 正确回显
     await openModal();
@@ -1185,33 +1131,45 @@ await injectAndLoad("index.html", {
             });
         })()`)
     );
-    check("合法 icon 在选择器中回显 dataset.value=fire", picker && picker.value === "fire", JSON.stringify(picker));
-    check("合法 icon 触发按钮 class 为 fas fa-fire", picker && picker.trigger === "fas fa-fire", JSON.stringify(picker));
-    check("合法 icon 在菜单中标记 selected", picker && picker.selectedValue === "fire", JSON.stringify(picker));
+    check(
+        '合法 icon 在选择器中回显 dataset.value=fire',
+        picker && picker.value === 'fire',
+        JSON.stringify(picker)
+    );
+    check(
+        '合法 icon 触发按钮 class 为 fas fa-fire',
+        picker && picker.trigger === 'fas fa-fire',
+        JSON.stringify(picker)
+    );
+    check(
+        '合法 icon 在菜单中标记 selected',
+        picker && picker.selectedValue === 'fire',
+        JSON.stringify(picker)
+    );
 
-    const a = await audit("#buttonEditModal");
-    checkNoInjection("合法数据下的编辑弹窗", a);
+    const a = await audit('#buttonEditModal');
+    checkNoInjection('合法数据下的编辑弹窗', a);
 }
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("[用例8] 页面异常检查");
-check("全流程无未捕获异常 / console.error", pageErrors.length === 0, pageErrors.join(" | "));
+log('');
+log('[用例8] 页面异常检查');
+check('全流程无未捕获异常 / console.error', pageErrors.length === 0, pageErrors.join(' | '));
 
 // ─────────────────────────────────────────────────────────
-log("");
-log("=== 结果 ===");
+log('');
+log('=== 结果 ===');
 log(`环境：${ver.Browser}`);
 log(`URL ：${BASE}`);
 log(`断言：${pass} passed, ${fail} failed`);
 if (failedItems.length) {
-    log("失败项：");
-    failedItems.forEach(f => log("  - " + f));
+    log('失败项：');
+    failedItems.forEach((f) => log('  - ' + f));
 }
 
 if (LOG_PATH) {
     try {
-        writeFileSync(LOG_PATH, out.join("\n") + "\n", "utf8");
+        writeFileSync(LOG_PATH, out.join('\n') + '\n', 'utf8');
     } catch {
         /* ignore */
     }

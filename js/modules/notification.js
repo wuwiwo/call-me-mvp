@@ -1,17 +1,8 @@
 // /src/modules/notification.js
-import {
-    CONFIG
-} from './config.js';
-import {
-    utils
-} from './utils.js';
-import {
-    state,
-    readJsonSafe
-} from './state.js';
-import {
-    soundManager
-} from './sounds.js';
+import { CONFIG } from './config.js';
+import { utils } from './utils.js';
+import { state, readJsonSafe } from './state.js';
+import { soundManager } from './sounds.js';
 
 // 通知系统管理
 export const notification = {
@@ -37,8 +28,8 @@ export const notification = {
     // /src/modules/notification.js
     show(message, isSuccess = true) {
         soundManager.playNotificationSound(isSuccess);
-        const icon = isSuccess ? "paper-plane" : "times-circle";
-        const statusClass = isSuccess ? "sent" : "error";
+        const icon = isSuccess ? 'paper-plane' : 'times-circle';
+        const statusClass = isSuccess ? 'sent' : 'error';
 
         // 确保 message 是字符串，不是翻译键
         let displayMessage = message;
@@ -49,12 +40,9 @@ export const notification = {
 
         this.element.innerHTML = `<i class="fas fa-${icon}"></i> ${displayMessage}`;
         this.element.className = `notification ${statusClass}`;
-        this.element.classList.add("show");
+        this.element.classList.add('show');
 
-        setTimeout(
-            () => this.element.classList.remove("show"),
-            CONFIG.notificationDuration
-        );
+        setTimeout(() => this.element.classList.remove('show'), CONFIG.notificationDuration);
     },
 
     // 添加历史记录
@@ -65,32 +53,27 @@ export const notification = {
     // 而不是让用户永久停在"每次发通知都抛异常"的状态。
     // 注意：仅在数据不可用（非法 JSON / 非数组）时才覆盖，合法数据一律保留。
     addHistoryRecord(message, isSuccess) {
-        const existing = readJsonSafe(
-            "notificationHistory",
-            [],
-            v => Array.isArray(v)
-        );
+        const existing = readJsonSafe('notificationHistory', [], (v) => Array.isArray(v));
         const history = Array.isArray(existing) ? existing : [];
         history.unshift({
             timestamp: new Date().toISOString(),
             message,
-            nickname: state.userProfile?.nickname || utils.getTranslation("common.unregistered"),
+            nickname: state.userProfile?.nickname || utils.getTranslation('common.unregistered'),
             emoji: state.userProfile?.emoji || CONFIG.defaultAvatar,
-            _status: isSuccess ? "success" : "error",
+            _status: isSuccess ? 'success' : 'error',
             webhook: CONFIG.webhookUrl
         });
         localStorage.setItem(
-            "notificationHistory",
+            'notificationHistory',
             JSON.stringify(history.slice(0, CONFIG.maxHistoryRecords))
         );
     },
 
-// 发送Webhook通知
+    // 发送Webhook通知
     async sendNotification(buttonData) {
-
         // 用户资料检查 - 这是您修改的部分
         if (!state.userProfile) {
-            this.show(utils.getTranslation("profile.bindTitle"), false);
+            this.show(utils.getTranslation('profile.bindTitle'), false);
 
             // 3秒后刷新页面
             setTimeout(() => {
@@ -107,7 +90,6 @@ export const notification = {
         // 此前本行与 buttonManager 各写一次，两次时间戳相差一个调用间隔，
         // 属于重复写入。本模块只负责发请求与记录历史。
 
-
         try {
             const msgId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const params = new URLSearchParams({
@@ -120,17 +102,16 @@ export const notification = {
             const url = `${CONFIG.webhookUrl}?${params}`;
 
             const response = await fetch(url, {
-                method: "GET",
-                mode: "cors"
+                method: 'GET',
+                mode: 'cors'
             });
-
 
             if (!response.ok) {
                 throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
             }
 
             // 确保使用翻译文本而不是翻译键
-            this.show(utils.getTranslation("notification.successMsg"));
+            this.show(utils.getTranslation('notification.successMsg'));
             this.addHistoryRecord(buttonData.message, true);
 
             // 回执轮询：**先让旧轮询失效，再写「已发送」**。
@@ -139,17 +120,15 @@ export const notification = {
             // pollReadStatus() 内部也会先停旧轮询，这里显式再停一次是为了让
             // 「发起前必须先失效」成为调用点自身的保证，不依赖被调方的实现细节。
             this.stopReceiptPolling();
-            this.setReceiptStatus("sent");
+            this.setReceiptStatus('sent');
             this.pollReadStatus(msgId);
             return true;
         } catch (error) {
-            console.error("Fetch error:", error);
+            console.error('Fetch error:', error);
             // 使用格式化的错误消息
-            const errorMessage = utils.formatString(
-                utils.getTranslation("notification.errorMsg"), {
-                    error: error.message
-                }
-            );
+            const errorMessage = utils.formatString(utils.getTranslation('notification.errorMsg'), {
+                error: error.message
+            });
             this.show(errorMessage, false);
             this.addHistoryRecord(buttonData.message, false);
             return false;
@@ -169,18 +148,18 @@ export const notification = {
      * @param {"read"|"timeout"|"sent"} statusName 回执状态
      */
     setReceiptStatus(statusName) {
-        const el = document.getElementById("receiptStatus");
+        const el = document.getElementById('receiptStatus');
         if (!el) return;
         const t = utils.getTranslation;
-        if (statusName === "read") {
-            el.className = "receipt-status read";
-            el.innerHTML = `<i class="fas fa-check-double"></i> ${t("receipt.read")}`;
-        } else if (statusName === "timeout") {
-            el.className = "receipt-status timeout";
-            el.innerHTML = `<i class="fas fa-hourglass-half"></i> ${t("receipt.timeout")}`;
+        if (statusName === 'read') {
+            el.className = 'receipt-status read';
+            el.innerHTML = `<i class="fas fa-check-double"></i> ${t('receipt.read')}`;
+        } else if (statusName === 'timeout') {
+            el.className = 'receipt-status timeout';
+            el.innerHTML = `<i class="fas fa-hourglass-half"></i> ${t('receipt.timeout')}`;
         } else {
-            el.className = "receipt-status sent";
-            el.innerHTML = `<i class="fas fa-check"></i> ${t("receipt.sent")}<span class="dots-loader"><span></span><span></span><span></span></span>`;
+            el.className = 'receipt-status sent';
+            el.innerHTML = `<i class="fas fa-check"></i> ${t('receipt.sent')}<span class="dots-loader"><span></span><span></span><span></span></span>`;
         }
     },
 
@@ -238,11 +217,11 @@ export const notification = {
                 // 这样 `receiptPollTimer !== null` 就等价于"有轮询在等待"，
                 // 否则字段会留着已触发的旧 id，让"是否还有轮询"无法据此判断。
                 this.receiptPollTimer = null;
-                this.setReceiptStatus("timeout");
+                this.setReceiptStatus('timeout');
                 return;
             }
             try {
-                const res = await fetch(binUrl, { cache: "no-store" });
+                const res = await fetch(binUrl, { cache: 'no-store' });
 
                 // 异步边界后重新确认：期间可能已有新发送接管轮询
                 if (gen !== this.receiptPollGeneration) return;
@@ -253,15 +232,15 @@ export const notification = {
                     if (gen !== this.receiptPollGeneration) return;
 
                     const record = data.record || data;
-                    if (record.msgId === msgId && record.status === "read") {
+                    if (record.msgId === msgId && record.status === 'read') {
                         // 终态：同上，清空句柄表示"没有已排队的轮询"
                         this.receiptPollTimer = null;
-                        this.setReceiptStatus("read");
+                        this.setReceiptStatus('read');
                         return;
                     }
                 }
             } catch (e) {
-                console.error("已读回执轮询失败:", e);
+                console.error('已读回执轮询失败:', e);
                 // 出错后同样要确认代际：旧轮询不得继续排下一次
                 if (gen !== this.receiptPollGeneration) return;
             }

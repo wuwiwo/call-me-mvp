@@ -28,20 +28,20 @@ history.html
 
 ## 模块职责与实际依赖
 
-| 模块 | 实际职责 | 主要副作用 |
-| --- | --- | --- |
-| `config.js` | webhook、JSONBin、冷却、按钮、密码、音效配置 | 无 |
-| `state.js` | 资料、语言、点击权限、请求状态；模块导入时立即 `init()` | 读 LocalStorage、创建恢复定时器 |
-| `buttonManager.js` | 按钮配置加载/保存、首页渲染、编辑表单、点击入口 | 改 DOM、LocalStorage、调用通知/倒计时 |
-| `notification.js` | toast、历史写入、webhook、回执轮询 | fetch、LocalStorage、DOM、音效 |
-| `countdown.js` | 倒计时 interval 与显示 | 改 state、LocalStorage、DOM |
-| `profile.js` | 资料模态框与保存 | LocalStorage、DOM |
-| `language.js` | 首页语言状态和菜单 | LocalStorage、DOM |
-| `history.js` | 历史页渲染与清除 | LocalStorage、DOM |
-| `password.js` | 前端密码提示、过期时间 | LocalStorage、动态 DOM |
-| `onboarding.js` | 首次访问引导 | LocalStorage、动态 DOM |
-| `sounds.js` | 音效缓存和播放 | Audio 网络/播放 |
-| `utils.js` | 翻译、字符串、时间工具 | 读取 state/translations |
+| 模块               | 实际职责                                                | 主要副作用                            |
+| ------------------ | ------------------------------------------------------- | ------------------------------------- |
+| `config.js`        | webhook、JSONBin、冷却、按钮、密码、音效配置            | 无                                    |
+| `state.js`         | 资料、语言、点击权限、请求状态；模块导入时立即 `init()` | 读 LocalStorage、创建恢复定时器       |
+| `buttonManager.js` | 按钮配置加载/保存、首页渲染、编辑表单、点击入口         | 改 DOM、LocalStorage、调用通知/倒计时 |
+| `notification.js`  | toast、历史写入、webhook、回执轮询                      | fetch、LocalStorage、DOM、音效        |
+| `countdown.js`     | 倒计时 interval 与显示                                  | 改 state、LocalStorage、DOM           |
+| `profile.js`       | 资料模态框与保存                                        | LocalStorage、DOM                     |
+| `language.js`      | 首页语言状态和菜单                                      | LocalStorage、DOM                     |
+| `history.js`       | 历史页渲染与清除                                        | LocalStorage、DOM                     |
+| `password.js`      | 前端密码提示、过期时间                                  | LocalStorage、动态 DOM                |
+| `onboarding.js`    | 首次访问引导                                            | LocalStorage、动态 DOM                |
+| `sounds.js`        | 音效缓存和播放                                          | Audio 网络/播放                       |
+| `utils.js`         | 翻译、字符串、时间工具                                  | 读取 state/translations               |
 
 ## 状态管理与持久化
 
@@ -61,4 +61,3 @@ history.html
 - 按钮数据同时表示默认按钮和自定义按钮，默认按钮身份在保存时改为按位置生成的 `default_1` 等；自定义 ID 每次保存用时间生成。
 - 历史记录、按钮配置、资料等使用无版本 JSON，任何一个损坏值都可能造成解析异常。
 - “密码模块先初始化”只是模态框显示顺序，不形成后端授权或真正的访问控制层。
-

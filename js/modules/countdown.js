@@ -248,12 +248,8 @@ export const countdown = {
     // ── 显示 ──
 
     updateDisplay() {
-        if (
-            !this.elements ||
-            !this.elements.countdownNameEl ||
-            !this.elements.countdownTextEl
-        ) {
-            console.error("Countdown elements not found");
+        if (!this.elements || !this.elements.countdownNameEl || !this.elements.countdownTextEl) {
+            console.error('Countdown elements not found');
             return;
         }
 
@@ -266,7 +262,7 @@ export const countdown = {
         if (this.remainingTime > 0) {
             // 使用 seconds 而不是 time，因为翻译文件中使用的是 {seconds}
             this.elements.countdownTextEl.textContent = utils.formatString(
-                utils.getTranslation("mainPage.cooldownMsg"),
+                utils.getTranslation('mainPage.cooldownMsg'),
                 { seconds: this.remainingTime }
             );
         } else {

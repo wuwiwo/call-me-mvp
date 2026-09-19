@@ -25,51 +25,51 @@
 //   - HTTP_PROXY 会劫持回环请求 → Chrome 带 --no-proxy-server --proxy-bypass-list=<-loopback>
 //   - 探针必须用 node:http 直连，不能用 fetch
 //   - 静态服务器必须与浏览器同进程（子进程不能跨 Bash 命令存活）
-import http from "node:http";
-import { spawn } from "node:child_process";
-import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { resolveChrome } from "./chrome-path.mjs";
+import http from 'node:http';
+import { spawn } from 'node:child_process';
+import { createReadStream, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { resolveChrome } from './chrome-path.mjs';
 
 // 可选：把完整输出落盘，与 CM003_LOG / CM004_LOG / CM005_LOG 的约定一致。
 // 在第一条 console.log 之前安装，确保捕获全部输出。
-const LOG_PATH = process.env.CM006_LOG || "";
+const LOG_PATH = process.env.CM006_LOG || '';
 const logLines = [];
 {
     const raw = console.log.bind(console);
     console.log = (...a) => {
-        const s = a.join(" ");
+        const s = a.join(' ');
         logLines.push(s);
         raw(s);
     };
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, '..');
 
 const SERVE_PORT = Number(process.env.CM006_PORT || 8899);
-const EXTERNAL = process.env.CM006_NO_SERVER === "1";
+const EXTERNAL = process.env.CM006_NO_SERVER === '1';
 const BASE = process.env.CM006_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM006_CDP_PORT || 9446);
 // Chrome 路径解析已统一到 tools/chrome-path.mjs（CM-009）：
 // CM006_CHROME > CHROME_PATH > 常见安装位置 > which
 const CHROME = resolveChrome(process.env.CM006_CHROME);
-const PROFILE = path.join(os.tmpdir(), "cm006-cooldown-profile");
+const PROFILE = path.join(os.tmpdir(), 'cm006-cooldown-profile');
 
 const MIME = {
-    ".html": "text/html; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".mjs": "text/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".mp3": "audio/mpeg",
-    ".wav": "audio/wav",
-    ".m4a": "audio/mp4",
-    ".png": "image/png",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon'
 };
 
 // ── 自带静态服务器（与浏览器同进程） ──
@@ -77,12 +77,12 @@ let staticServer = null;
 function startStaticServer() {
     return new Promise((resolve, reject) => {
         staticServer = http.createServer((req, res) => {
-            let rel = decodeURIComponent(req.url.split("?")[0]);
-            if (rel === "/") rel = "/index.html";
+            let rel = decodeURIComponent(req.url.split('?')[0]);
+            if (rel === '/') rel = '/index.html';
             const fp = path.join(ROOT, rel);
             if (!fp.startsWith(ROOT)) {
                 res.writeHead(403);
-                res.end("forbidden");
+                res.end('forbidden');
                 return;
             }
             let st;
@@ -90,22 +90,22 @@ function startStaticServer() {
                 st = statSync(fp);
             } catch {
                 res.writeHead(404);
-                res.end("not found");
+                res.end('not found');
                 return;
             }
             if (!st.isFile()) {
                 res.writeHead(404);
-                res.end("not found");
+                res.end('not found');
                 return;
             }
             res.writeHead(200, {
-                "Content-Type": MIME[path.extname(fp)] || "application/octet-stream",
-                "Cache-Control": "no-store",
+                'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream',
+                'Cache-Control': 'no-store'
             });
             createReadStream(fp).pipe(res);
         });
-        staticServer.on("error", reject);
-        staticServer.listen(SERVE_PORT, "127.0.0.1", () => resolve());
+        staticServer.on('error', reject);
+        staticServer.listen(SERVE_PORT, '127.0.0.1', () => resolve());
     });
 }
 
@@ -118,60 +118,60 @@ const cleanEnv = { ...process.env };
 for (const k of Object.keys(cleanEnv)) {
     if (/proxy/i.test(k)) delete cleanEnv[k];
 }
-cleanEnv.NO_PROXY = "127.0.0.1,localhost";
-cleanEnv.no_proxy = "127.0.0.1,localhost";
+cleanEnv.NO_PROXY = '127.0.0.1,localhost';
+cleanEnv.no_proxy = '127.0.0.1,localhost';
 
 mkdirSync(PROFILE, { recursive: true });
 const chromeProc = spawn(
     CHROME,
     [
-        "--headless=new",
+        '--headless=new',
         `--remote-debugging-port=${CDP_PORT}`,
         `--user-data-dir=${PROFILE}`,
-        "--no-first-run",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--no-proxy-server",
-        "--proxy-bypass-list=<-loopback>",
-        "about:blank",
+        '--no-first-run',
+        '--disable-gpu',
+        '--no-sandbox',
+        '--no-proxy-server',
+        '--proxy-bypass-list=<-loopback>',
+        'about:blank'
     ],
-    { stdio: "ignore", env: cleanEnv }
+    { stdio: 'ignore', env: cleanEnv }
 );
 
 function httpGetJson(pathname) {
     return new Promise((resolve, reject) => {
         const req = http.get(
-            { host: "127.0.0.1", port: CDP_PORT, path: pathname, timeout: 4000 },
-            res => {
-                let body = "";
-                res.setEncoding("utf8");
-                res.on("data", c => (body += c));
-                res.on("end", () => {
+            { host: '127.0.0.1', port: CDP_PORT, path: pathname, timeout: 4000 },
+            (res) => {
+                let body = '';
+                res.setEncoding('utf8');
+                res.on('data', (c) => (body += c));
+                res.on('end', () => {
                     try {
                         resolve(JSON.parse(body));
                     } catch {
-                        reject(new Error("bad json: " + body.slice(0, 120)));
+                        reject(new Error('bad json: ' + body.slice(0, 120)));
                     }
                 });
             }
         );
-        req.on("timeout", () => req.destroy(new Error("timeout")));
-        req.on("error", reject);
+        req.on('timeout', () => req.destroy(new Error('timeout')));
+        req.on('error', reject);
     });
 }
 
 async function getWsUrl() {
     for (let i = 0; i < 60; i++) {
         try {
-            const j = await httpGetJson("/json/version");
+            const j = await httpGetJson('/json/version');
             if (j.webSocketDebuggerUrl)
-                return j.webSocketDebuggerUrl.replace("localhost", "127.0.0.1");
+                return j.webSocketDebuggerUrl.replace('localhost', '127.0.0.1');
         } catch {
             /* retry */
         }
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
     }
-    throw new Error("CDP 未就绪：Chrome 是否启动？端口 " + CDP_PORT);
+    throw new Error('CDP 未就绪：Chrome 是否启动？端口 ' + CDP_PORT);
 }
 
 class CDP {
@@ -179,7 +179,7 @@ class CDP {
         this.ws = ws;
         this.id = 0;
         this.pending = new Map();
-        ws.addEventListener("message", ev => {
+        ws.addEventListener('message', (ev) => {
             const msg = JSON.parse(ev.data);
             if (msg.id && this.pending.has(msg.id)) {
                 const { resolve, reject } = this.pending.get(msg.id);
@@ -199,58 +199,56 @@ class CDP {
             setTimeout(() => {
                 if (this.pending.has(id)) {
                     this.pending.delete(id);
-                    reject(new Error("timeout: " + method));
+                    reject(new Error('timeout: ' + method));
                 }
             }, 20000);
         });
     }
 }
 
-console.log("=== CM-006 cooldown 单一责任回归 ===\n");
-console.log("[环境]");
-console.log("  测试 URL :", BASE);
-console.log("  Chrome   :", CHROME);
-console.log("  CDP 端口 :", CDP_PORT);
-console.log("  profile  :", PROFILE);
+console.log('=== CM-006 cooldown 单一责任回归 ===\n');
+console.log('[环境]');
+console.log('  测试 URL :', BASE);
+console.log('  Chrome   :', CHROME);
+console.log('  CDP 端口 :', CDP_PORT);
+console.log('  profile  :', PROFILE);
 
 const wsUrl = await getWsUrl();
 const ws = new WebSocket(wsUrl);
 await new Promise((res, rej) => {
-    ws.addEventListener("open", res);
-    ws.addEventListener("error", rej);
+    ws.addEventListener('open', res);
+    ws.addEventListener('error', rej);
 });
 const cdp = new CDP(ws);
 
-const { targetInfos } = await cdp.send("Target.getTargets");
-let target = targetInfos.find(t => t.type === "page");
+const { targetInfos } = await cdp.send('Target.getTargets');
+let target = targetInfos.find((t) => t.type === 'page');
 if (!target) {
-    const r = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const r = await cdp.send('Target.createTarget', { url: 'about:blank' });
     target = { targetId: r.targetId };
 }
-const { sessionId } = await cdp.send("Target.attachToTarget", {
+const { sessionId } = await cdp.send('Target.attachToTarget', {
     targetId: target.targetId,
-    flatten: true,
+    flatten: true
 });
 const S = sessionId;
 
-await cdp.send("Page.enable", {}, S);
-await cdp.send("Runtime.enable", {}, S);
+await cdp.send('Page.enable', {}, S);
+await cdp.send('Runtime.enable', {}, S);
 
 // ── 页面错误收集 ──
 const pageErrors = [];
 const expectedErrors = [];
-ws.addEventListener("message", ev => {
+ws.addEventListener('message', (ev) => {
     const m = JSON.parse(ev.data);
-    if (m.method === "Runtime.exceptionThrown") {
+    if (m.method === 'Runtime.exceptionThrown') {
         pageErrors.push(
-            m.params.exceptionDetails.exception?.description ||
-                m.params.exceptionDetails.text
+            m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text
         );
     }
-    if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") {
+    if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
         const text =
-            "console.error: " +
-            m.params.args.map(a => a.value ?? a.description).join(" ");
+            'console.error: ' + m.params.args.map((a) => a.value ?? a.description).join(' ');
         // 失败回滚场景会**故意**触发 fetch 失败，其日志属预期
         if (/Fetch error:/.test(text)) expectedErrors.push(text);
         else pageErrors.push(text);
@@ -326,59 +324,53 @@ const INSTRUMENT = `
     }
 })();
 `;
-await cdp.send(
-    "Page.addScriptToEvaluateOnNewDocument",
-    { source: INSTRUMENT },
-    S
-);
+await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: INSTRUMENT }, S);
 
-const ver = await httpGetJson("/json/version");
-console.log("  浏览器   :", ver.Browser);
-console.log("");
+const ver = await httpGetJson('/json/version');
+console.log('  浏览器   :', ver.Browser);
+console.log('');
 
 async function evalJs(expr) {
     const r = await cdp.send(
-        "Runtime.evaluate",
+        'Runtime.evaluate',
         { expression: expr, returnByValue: true, awaitPromise: true },
         S
     );
     if (r.exceptionDetails) {
         throw new Error(
-            "页面内异常: " +
-                (r.exceptionDetails.exception?.description ||
-                    r.exceptionDetails.text)
+            '页面内异常: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text)
         );
     }
     return r.result.value;
 }
 
 async function goto(url) {
-    await cdp.send("Page.navigate", { url }, S);
+    await cdp.send('Page.navigate', { url }, S);
     for (let i = 0; i < 80; i++) {
         try {
-            if ((await evalJs("document.readyState")) === "complete") break;
+            if ((await evalJs('document.readyState')) === 'complete') break;
         } catch {
             /* navigating */
         }
-        await new Promise(r => setTimeout(r, 120));
+        await new Promise((r) => setTimeout(r, 120));
     }
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 400));
 }
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── 断言 ──
 let pass = 0;
 let fail = 0;
 const failedItems = [];
-function check(name, cond, extra = "") {
+function check(name, cond, extra = '') {
     if (cond) {
         pass++;
         console.log(`  PASS  ${name}`);
     } else {
         fail++;
-        failedItems.push(name + (extra ? " -> " + extra : ""));
-        console.log(`  FAIL  ${name}${extra ? " -> " + extra : ""}`);
+        failedItems.push(name + (extra ? ' -> ' + extra : ''));
+        console.log(`  FAIL  ${name}${extra ? ' -> ' + extra : ''}`);
     }
 }
 
@@ -426,10 +418,10 @@ async function snap() {
  * @param {string} [o.stored] 预置的 lastClickTime 原始字符串；省略则不写
  * @param {string} [o.fetchMode] 'off' | 'ok' | 'fail'
  */
-async function seed({ stored, fetchMode = "off" } = {}) {
+async function seed({ stored, fetchMode = 'off' } = {}) {
     const setStored =
         stored === undefined
-            ? ""
+            ? ''
             : `localStorage.setItem('lastClickTime', ${JSON.stringify(stored)});`;
     await evalJs(`(() => {
         localStorage.clear();
@@ -441,7 +433,7 @@ async function seed({ stored, fetchMode = "off" } = {}) {
         ${setStored}
         return true;
     })()`);
-    await goto(BASE + "/index.html");
+    await goto(BASE + '/index.html');
 }
 
 /** 点击首页第一个按钮 */
@@ -454,53 +446,44 @@ async function clickFirstButton() {
     })()`);
 }
 
-console.log("─".repeat(64));
-console.log("S1 首次加载（无冷却）");
-console.log("─".repeat(64));
-await goto(BASE + "/index.html");
+console.log('─'.repeat(64));
+console.log('S1 首次加载（无冷却）');
+console.log('─'.repeat(64));
+await goto(BASE + '/index.html');
 await seed();
 let s = await snap();
-check("canClick = true（放行）", s.canClick === true, String(s.canClick));
-check("remaining = 0", s.remaining === 0, String(s.remaining));
-check("无 lastClickTime", s.stored === null, String(s.stored));
-check("未武装 interval（armed = 0）", s.armed === 0, String(s.armed));
-check("倒计时元素未激活", s.active === false, String(s.active));
-check("倒计时文本为空", s.text === "", JSON.stringify(s.text));
+check('canClick = true（放行）', s.canClick === true, String(s.canClick));
+check('remaining = 0', s.remaining === 0, String(s.remaining));
+check('无 lastClickTime', s.stored === null, String(s.stored));
+check('未武装 interval（armed = 0）', s.armed === 0, String(s.armed));
+check('倒计时元素未激活', s.active === false, String(s.active));
+check('倒计时文本为空', s.text === '', JSON.stringify(s.text));
 check(
-    "责任者接口齐全（restore/startFromNow/cancel/remaining）",
-    s.ownerApi.restore && s.ownerApi.startFromNow && s.ownerApi.cancel &&
-        s.ownerApi.remaining,
+    '责任者接口齐全（restore/startFromNow/cancel/remaining）',
+    s.ownerApi.restore && s.ownerApi.startFromNow && s.ownerApi.cancel && s.ownerApi.remaining,
     JSON.stringify(s.ownerApi)
 );
 
-console.log("\n" + "─".repeat(64));
-console.log("S2 刷新恢复（lastClickTime = now - 30s）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S2 刷新恢复（lastClickTime = now - 30s）');
+console.log('─'.repeat(64));
 await seed({ stored: String(Date.now() - 30000) });
 s = await snap();
-check("canClick = false（冷却中）", s.canClick === false, String(s.canClick));
+check('canClick = false（冷却中）', s.canClick === false, String(s.canClick));
+check('剩余 ≈ 30s（29-30）', s.remaining === 30 || s.remaining === 29, String(s.remaining));
+check('恰好武装 1 个 interval', s.armed === 1, String(s.armed));
+check('倒计时元素已激活', s.active === true, String(s.active));
+check('倒计时文本含剩余秒数', s.text.includes(String(s.remaining)), JSON.stringify(s.text));
+check('lastClickTime 保留（未误删）', s.stored !== null, String(s.stored));
 check(
-    "剩余 ≈ 30s（29-30）",
-    s.remaining === 30 || s.remaining === 29,
-    String(s.remaining)
-);
-check("恰好武装 1 个 interval", s.armed === 1, String(s.armed));
-check("倒计时元素已激活", s.active === true, String(s.active));
-check(
-    "倒计时文本含剩余秒数",
-    s.text.includes(String(s.remaining)),
-    JSON.stringify(s.text)
-);
-check("lastClickTime 保留（未误删）", s.stored !== null, String(s.stored));
-check(
-    "未创建长延时 timeout（旧实现的恢复定时器）",
+    '未创建长延时 timeout（旧实现的恢复定时器）',
     s.longTimeouts === 0,
     `longTimeouts=${s.longTimeouts}`
 );
 
-console.log("\n" + "─".repeat(64));
-console.log("S3 归零（lastClickTime = now - 58s，等待约 3.5s）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S3 归零（lastClickTime = now - 58s，等待约 3.5s）');
+console.log('─'.repeat(64));
 // 说明：预置时间戳在 Node 侧计算，而恢复发生在导航之后，
 // 中间有几百毫秒的启动耗时，剩余秒数会有 ±1 的漂移。
 // 因此这里断言区间而不是精确值，并给出足够的等待余量。
@@ -508,43 +491,35 @@ await seed({ stored: String(Date.now() - 58000) });
 let s3a = await snap();
 await wait(3500);
 s = await snap();
-check(
-    "初始剩余 1-2s",
-    s3a.remaining === 1 || s3a.remaining === 2,
-    String(s3a.remaining)
-);
-check("归零后 canClick = true", s.canClick === true, String(s.canClick));
-check("归零后 remaining = 0", s.remaining === 0, String(s.remaining));
-check("归零后清除 lastClickTime", s.stored === null, String(s.stored));
-check("归零后 interval 已释放（armed = 0）", s.armed === 0, String(s.armed));
-check("归零后元素取消激活", s.active === false, String(s.active));
+check('初始剩余 1-2s', s3a.remaining === 1 || s3a.remaining === 2, String(s3a.remaining));
+check('归零后 canClick = true', s.canClick === true, String(s.canClick));
+check('归零后 remaining = 0', s.remaining === 0, String(s.remaining));
+check('归零后清除 lastClickTime', s.stored === null, String(s.stored));
+check('归零后 interval 已释放（armed = 0）', s.armed === 0, String(s.armed));
+check('归零后元素取消激活', s.active === false, String(s.active));
 
-console.log("\n" + "─".repeat(64));
-console.log("S4 请求成功（fetch 桩返回 200）");
-console.log("─".repeat(64));
-await seed({ fetchMode: "ok" });
-check("首页按钮可点击", (await clickFirstButton()) === "ok");
+console.log('\n' + '─'.repeat(64));
+console.log('S4 请求成功（fetch 桩返回 200）');
+console.log('─'.repeat(64));
+await seed({ fetchMode: 'ok' });
+check('首页按钮可点击', (await clickFirstButton()) === 'ok');
 await wait(700);
 s = await snap();
-check("成功后有冷却", s.canClick === false, String(s.canClick));
+check('成功后有冷却', s.canClick === false, String(s.canClick));
+check('剩余接近 60s（57-60）', s.remaining >= 57 && s.remaining <= 60, String(s.remaining));
+check('恰好武装 1 个 interval', s.armed === 1, String(s.armed));
+check('发出 1 次 webhook 请求', s.webhookCalls === 1, String(s.webhookCalls));
 check(
-    "剩余接近 60s（57-60）",
-    s.remaining >= 57 && s.remaining <= 60,
-    String(s.remaining)
-);
-check("恰好武装 1 个 interval", s.armed === 1, String(s.armed));
-check("发出 1 次 webhook 请求", s.webhookCalls === 1, String(s.webhookCalls));
-check(
-    "lastClickTime 已写入且为有限数",
+    'lastClickTime 已写入且为有限数',
     s.stored !== null && Number.isFinite(parseInt(s.stored, 10)),
     String(s.stored)
 );
 const storedAfterClick = s.stored;
 const webhookAfterClick = s.webhookCalls;
 
-console.log("\n" + "─".repeat(64));
-console.log("S5 重复点击（冷却期间被阻止）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S5 重复点击（冷却期间被阻止）');
+console.log('─'.repeat(64));
 const guardText = await evalJs(`(() => {
     const before = document.getElementById('notification')?.textContent || '';
     document.querySelector('.bubble-btn').click();
@@ -561,41 +536,47 @@ try {
 } catch {
     /* ignore */
 }
-check("冷却期间显示等待提示", /请等待\s*\d+\s*秒/.test(g.after || ""), JSON.stringify(g.after));
-check("未发出第二次 webhook 请求", s.webhookCalls === webhookAfterClick,
-    `${s.webhookCalls} vs ${webhookAfterClick}`);
-check("未重复写入 lastClickTime", s.stored === storedAfterClick,
-    `${s.stored} vs ${storedAfterClick}`);
-check("仍只有 1 个 interval（未叠加）", s.armed === 1, String(s.armed));
-check("冷却未被提前解除", s.canClick === false, String(s.canClick));
+check('冷却期间显示等待提示', /请等待\s*\d+\s*秒/.test(g.after || ''), JSON.stringify(g.after));
+check(
+    '未发出第二次 webhook 请求',
+    s.webhookCalls === webhookAfterClick,
+    `${s.webhookCalls} vs ${webhookAfterClick}`
+);
+check(
+    '未重复写入 lastClickTime',
+    s.stored === storedAfterClick,
+    `${s.stored} vs ${storedAfterClick}`
+);
+check('仍只有 1 个 interval（未叠加）', s.armed === 1, String(s.armed));
+check('冷却未被提前解除', s.canClick === false, String(s.canClick));
 
-console.log("\n" + "─".repeat(64));
-console.log("S6 请求失败回滚（第一次 webhook 失败，第二次成功）");
-console.log("─".repeat(64));
-await seed({ fetchMode: "fail-once" });
-check("首页按钮可点击", (await clickFirstButton()) === "ok");
+console.log('\n' + '─'.repeat(64));
+console.log('S6 请求失败回滚（第一次 webhook 失败，第二次成功）');
+console.log('─'.repeat(64));
+await seed({ fetchMode: 'fail-once' });
+check('首页按钮可点击', (await clickFirstButton()) === 'ok');
 await wait(700);
 s = await snap();
-check("失败后 canClick 立即恢复 true", s.canClick === true, String(s.canClick));
-check("失败后清除 lastClickTime", s.stored === null, String(s.stored));
-check("失败后 interval 已释放（armed = 0）", s.armed === 0, String(s.armed));
-check("失败后元素取消激活", s.active === false, String(s.active));
-check("失败时只发出 1 次 webhook 请求", s.webhookCalls === 1, String(s.webhookCalls));
+check('失败后 canClick 立即恢复 true', s.canClick === true, String(s.canClick));
+check('失败后清除 lastClickTime', s.stored === null, String(s.stored));
+check('失败后 interval 已释放（armed = 0）', s.armed === 0, String(s.armed));
+check('失败后元素取消激活', s.active === false, String(s.active));
+check('失败时只发出 1 次 webhook 请求', s.webhookCalls === 1, String(s.webhookCalls));
 
 // 立即重试：这一次桩会返回成功，应当重新进入冷却
 const retry = await clickFirstButton();
 await wait(700);
 s = await snap();
-check("重试结果是 'ok'", retry === "ok", String(retry));
-check("失败后可立即重试（再发一次请求）", s.webhookCalls === 2, String(s.webhookCalls));
-check("重试成功后重新进入冷却", s.canClick === false, String(s.canClick));
-check("重试成功后重新写入 lastClickTime", s.stored !== null, String(s.stored));
-check("重试成功后恰好 1 个 interval", s.armed === 1, String(s.armed));
+check("重试结果是 'ok'", retry === 'ok', String(retry));
+check('失败后可立即重试（再发一次请求）', s.webhookCalls === 2, String(s.webhookCalls));
+check('重试成功后重新进入冷却', s.canClick === false, String(s.canClick));
+check('重试成功后重新写入 lastClickTime', s.stored !== null, String(s.stored));
+check('重试成功后恰好 1 个 interval', s.armed === 1, String(s.armed));
 
-console.log("\n" + "─".repeat(64));
-console.log("S7 非法时间戳（应清理并放行）");
-console.log("─".repeat(64));
-for (const bad of ["abc", "", "NaN", "Infinity", "-1", "0", "12abc?"]) {
+console.log('\n' + '─'.repeat(64));
+console.log('S7 非法时间戳（应清理并放行）');
+console.log('─'.repeat(64));
+for (const bad of ['abc', '', 'NaN', 'Infinity', '-1', '0', '12abc?']) {
     await seed({ stored: bad });
     const sb = await snap();
     const label = JSON.stringify(bad);
@@ -604,46 +585,42 @@ for (const bad of ["abc", "", "NaN", "Infinity", "-1", "0", "12abc?"]) {
     check(`${label} → armed = 0`, sb.armed === 0, String(sb.armed));
 }
 
-console.log("\n" + "─".repeat(64));
-console.log("S8 已过期（lastClickTime = now - 120s）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S8 已过期（lastClickTime = now - 120s）');
+console.log('─'.repeat(64));
 await seed({ stored: String(Date.now() - 120000) });
 s = await snap();
-check("过期 → canClick = true", s.canClick === true, String(s.canClick));
-check("过期 → 清除 lastClickTime", s.stored === null, String(s.stored));
-check("过期 → armed = 0", s.armed === 0, String(s.armed));
-check("过期 → 元素未激活", s.active === false, String(s.active));
+check('过期 → canClick = true', s.canClick === true, String(s.canClick));
+check('过期 → 清除 lastClickTime', s.stored === null, String(s.stored));
+check('过期 → armed = 0', s.armed === 0, String(s.armed));
+check('过期 → 元素未激活', s.active === false, String(s.active));
 
-console.log("\n" + "─".repeat(64));
-console.log("S9 未来时间戳（clock skew，应 clamp 到一个冷却周期）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S9 未来时间戳（clock skew，应 clamp 到一个冷却周期）');
+console.log('─'.repeat(64));
 await seed({ stored: String(Date.now() + 3600000) });
 s = await snap();
-check("未来时间戳 → 进入冷却", s.canClick === false, String(s.canClick));
-check(
-    "剩余被 clamp 到 60（而非 3660）",
-    s.remaining === 60,
-    String(s.remaining)
-);
+check('未来时间戳 → 进入冷却', s.canClick === false, String(s.canClick));
+check('剩余被 clamp 到 60（而非 3660）', s.remaining === 60, String(s.remaining));
 // 同时看**显示文本**：旧实现会把 3660 秒直接渲染出来，
 // 因此这条断言不依赖责任者接口是否存在，可独立区分 clamp 行为。
 // （seed() 固定 appLanguage = 'zh'，文案格式确定：'冷却中，{seconds}秒后可再次发送'）
 check(
-    "显示文本为 60 秒且未出现 3660",
-    s.text.includes("60秒") && !s.text.includes("3660"),
+    '显示文本为 60 秒且未出现 3660',
+    s.text.includes('60秒') && !s.text.includes('3660'),
     JSON.stringify(s.text)
 );
-check("仍然只有 1 个 interval", s.armed === 1, String(s.armed));
-check("未被无限期锁死（remaining ≤ 60）", s.remaining <= 60, String(s.remaining));
+check('仍然只有 1 个 interval', s.armed === 1, String(s.armed));
+check('未被无限期锁死（remaining ≤ 60）', s.remaining <= 60, String(s.remaining));
 check(
-    "未静默改写存储（仍是原未来值）",
+    '未静默改写存储（仍是原未来值）',
     s.stored !== null && parseInt(s.stored, 10) > Date.now(),
     String(s.stored)
 );
 
-console.log("\n" + "─".repeat(64));
-console.log("S10 timer 去重（重复 restore / 重复 start）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S10 timer 去重（重复 restore / 重复 start）');
+console.log('─'.repeat(64));
 await seed({ stored: String(Date.now() - 10000) });
 const dedup = await evalJs(`(async () => {
     // 用 try/catch 包住：在旧实现（没有 restore 接口）上运行反向验证时，
@@ -677,30 +654,22 @@ try {
 } catch {
     /* ignore */
 }
+check('责任者提供 restore / startFromNow 接口', dd.ok === true, dd.error || '');
 check(
-    "责任者提供 restore / startFromNow 接口",
-    dd.ok === true,
-    dd.error || ""
-);
-check(
-    "任何时刻已武装 interval 都是 1",
-    Array.isArray(dd.trail) && dd.trail.every(v => v === 1),
+    '任何时刻已武装 interval 都是 1',
+    Array.isArray(dd.trail) && dd.trail.every((v) => v === 1),
     JSON.stringify(dd.trail)
 );
 check(
-    "6 次重复调用后仍只有 1 个在跑",
+    '6 次重复调用后仍只有 1 个在跑',
     dd.created - dd.cleared === 1,
     `created=${dd.created} cleared=${dd.cleared}`
 );
-check(
-    "全程未出现长延时 timeout",
-    dd.longTimeouts === 0,
-    String(dd.longTimeouts)
-);
+check('全程未出现长延时 timeout', dd.longTimeouts === 0, String(dd.longTimeouts));
 
-console.log("\n" + "─".repeat(64));
-console.log("S11 旧 timer 不得覆盖新状态（代际守卫）");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S11 旧 timer 不得覆盖新状态（代际守卫）');
+console.log('─'.repeat(64));
 await seed();
 const stale = await evalJs(`(async () => {
     try {
@@ -744,32 +713,25 @@ try {
 } catch {
     /* ignore */
 }
+check('责任者提供 cancel 接口', sl.ok === true, sl.error || '');
+check('重启后处于冷却中', sl.afterRestart?.canClick === false, JSON.stringify(sl.afterRestart));
 check(
-    "责任者提供 cancel 接口",
-    sl.ok === true,
-    sl.error || ""
-);
-check("重启后处于冷却中", sl.afterRestart?.canClick === false,
-    JSON.stringify(sl.afterRestart));
-check(
-    "旧回调未减少剩余时间",
+    '旧回调未减少剩余时间',
     sl.afterStale?.remaining === sl.afterRestart?.remaining,
     `${JSON.stringify(sl.afterStale)} vs ${JSON.stringify(sl.afterRestart)}`
 );
-check("旧回调未解除冷却", sl.afterStale?.canClick === false,
-    String(sl.afterStale?.canClick));
-check("仍只有 1 个 interval", sl.armed === 1, String(sl.armed));
+check('旧回调未解除冷却', sl.afterStale?.canClick === false, String(sl.afterStale?.canClick));
+check('仍只有 1 个 interval', sl.armed === 1, String(sl.armed));
 
-console.log("\n" + "─".repeat(64));
-console.log("S12 页面异常检查");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S12 页面异常检查');
+console.log('─'.repeat(64));
 const uniqErr = [...new Set(pageErrors)];
-check("无未捕获异常 / 非预期 console.error", uniqErr.length === 0,
-    uniqErr.join(" | "));
+check('无未捕获异常 / 非预期 console.error', uniqErr.length === 0, uniqErr.join(' | '));
 
-console.log("\n" + "─".repeat(64));
-console.log("S13 同源性检查：cooldown 写入点唯一");
-console.log("─".repeat(64));
+console.log('\n' + '─'.repeat(64));
+console.log('S13 同源性检查：cooldown 写入点唯一');
+console.log('─'.repeat(64));
 const srcCheck = await evalJs(`(async () => {
     const files = ['/js/modules/state.js','/js/main.js','/js/modules/buttonManager.js',
                    '/js/modules/notification.js','/js/modules/countdown.js'];
@@ -814,45 +776,45 @@ try {
 } catch {
     /* ignore */
 }
-const OWNER = "/js/modules/countdown.js";
-const others = Object.keys(sc).filter(f => f !== OWNER);
+const OWNER = '/js/modules/countdown.js';
+const others = Object.keys(sc).filter((f) => f !== OWNER);
 check(
-    "仅 countdown 触碰 lastClickTime key",
-    others.every(f => sc[f].keyRefs === 0),
+    '仅 countdown 触碰 lastClickTime key',
+    others.every((f) => sc[f].keyRefs === 0),
     JSON.stringify(sc)
 );
 check(
-    "仅 countdown 转换 state.canClick",
-    others.every(f => sc[f].canClickAssign === 0),
+    '仅 countdown 转换 state.canClick',
+    others.every((f) => sc[f].canClickAssign === 0),
     JSON.stringify(sc)
 );
 check(
-    "countdown 确实是唯一写入者（自身引用 > 0）",
+    'countdown 确实是唯一写入者（自身引用 > 0）',
     sc[OWNER].keyRefs > 0 && sc[OWNER].canClickAssign >= 2,
     JSON.stringify(sc[OWNER])
 );
 check(
-    "cooldown 链路不再使用 setTimeout",
+    'cooldown 链路不再使用 setTimeout',
     sc[OWNER].setTimeout === 0 &&
-        sc["/js/modules/state.js"].setTimeout === 0 &&
-        sc["/js/main.js"].setTimeout === 0,
+        sc['/js/modules/state.js'].setTimeout === 0 &&
+        sc['/js/main.js'].setTimeout === 0,
     JSON.stringify(sc)
 );
 
-console.log("\n=== 结果 ===");
+console.log('\n=== 结果 ===');
 console.log(`环境：${ver.Browser}`);
 console.log(`URL ：${BASE}/index.html`);
 console.log(`断言：${pass} passed, ${fail} failed`);
 if (failedItems.length) {
-    console.log("失败项：");
-    failedItems.forEach(f => console.log("  - " + f));
+    console.log('失败项：');
+    failedItems.forEach((f) => console.log('  - ' + f));
 }
 if (expectedErrors.length) {
     console.log(`预期内的页面错误（失败回滚场景故意触发）：${expectedErrors.length} 条`);
 }
 if (uniqErr.length) {
-    console.log("非预期页面错误：");
-    uniqErr.forEach(e => console.log("  - " + e));
+    console.log('非预期页面错误：');
+    uniqErr.forEach((e) => console.log('  - ' + e));
 }
 
 ws.close();
@@ -870,7 +832,7 @@ try {
 // 落盘（可选）：运行时证据，便于主 AI 复核而不必重跑
 if (LOG_PATH) {
     try {
-        writeFileSync(LOG_PATH, logLines.join("\n") + "\n", "utf8");
+        writeFileSync(LOG_PATH, logLines.join('\n') + '\n', 'utf8');
         process.stderr.write(`\n[日志] 已写入 ${LOG_PATH}\n`);
     } catch (e) {
         process.stderr.write(`\n[日志] 写入失败：${e.message}\n`);

@@ -1,0 +1,10 @@
+# 历史归档文件保持原样（历史快照，不格式化）
+docs/handoff/archive/
+
+# 本地目录（已被 .gitignore 忽略，但 prettier 仍可能扫描）
+.workbuddy/
+.history/
+node_modules/
+
+# 自动生成的锁文件（prettier 格式化会产生巨量 diff 且无意义）
+package-lock.json

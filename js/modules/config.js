@@ -1,25 +1,24 @@
 export const CONFIG = {
-    webhookUrl:
-        "https://trigger.macrodroid.com/6eafac25-d8ec-4aff-b139-ca213fa50423/MVP",
+    webhookUrl: 'https://trigger.macrodroid.com/6eafac25-d8ec-4aff-b139-ca213fa50423/MVP',
     cooldownTime: 60, // 冷却时间(秒)
     maxHistoryRecords: 100, // 最大历史记录数
     // 已读回执：JSONBin 公开读（Master Key 仅在 MacroDroid 侧，不入网页）
     jsonBin: {
-        binUrl: "https://api.jsonbin.io/v3/b/6a4e36bdda38895dfe40054e/latest"
+        binUrl: 'https://api.jsonbin.io/v3/b/6a4e36bdda38895dfe40054e/latest'
     },
-    defaultAvatar: "👤", // 默认头像
+    defaultAvatar: '👤', // 默认头像
     defaultName: {
         // 默认昵称
-        zh: "玩家",
-        en: "Player",
-        ja: "プレイヤー",      // 日语
-        ko: "플레이어",        // 韩语
-        es: "Jugador",        // 西班牙语
-        fr: "Joueur"          // 法语
+        zh: '玩家',
+        en: 'Player',
+        ja: 'プレイヤー', // 日语
+        ko: '플레이어', // 韩语
+        es: 'Jugador', // 西班牙语
+        fr: 'Joueur' // 法语
     },
-    emojiOptions: ["🐶", "🐱", "🦊", "🐯", "🦁", "🐨", "🐵", "🐧", "🦄", "🐟"], // 可选emoji头像
+    emojiOptions: ['🐶', '🐱', '🦊', '🐯', '🦁', '🐨', '🐵', '🐧', '🦄', '🐟'], // 可选emoji头像
     notificationDuration: 4000, // 通知显示时间(毫秒)
-    
+
     // 访问提示配置 —— **密码配置的唯一来源**
     //
     // ⚠️ 这是 UI 级访问提示，不是安全边界：值就写在这份前端源码里，
@@ -27,31 +26,31 @@ export const CONFIG = {
     // `js/modules/password.js` 从这里读取默认密码与有效期，
     // **不要在其他模块再硬编码一份**（历史上两处独立维护过，已收敛）。
     password: {
-        defaultPassword: "666888", // 默认密码
+        defaultPassword: '666888', // 默认密码
         expiryDays: 7 // 密码过期天数
     },
-    
+
     // 新手引导配置
     onboarding: {
         enabled: true, // 是否启用新手引导
         stepDuration: 0 // 自动下一步的时间（0表示不自动）
     },
-    
+
     //音效
     soundEffects: {
         avatars: {
-            "🐶": "sounds/dog-bark.mp3",
-            "🐱": "sounds/cat-meow.mp3",
-            "🐯": "sounds/tiger-roar.wav",
-            "🦁": "sounds/lion-roaring.mp3",
-            "🐵": "sounds/monkey-sound.wav",
-            default: "sounds/default-click.m4a"
+            '🐶': 'sounds/dog-bark.mp3',
+            '🐱': 'sounds/cat-meow.mp3',
+            '🐯': 'sounds/tiger-roar.wav',
+            '🦁': 'sounds/lion-roaring.mp3',
+            '🐵': 'sounds/monkey-sound.wav',
+            default: 'sounds/default-click.m4a'
         },
         // 操作反馈音效
         notifications: {
-            success: "sounds/success-notification.wav",
+            success: 'sounds/success-notification.wav',
             // 失败/警告反馈：输入校验失败、初始化失败、冷却限制等（notification.show(msg, false)）
-            error: "sounds/error-notification.wav"
+            error: 'sounds/error-notification.wav'
         }
     },
     //按钮
@@ -60,14 +59,14 @@ export const CONFIG = {
         maxCustomButtons: 5, // 最多可添加5个自定义按钮
         defaultButtons: [
             {
-                id: "quick_online",
-                message: "呼叫 R4/5（Call R4/5）",
-                icon: "bolt"
+                id: 'quick_online',
+                message: '呼叫 R4/5（Call R4/5）',
+                icon: 'bolt'
             },
             {
-                id: "emergency",
-                message: "堡垒要塞",
-                icon: "exclamation-triangle"
+                id: 'emergency',
+                message: '堡垒要塞',
+                icon: 'exclamation-triangle'
             }
         ],
         // 默认按钮 legacy ID 映射。
@@ -84,27 +83,27 @@ export const CONFIG = {
             default_2: 1
         },
         // 自定义按钮 ID 前缀：`custom_<数字>` 视为持久 ID
-        customIdPrefix: "custom_",
+        customIdPrefix: 'custom_',
         // 可选图标列表（Font Awesome
         availableIcons: [
-            "bolt",
-            "bell",
-            "exclamation-triangle",
-            "shield-alt",
-            "fire",
-            "clock",
-            "running",
-            "heartbeat",
-            "phone",
-            "comment-dots",
-            "envelope",
-            "bullhorn",
-            "hand-paper",
-            "star",
-            "flag",
-            "gift",
-            "mug-hot",
-            "utensils"
+            'bolt',
+            'bell',
+            'exclamation-triangle',
+            'shield-alt',
+            'fire',
+            'clock',
+            'running',
+            'heartbeat',
+            'phone',
+            'comment-dots',
+            'envelope',
+            'bullhorn',
+            'hand-paper',
+            'star',
+            'flag',
+            'gift',
+            'mug-hot',
+            'utensils'
         ]
     }
 };

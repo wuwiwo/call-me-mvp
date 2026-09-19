@@ -19,14 +19,14 @@
 //     让调用方（套件）照常打印自己的环境头，报错信息更可定位，
 //     也避免"import 期就崩、什么都没打印"这种难以排查的失败。
 //   - 不改变调用方的失败语义：找不到时最终仍由 spawn 报错，只是多了可读的诊断。
-import { existsSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 /** Windows 上的常见安装位置（第一条是各套件原先的默认值，保持行为不变）。 */
 function windowsCandidates() {
     const list = [
-        "C:/Program Files/Google/Chrome/Application/chrome.exe",
-        "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+        'C:/Program Files/Google/Chrome/Application/chrome.exe',
+        'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'
     ];
     // 用户级安装（仅当前用户）也常见
     if (process.env.LOCALAPPDATA) {
@@ -38,20 +38,20 @@ function windowsCandidates() {
 /** macOS 上的常见位置。 */
 function macCandidates() {
     return [
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium'
     ];
 }
 
 /** Linux（含 CI runner）上的常见位置。 */
 function linuxCandidates() {
     return [
-        "/usr/bin/google-chrome",
-        "/usr/bin/google-chrome-stable",
-        "/opt/google/chrome/chrome",
-        "/usr/bin/chromium",
-        "/usr/bin/chromium-browser",
-        "/snap/bin/chromium",
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/opt/google/chrome/chrome',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/snap/bin/chromium'
     ];
 }
 
@@ -60,14 +60,14 @@ function linuxCandidates() {
  * Windows 上 `which` 未必存在，且常见位置已在上面的列表里覆盖。
  */
 function probeByWhich() {
-    if (process.platform === "win32") return [];
-    const names = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
+    if (process.platform === 'win32') return [];
+    const names = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'];
     const found = [];
     for (const n of names) {
         try {
-            const p = execFileSync("which", [n], {
-                encoding: "utf8",
-                stdio: ["ignore", "pipe", "ignore"],
+            const p = execFileSync('which', [n], {
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore']
             }).trim();
             if (p) found.push(p);
         } catch {
@@ -84,24 +84,16 @@ function probeByWhich() {
 export function chromeCandidates(override) {
     const platform = process.platform;
     const primary =
-        platform === "win32"
+        platform === 'win32'
             ? windowsCandidates()
-            : platform === "darwin"
+            : platform === 'darwin'
               ? macCandidates()
               : linuxCandidates();
-    const rest = [
-        ...windowsCandidates(),
-        ...macCandidates(),
-        ...linuxCandidates(),
-    ];
+    const rest = [...windowsCandidates(), ...macCandidates(), ...linuxCandidates()];
 
-    return [
-        override,
-        process.env.CHROME_PATH,
-        ...primary,
-        ...rest,
-        ...probeByWhich(),
-    ].filter(v => typeof v === "string" && v.trim() !== "");
+    return [override, process.env.CHROME_PATH, ...primary, ...rest, ...probeByWhich()].filter(
+        (v) => typeof v === 'string' && v.trim() !== ''
+    );
 }
 
 /**
@@ -123,10 +115,8 @@ export function resolveChrome(override) {
         }
     }
 
-    console.error("[chrome-path] 找不到可用的 Chrome，已尝试：");
-    for (const p of tried) console.error("  - " + p);
-    console.error(
-        "[chrome-path] 可用 CHROME_PATH=<路径> 或 <套件>_CHROME=<路径> 显式指定。"
-    );
+    console.error('[chrome-path] 找不到可用的 Chrome，已尝试：');
+    for (const p of tried) console.error('  - ' + p);
+    console.error('[chrome-path] 可用 CHROME_PATH=<路径> 或 <套件>_CHROME=<路径> 显式指定。');
     return tried[0];
 }

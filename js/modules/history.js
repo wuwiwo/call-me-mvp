@@ -18,7 +18,7 @@ function safeStatus(status) {
 export const history = {
     // DOM元素
     elements: null,
-    
+
     // 初始化
     init(domElements) {
         // 检查是否提供了必要的DOM元素
@@ -26,7 +26,7 @@ export const history = {
             console.error('历史记录模块初始化失败：缺少必要的DOM元素');
             return false;
         }
-        
+
         this.elements = domElements;
 
         // 复用首页的语言初始化与回退规则：读取 appLanguage → 校验是否受支持
@@ -50,7 +50,7 @@ export const history = {
      * 只写本页元素，元素缺失时跳过，不产生第二份语言状态、也不触碰首页文案。
      */
     applyPageTexts() {
-        const t = key => utils.getTranslation(key);
+        const t = (key) => utils.getTranslation(key);
 
         document.title = t('history.pageTitle');
 
@@ -64,13 +64,13 @@ export const history = {
             this.elements.clearBtn.title = t('history.clearTitle');
         }
     },
-    
+
     // 绑定事件
     bindEvents() {
         this.elements.clearBtn.addEventListener('click', () => this.clear());
         this.elements.backBtn.addEventListener('click', () => window.history.back());
     },
-    
+
     // 渲染历史记录
     //
     // 记录内容（nickname / emoji / message / webhook）与 `_status` 都来自
@@ -80,11 +80,7 @@ export const history = {
     // 不会产生新元素、新属性，也不会执行脚本。
     render() {
         // 损坏或类型错误时回退为空数组，历史页仍可加载并显示空状态
-        const records = readJsonSafe(
-            'notificationHistory',
-            [],
-            v => Array.isArray(v)
-        );
+        const records = readJsonSafe('notificationHistory', [], (v) => Array.isArray(v));
 
         const list = this.elements.list;
         list.textContent = '';
@@ -97,14 +93,12 @@ export const history = {
             return;
         }
 
-        records.forEach(record => {
+        records.forEach((record) => {
             const item = record && typeof record === 'object' ? record : {};
             const status = safeStatus(item._status);
 
             const itemEl = document.createElement('div');
-            itemEl.className = status
-                ? `history-item ${status}`
-                : 'history-item';
+            itemEl.className = status ? `history-item ${status}` : 'history-item';
 
             const emojiEl = document.createElement('div');
             emojiEl.className = 'history-emoji';
@@ -138,8 +132,7 @@ export const history = {
                 const errorEl = document.createElement('div');
                 errorEl.className = 'history-error';
                 // 标签跟随当前语言；URL 本身是用户数据，仍按纯文本写入
-                errorEl.textContent =
-                    `${utils.getTranslation('history.webhookLabel')}: ${item.webhook ?? ''}`;
+                errorEl.textContent = `${utils.getTranslation('history.webhookLabel')}: ${item.webhook ?? ''}`;
                 contentEl.appendChild(errorEl);
             }
 
@@ -148,18 +141,18 @@ export const history = {
             list.appendChild(itemEl);
         });
     },
-    
+
     // 清除历史记录
     clear() {
         localStorage.removeItem('notificationHistory');
         this.render();
-        
+
         // 显示清除成功的反馈（文案跟随当前语言）
         const toast = document.createElement('div');
         toast.className = 'history-toast';
         toast.textContent = utils.getTranslation('history.cleared');
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
             toast.classList.add('fade-out');
             setTimeout(() => toast.remove(), 300);

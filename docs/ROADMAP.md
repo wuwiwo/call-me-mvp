@@ -49,23 +49,28 @@ CONTEXT:
 `buttonManager.addCustomButtonForm()` 生成 `.icon-picker`，但后续访问 `.icon-selector`。
 
 SCOPE:
+
 - `js/modules/buttonManager.js`
 - 允许新增针对该模块的最小测试文件（若测试方案先获批准）
 
 NON-GOALS:
+
 - 不改变按钮上限、排序、默认文案或显示模式产品行为。
 - 不重做按钮数据模型。
 
 ACCEPTANCE CRITERIA:
+
 - [ ] 已有自定义按钮可打开编辑。
 - [ ] 非 random 与 random 图标都能正确回显并保存。
 - [ ] 删除/新增按钮行为不回归。
 
 VERIFICATION:
+
 - `npm run lint`
 - 手工：创建自定义按钮 -> 保存 -> 再次打开 -> 修改文字/图标 -> 保存 -> 刷新。
 
 STATUS:
+
 - [x] 代码修复完成
 - [x] 29 项浏览器断言通过
 - [x] 缺陷版本反向验证失败，证明测试具备区分力
@@ -83,16 +88,19 @@ CONTEXT:
 `state.js` 和 `history.js` 直接 JSON.parse；按钮配置已有局部 catch。
 
 SCOPE:
+
 - `js/modules/state.js`
 - `js/modules/history.js`
 - 必要时 `js/modules/buttonManager.js`
 - 对应测试/测试说明
 
 NON-GOALS:
+
 - 不引入大型 Storage Layer。
 - 不改变合法数据格式，不做无迁移的数据重写。
 
 ACCEPTANCE CRITERIA:
+
 - [ ] 非法 JSON 不阻止模块加载。
 - [ ] 合法旧数据行为不变。
 - [ ] 回退/清理策略有测试或可复现说明。
@@ -109,14 +117,17 @@ CONTEXT:
 配置声明了 `quick_online`/`emergency`，保存逻辑却按数组位置生成默认 ID。
 
 SCOPE:
+
 - `js/modules/config.js`
 - `js/modules/buttonManager.js`
 - 相关测试/迁移说明
 
 NON-GOALS:
+
 - 不增加拖拽排序、导入导出或新按钮功能。
 
 ACCEPTANCE CRITERIA:
+
 - [ ] 默认按钮 ID 与配置稳定 ID 一致。
 - [ ] 旧本地配置可读取且不会静默丢按钮。
 - [ ] 重复保存同一自定义按钮不会无理由改变其 ID。
@@ -130,14 +141,17 @@ OBJECTIVE:
 确保昵称、按钮文字和历史字段以文本安全渲染，不执行用户输入中的 HTML。
 
 SCOPE:
+
 - `js/modules/buttonManager.js`
 - `js/modules/history.js`
 - 必要的测试
 
 NON-GOALS:
+
 - 不改变页面视觉结构或引入后端。
 
 ACCEPTANCE CRITERIA:
+
 - [ ] 用户输入 `<script>`/HTML 后以文本显示。
 - [ ] 图标值仍受配置列表约束。
 - [ ] 历史旧记录也安全显示。

@@ -49,29 +49,29 @@
 //   CALLME_WT_ROOT     显式指定仓库根（钩子会传；从 .git/ 内运行时必需）
 //
 // 依赖：仅 Node 内置模块 + git。
-import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-if (process.env.CALLME_WT_GUARD === "0") process.exit(0);
+if (process.env.CALLME_WT_GUARD === '0') process.exit(0);
 
 /** 解析仓库根：环境变量 → git → 脚本位置兜底。 */
 function resolveRoot() {
     const fromEnv = process.env.CALLME_WT_ROOT;
     if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
     try {
-        const top = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "ignore"],
+        const top = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore']
         }).trim();
         if (top) return top;
     } catch {
         /* 落到兜底 */
     }
-    return path.resolve(__dirname, "..");
+    return path.resolve(__dirname, '..');
 }
 
 const ROOT = resolveRoot();
@@ -86,13 +86,13 @@ const ROOT = resolveRoot();
 function selfInstall() {
     try {
         const self = fileURLToPath(import.meta.url);
-        const gitDir = execFileSync("git", ["rev-parse", "--absolute-git-dir"], {
+        const gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], {
             cwd: ROOT,
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "ignore"],
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore']
         }).trim();
         if (!gitDir) return;
-        const dest = path.join(gitDir, "worktree-guard.mjs");
+        const dest = path.join(gitDir, 'worktree-guard.mjs');
         if (path.resolve(self) === path.resolve(dest)) return;
         fs.writeFileSync(dest, fs.readFileSync(self));
     } catch {
@@ -102,20 +102,20 @@ function selfInstall() {
 
 selfInstall();
 
-const mode = process.argv[2] || "";
+const mode = process.argv[2] || '';
 
 function git(args) {
-    return execFileSync("git", args, {
+    return execFileSync('git', args, {
         cwd: ROOT,
-        encoding: "utf8",
+        encoding: 'utf8',
         maxBuffer: 64 * 1024 * 1024,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ['ignore', 'pipe', 'pipe']
     });
 }
 
 function revParseOrNull(ref) {
     try {
-        return git(["rev-parse", "--verify", "--quiet", ref]).trim() || null;
+        return git(['rev-parse', '--verify', '--quiet', ref]).trim() || null;
     } catch {
         return null;
     }
@@ -125,9 +125,7 @@ function deletedBetween(a, b) {
     if (!a || !b || a === b) return new Set();
     try {
         return new Set(
-            git(["diff", "--diff-filter=D", "--name-only", "-z", a, b])
-                .split("\0")
-                .filter(Boolean)
+            git(['diff', '--diff-filter=D', '--name-only', '-z', a, b]).split('\0').filter(Boolean)
         );
     } catch {
         return new Set();
@@ -137,17 +135,17 @@ function deletedBetween(a, b) {
 // ---- 1. 确定本次操作的 prev / new ----
 let prev = null;
 let head = null;
-if (mode === "post-checkout") {
+if (mode === 'post-checkout') {
     const flag = process.argv[5];
-    if (flag !== "1") process.exit(0); // 只处理分支切换，不处理单文件检出
+    if (flag !== '1') process.exit(0); // 只处理分支切换，不处理单文件检出
     prev = process.argv[3];
     head = process.argv[4];
-} else if (mode === "post-merge") {
-    prev = revParseOrNull("ORIG_HEAD");
-    head = revParseOrNull("HEAD");
-} else if (mode === "post-commit") {
-    prev = revParseOrNull("HEAD~1");
-    head = revParseOrNull("HEAD");
+} else if (mode === 'post-merge') {
+    prev = revParseOrNull('ORIG_HEAD');
+    head = revParseOrNull('HEAD');
+} else if (mode === 'post-commit') {
+    prev = revParseOrNull('HEAD~1');
+    head = revParseOrNull('HEAD');
 } else {
     process.exit(0);
 }
@@ -155,12 +153,12 @@ if (!head) process.exit(0);
 
 // ---- 2. 计算误伤集合 ----
 const intended = deletedBetween(prev, head);
-const tracked = git(["ls-files", "-z"]).split("\0").filter(Boolean);
-const missing = tracked.filter(p => {
+const tracked = git(['ls-files', '-z']).split('\0').filter(Boolean);
+const missing = tracked.filter((p) => {
     const abs = path.join(ROOT, p);
     return !fs.existsSync(abs);
 });
-const collateral = missing.filter(p => !intended.has(p));
+const collateral = missing.filter((p) => !intended.has(p));
 
 if (collateral.length === 0) process.exit(0);
 
@@ -170,13 +168,13 @@ const failed = [];
 for (let i = 0; i < collateral.length; i += 50) {
     const chunk = collateral.slice(i, i + 50);
     try {
-        git(["restore", "--", ...chunk]);
+        git(['restore', '--', ...chunk]);
         restored.push(...chunk);
     } catch {
         // 整批失败时逐个试，避免一个坏路径拖累整批
         for (const p of chunk) {
             try {
-                git(["restore", "--", p]);
+                git(['restore', '--', p]);
                 restored.push(p);
             } catch {
                 failed.push(p);
@@ -186,40 +184,40 @@ for (let i = 0; i < collateral.length; i += 50) {
 }
 
 // ---- 4. 复检 ----
-const stillMissing = restored.filter(p => !fs.existsSync(path.join(ROOT, p)));
+const stillMissing = restored.filter((p) => !fs.existsSync(path.join(ROOT, p)));
 
 // ---- 5. 记录 + 报告 ----
-const logDir = path.join(ROOT, ".workbuddy");
+const logDir = path.join(ROOT, '.workbuddy');
 try {
     fs.mkdirSync(logDir, { recursive: true });
     const line =
-        `[${new Date().toISOString()}] ${mode} prev=${(prev || "-").slice(0, 8)} ` +
+        `[${new Date().toISOString()}] ${mode} prev=${(prev || '-').slice(0, 8)} ` +
         `head=${head.slice(0, 8)} intended=${intended.size} missing=${missing.length} ` +
         `restored=${restored.length} failed=${failed.length + stillMissing.length}\n` +
-        restored.map(p => `    + ${p}\n`).join("") +
-        [...failed, ...stillMissing].map(p => `    ! ${p}\n`).join("");
-    fs.appendFileSync(path.join(logDir, "worktree-guard.log"), line);
+        restored.map((p) => `    + ${p}\n`).join('') +
+        [...failed, ...stillMissing].map((p) => `    ! ${p}\n`).join('');
+    fs.appendFileSync(path.join(logDir, 'worktree-guard.log'), line);
 } catch {
     /* 日志失败不影响主流程 */
 }
 
 process.stderr.write(
-    "\n" +
-    "==============================================================\n" +
-    "  ⚠️  工作区防丢守卫：检测到级联删除并已恢复\n" +
-    "--------------------------------------------------------------\n" +
-    `  触发      : ${mode}\n` +
-    `  本次应删  : ${intended.size} 个（已跳过，不恢复）\n` +
-    `  级联误伤  : ${collateral.length} 个\n` +
-    "--------------------------------------------------------------\n" +
-    restored.map(p => `  恢复 ${p}\n`).join("") +
-    [...failed, ...stillMissing].map(p => `  失败 ${p}\n`).join("") +
-    "--------------------------------------------------------------\n" +
-    "  原因：本机沙箱把 rmdir 改写成「移入回收站」且不校验目录是否为空，\n" +
-    "        git 沿路径上溯清理空目录的终止条件失效所致。\n" +
-    "  详细：docs/handoff/archive/WORKTREE-FILE-LOSS.md\n" +
-    "  日志：.workbuddy/worktree-guard.log\n" +
-    "==============================================================\n\n"
+    '\n' +
+        '==============================================================\n' +
+        '  ⚠️  工作区防丢守卫：检测到级联删除并已恢复\n' +
+        '--------------------------------------------------------------\n' +
+        `  触发      : ${mode}\n` +
+        `  本次应删  : ${intended.size} 个（已跳过，不恢复）\n` +
+        `  级联误伤  : ${collateral.length} 个\n` +
+        '--------------------------------------------------------------\n' +
+        restored.map((p) => `  恢复 ${p}\n`).join('') +
+        [...failed, ...stillMissing].map((p) => `  失败 ${p}\n`).join('') +
+        '--------------------------------------------------------------\n' +
+        '  原因：本机沙箱把 rmdir 改写成「移入回收站」且不校验目录是否为空，\n' +
+        '        git 沿路径上溯清理空目录的终止条件失效所致。\n' +
+        '  详细：docs/handoff/archive/WORKTREE-FILE-LOSS.md\n' +
+        '  日志：.workbuddy/worktree-guard.log\n' +
+        '==============================================================\n\n'
 );
 
 process.exit(0); // 永不阻断 git

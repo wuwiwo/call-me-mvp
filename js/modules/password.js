@@ -37,7 +37,7 @@ export const password = {
     // 初始化
     init(domElements) {
         this.elements = domElements;
-        
+
         // 检查密码是否过期
         if (this.isPasswordExpired()) {
             this.showPasswordModal();
@@ -74,7 +74,7 @@ export const password = {
         const modal = document.createElement('div');
         modal.className = 'modal show password-modal';
         modal.id = 'passwordModal';
-        
+
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
@@ -116,7 +116,10 @@ export const password = {
         verifyBtn.addEventListener('click', () => {
             const password = input.value.trim();
             if (!password) {
-                this.showError(errorDiv, utils.getTranslation('password.errorEmpty') || '请输入密码');
+                this.showError(
+                    errorDiv,
+                    utils.getTranslation('password.errorEmpty') || '请输入密码'
+                );
                 return;
             }
 
@@ -124,7 +127,10 @@ export const password = {
                 modal.remove();
                 this.onSuccess();
             } else {
-                this.showError(errorDiv, utils.getTranslation('password.errorWrong') || '密码错误，请重试');
+                this.showError(
+                    errorDiv,
+                    utils.getTranslation('password.errorWrong') || '密码错误，请重试'
+                );
                 input.value = '';
                 input.focus();
             }
@@ -164,7 +170,7 @@ export const password = {
     showError(errorDiv, message) {
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
-        
+
         // 3秒后自动隐藏
         setTimeout(() => {
             errorDiv.style.display = 'none';

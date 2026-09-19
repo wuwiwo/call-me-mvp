@@ -90,32 +90,33 @@ npm test            # = node tools/run-all.mjs
 
 ## 文件说明
 
-| 文件 | 用途 |
-|---|---|
-| `run-all.mjs` | **统一入口**（CM-009）：串行跑 lint + 8 个套件 + `check-worktree.mjs`，逐项报套件名/断言汇总/退出码，任一失败整体非零 |
-| `chrome-path.mjs` | 套件共用的 Chrome 可执行文件解析（CM-009）：`<套件>_CHROME` > `CHROME_PATH` > 常见安装路径 > `which` |
-| `server.mjs` | 零依赖静态服务器，服务仓库根目录（可选，供复用外部服务器时使用） |
-| `e2e.mjs` | CM-002：CDP 驱动真实浏览器，29 项断言 |
-| `negative.mjs` | CM-002：回退修复 → 重跑 → 自动还原，验证测试有效性 |
-| `storage-resilience.mjs` | CM-003：存储容错，51 项断言 |
-| `negative-storage.mjs` | CM-003：反向验证（纯文件备份还原） |
-| `button-ids.mjs` | CM-004：按钮 ID 兼容规则，52 项断言 |
-| `negative-button-ids.mjs` | CM-004：反向验证 |
-| `input-safety.mjs` | CM-005：动态用户输入注入防护 + 严格图标允许列表，97 项断言 |
-| `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
-| `cooldown.mjs` | CM-006：cooldown 单一责任（状态转换 / 持久化 / timer 生命周期），87 项断言 |
-| `negative-cooldown.mjs` | CM-006：反向验证（从基线 ref 取原文覆盖 5 个被测源码） |
-| `history-language.mjs` | CM-007：历史页语言初始化与多语言文案，107 项断言 |
-| `negative-history-language.mjs` | CM-007：反向验证（从基线 ref 取原文覆盖 4 个被测文件） |
-| `receipt-lifecycle.mjs` | CM-008：已读回执轮询的可取消与单一所有权，54 项断言 |
-| `negative-receipt-lifecycle.mjs` | CM-008：反向验证（从基线 ref 取原文覆盖 1 个被测源码） |
-| `password-gate.mjs` | CM-010：访问提示触发语义 / 单一来源 / 诚实文案，60 项断言 |
-| `negative-password-gate.mjs` | CM-010：反向验证（从基线 ref 取原文覆盖 2 个被测文件） |
-| `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
+| 文件                                      | 用途                                                                                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run-all.mjs`                             | **统一入口**（CM-009）：串行跑 lint + 8 个套件 + `check-worktree.mjs`，逐项报套件名/断言汇总/退出码，任一失败整体非零                             |
+| `chrome-path.mjs`                         | 套件共用的 Chrome 可执行文件解析（CM-009）：`<套件>_CHROME` > `CHROME_PATH` > 常见安装路径 > `which`                                              |
+| `server.mjs`                              | 零依赖静态服务器，服务仓库根目录（可选，供复用外部服务器时使用）                                                                                  |
+| `e2e.mjs`                                 | CM-002：CDP 驱动真实浏览器，29 项断言                                                                                                             |
+| `negative.mjs`                            | CM-002：回退修复 → 重跑 → 自动还原，验证测试有效性                                                                                                |
+| `storage-resilience.mjs`                  | CM-003：存储容错，51 项断言                                                                                                                       |
+| `negative-storage.mjs`                    | CM-003：反向验证（纯文件备份还原）                                                                                                                |
+| `button-ids.mjs`                          | CM-004：按钮 ID 兼容规则，52 项断言                                                                                                               |
+| `negative-button-ids.mjs`                 | CM-004：反向验证                                                                                                                                  |
+| `input-safety.mjs`                        | CM-005：动态用户输入注入防护 + 严格图标允许列表，97 项断言                                                                                        |
+| `negative-input-safety.mjs`               | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段）                                                                                         |
+| `cooldown.mjs`                            | CM-006：cooldown 单一责任（状态转换 / 持久化 / timer 生命周期），87 项断言                                                                        |
+| `negative-cooldown.mjs`                   | CM-006：反向验证（从基线 ref 取原文覆盖 5 个被测源码）                                                                                            |
+| `history-language.mjs`                    | CM-007：历史页语言初始化与多语言文案，107 项断言                                                                                                  |
+| `negative-history-language.mjs`           | CM-007：反向验证（从基线 ref 取原文覆盖 4 个被测文件）                                                                                            |
+| `receipt-lifecycle.mjs`                   | CM-008：已读回执轮询的可取消与单一所有权，54 项断言                                                                                               |
+| `negative-receipt-lifecycle.mjs`          | CM-008：反向验证（从基线 ref 取原文覆盖 1 个被测源码）                                                                                            |
+| `password-gate.mjs`                       | CM-010：访问提示触发语义 / 单一来源 / 诚实文案，60 项断言                                                                                         |
+| `negative-password-gate.mjs`              | CM-010：反向验证（从基线 ref 取原文覆盖 2 个被测文件）                                                                                            |
+| `check-worktree.mjs`                      | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复                                                                        |
 | `worktree-guard.mjs`（已移至 `scripts/`） | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤。**不在 `tools/` 下** —— 见下节 GOV-002 说明 |
-| `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
+| `ACCEPTANCE.md`                           | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告                                                                                                  |
 
 > ### ⚠️ 复现/排查工作区文件丢失前必读
+>
 > 命令若带 `Sandbox bypassed (escalation-approved)` 标记，该进程**未被注入 `tsbx.dll`**，
 > 删除走原生语义、不进回收站、**级联不可能发生** → 任何"阴性结果"都是**假阴性**。
 > 这不是偶发噪音：沙箱 `default_action: "deny_write"` 使**所有写操作都要过授权闸门**，通过后即无沙箱。
@@ -133,17 +134,17 @@ npm test            # = node tools/run-all.mjs
 
 ### 端口分配
 
-| 用途 | 端口 | 说明 |
-|---|---|---|
-| HTTP（全部套件） | `8899` | 各自进程内起静态服务器 → **只能串行**；`run-all.mjs` 已串行 |
-| CM-002 `e2e.mjs` | CDP `9444` | |
-| CM-003 `storage-resilience.mjs` | CDP `9445` | ⚠️ 落在 Windows 动态端口范围内，可能被别的进程当"对外连接的源端口"占用 |
-| CM-004 `button-ids.mjs` | CDP `9446` | |
-| CM-005 `input-safety.mjs` | CDP `9447` | |
-| CM-006 `cooldown.mjs` | CDP `9446` | ⚠️ **与 CM-004 重复**；两者 HTTP 同为 8899、本就串行，暂无实际冲突，属已知项 |
-| CM-007 `history-language.mjs` | CDP `9448` | |
-| CM-008 `receipt-lifecycle.mjs` | CDP `9449` | |
-| CM-010 `password-gate.mjs` | CDP `9450` | |
+| 用途                            | 端口       | 说明                                                                         |
+| ------------------------------- | ---------- | ---------------------------------------------------------------------------- |
+| HTTP（全部套件）                | `8899`     | 各自进程内起静态服务器 → **只能串行**；`run-all.mjs` 已串行                  |
+| CM-002 `e2e.mjs`                | CDP `9444` |                                                                              |
+| CM-003 `storage-resilience.mjs` | CDP `9445` | ⚠️ 落在 Windows 动态端口范围内，可能被别的进程当"对外连接的源端口"占用       |
+| CM-004 `button-ids.mjs`         | CDP `9446` |                                                                              |
+| CM-005 `input-safety.mjs`       | CDP `9447` |                                                                              |
+| CM-006 `cooldown.mjs`           | CDP `9446` | ⚠️ **与 CM-004 重复**；两者 HTTP 同为 8899、本就串行，暂无实际冲突，属已知项 |
+| CM-007 `history-language.mjs`   | CDP `9448` |                                                                              |
+| CM-008 `receipt-lifecycle.mjs`  | CDP `9449` |                                                                              |
+| CM-010 `password-gate.mjs`      | CDP `9450` |                                                                              |
 
 **新增套件时**：挑一个未被占用的 CDP 端口（尽量避开 `9440–9500` 这类动态端口范围），
 并更新本表。若运行时报 `CDP 未就绪：Chrome 是否启动？`，**先确认端口是不是被占了**：
@@ -205,47 +206,47 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 ### CM-002
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM002_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM002_CDP_PORT` | `9444` | Chrome 调试端口 |
-| `CM002_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
+| 变量             | 默认值                                                  | 说明            |
+| ---------------- | ------------------------------------------------------- | --------------- |
+| `CM002_BASE`     | `http://127.0.0.1:8899`                                 | 测试站点地址    |
+| `CM002_CDP_PORT` | `9444`                                                  | Chrome 调试端口 |
+| `CM002_CHROME`   | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径     |
 
 ### CM-003
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM003_PORT` | `8899` | 自带服务器端口 |
-| `CM003_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM003_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM003_CDP_PORT` | `9445` | Chrome 调试端口 |
-| `CM003_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
-| `CM003_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
+| 变量              | 默认值                                                  | 说明                         |
+| ----------------- | ------------------------------------------------------- | ---------------------------- |
+| `CM003_PORT`      | `8899`                                                  | 自带服务器端口               |
+| `CM003_BASE`      | `http://127.0.0.1:8899`                                 | 测试站点地址                 |
+| `CM003_NO_SERVER` | 未设置                                                  | 设为 `1` 则复用外部服务器    |
+| `CM003_CDP_PORT`  | `9445`                                                  | Chrome 调试端口              |
+| `CM003_CHROME`    | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径                  |
+| `CM003_LOG`       | 未设置                                                  | 设置后把实跑输出落盘到该路径 |
 
 ### CM-004
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM004_PORT` | `8899` | 自带服务器端口 |
-| `CM004_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM004_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM004_CDP_PORT` | `9446` | Chrome 调试端口 |
-| `CM004_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
-| `CM004_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
+| 变量              | 默认值                                                  | 说明                         |
+| ----------------- | ------------------------------------------------------- | ---------------------------- |
+| `CM004_PORT`      | `8899`                                                  | 自带服务器端口               |
+| `CM004_BASE`      | `http://127.0.0.1:8899`                                 | 测试站点地址                 |
+| `CM004_NO_SERVER` | 未设置                                                  | 设为 `1` 则复用外部服务器    |
+| `CM004_CDP_PORT`  | `9446`                                                  | Chrome 调试端口              |
+| `CM004_CHROME`    | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径                  |
+| `CM004_LOG`       | 未设置                                                  | 设置后把实跑输出落盘到该路径 |
 
 > 各脚本默认都用 8899 端口，**不要并行运行**；如需并行，用各自的 `*_PORT` 错开。
 
 ### CM-005
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM005_PORT` | `8899` | 自带服务器端口 |
-| `CM005_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM005_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM005_CDP_PORT` | `9447` | Chrome 调试端口 |
-| `CM005_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
-| `CM005_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
-| `CM005_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"修复前版本" |
+| 变量              | 默认值                                                  | 说明                                                  |
+| ----------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| `CM005_PORT`      | `8899`                                                  | 自带服务器端口                                        |
+| `CM005_BASE`      | `http://127.0.0.1:8899`                                 | 测试站点地址                                          |
+| `CM005_NO_SERVER` | 未设置                                                  | 设为 `1` 则复用外部服务器                             |
+| `CM005_CDP_PORT`  | `9447`                                                  | Chrome 调试端口                                       |
+| `CM005_CHROME`    | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径                                           |
+| `CM005_LOG`       | 未设置                                                  | 设置后把实跑输出落盘到该路径                          |
+| `CM005_BASE_REF`  | `main`                                                  | **仅反向验证使用**：取此 ref 中的原文作为"修复前版本" |
 
 > `tools/input-safety.mjs` 会启动真实浏览器并注入 `<script>` / `<img onerror>` 等载荷。
 > 它只操作被测页面的 LocalStorage，不写仓库文件。
@@ -254,15 +255,15 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 ### CM-006
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM006_PORT` | `8899` | 自带服务器端口 |
-| `CM006_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM006_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM006_CDP_PORT` | `9446` | Chrome 调试端口 |
-| `CM006_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
-| `CM006_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
-| `CM006_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"收敛前版本" |
+| 变量              | 默认值                                                  | 说明                                                  |
+| ----------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| `CM006_PORT`      | `8899`                                                  | 自带服务器端口                                        |
+| `CM006_BASE`      | `http://127.0.0.1:8899`                                 | 测试站点地址                                          |
+| `CM006_NO_SERVER` | 未设置                                                  | 设为 `1` 则复用外部服务器                             |
+| `CM006_CDP_PORT`  | `9446`                                                  | Chrome 调试端口                                       |
+| `CM006_CHROME`    | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径                                           |
+| `CM006_LOG`       | 未设置                                                  | 设置后把实跑输出落盘到该路径                          |
+| `CM006_BASE_REF`  | `main`                                                  | **仅反向验证使用**：取此 ref 中的原文作为"收敛前版本" |
 
 > `tools/cooldown.mjs` 会启动真实浏览器，但**完全离线**：它用一个 fetch 桩
 > 替换 `window.fetch`，模拟 webhook 成功与失败，**不产生任何真实外部请求**。
@@ -274,15 +275,15 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 ### CM-007
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM007_PORT` | `8899` | 自带服务器端口 |
-| `CM007_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM007_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM007_CDP_PORT` | `9448` | Chrome 调试端口 |
-| `CM007_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
-| `CM007_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
-| `CM007_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"改动前版本" |
+| 变量              | 默认值                                                  | 说明                                                  |
+| ----------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| `CM007_PORT`      | `8899`                                                  | 自带服务器端口                                        |
+| `CM007_BASE`      | `http://127.0.0.1:8899`                                 | 测试站点地址                                          |
+| `CM007_NO_SERVER` | 未设置                                                  | 设为 `1` 则复用外部服务器                             |
+| `CM007_CDP_PORT`  | `9448`                                                  | Chrome 调试端口                                       |
+| `CM007_CHROME`    | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径                                           |
+| `CM007_LOG`       | 未设置                                                  | 设置后把实跑输出落盘到该路径                          |
+| `CM007_BASE_REF`  | `main`                                                  | **仅反向验证使用**：取此 ref 中的原文作为"改动前版本" |
 
 > `tools/history-language.mjs` 会启动真实浏览器，只读写被测页面的 LocalStorage，
 > 不写仓库文件、不发起外部请求。
@@ -293,15 +294,15 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 ### CM-008
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM008_PORT` | `8899` | 自带服务器端口 |
-| `CM008_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM008_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM008_CDP_PORT` | `9449` | Chrome 调试端口（避开与 CM-004/006 重复的 9446、以及落在动态端口范围的 9445） |
-| `CM008_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
-| `CM008_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
-| `CM008_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"改造前版本" |
+| 变量              | 默认值                                                  | 说明                                                                          |
+| ----------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `CM008_PORT`      | `8899`                                                  | 自带服务器端口                                                                |
+| `CM008_BASE`      | `http://127.0.0.1:8899`                                 | 测试站点地址                                                                  |
+| `CM008_NO_SERVER` | 未设置                                                  | 设为 `1` 则复用外部服务器                                                     |
+| `CM008_CDP_PORT`  | `9449`                                                  | Chrome 调试端口（避开与 CM-004/006 重复的 9446、以及落在动态端口范围的 9445） |
+| `CM008_CHROME`    | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径                                                                   |
+| `CM008_LOG`       | 未设置                                                  | 设置后把实跑输出落盘到该路径                                                  |
+| `CM008_BASE_REF`  | `main`                                                  | **仅反向验证使用**：取此 ref 中的原文作为"改造前版本"                         |
 
 > `tools/receipt-lifecycle.mjs` 会启动真实浏览器，用 fetch 桩**完全离线**模拟
 > webhook 与 JSONBin 回执，不产生任何真实外部请求；只读写被测页面的 LocalStorage。
@@ -311,14 +312,14 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 ### CM-010
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `CM010_PORT` | `8899` | 自带服务器端口 |
-| `CM010_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
-| `CM010_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
-| `CM010_CDP_PORT` | `9450` | Chrome 调试端口 |
-| `CM010_CHROME` | 由 `tools/chrome-path.mjs` 解析 | Chrome 路径（一般不用设，设 `CHROME_PATH` 即可） |
-| `CM010_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 的原文作为"改造前版本" |
+| 变量              | 默认值                          | 说明                                                |
+| ----------------- | ------------------------------- | --------------------------------------------------- |
+| `CM010_PORT`      | `8899`                          | 自带服务器端口                                      |
+| `CM010_BASE`      | `http://127.0.0.1:8899`         | 测试站点地址                                        |
+| `CM010_NO_SERVER` | 未设置                          | 设为 `1` 则复用外部服务器                           |
+| `CM010_CDP_PORT`  | `9450`                          | Chrome 调试端口                                     |
+| `CM010_CHROME`    | 由 `tools/chrome-path.mjs` 解析 | Chrome 路径（一般不用设，设 `CHROME_PATH` 即可）    |
+| `CM010_BASE_REF`  | `main`                          | **仅反向验证使用**：取此 ref 的原文作为"改造前版本" |
 
 > `password-gate.mjs` 通过**预置 LocalStorage + 重新加载**走真实的
 > `main.js → password.init()` 路径，并用页面内 `await import('/js/modules/password.js')`
@@ -390,16 +391,16 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 对齐 CM-004 验收标准，共 **52** 项断言，分 8 个用例：
 
-| 用例 | 覆盖内容 |
-|---|---|
-| 1 | 无配置启动 → 落盘规范 ID 默认按钮；保存后 ID 为 `quick_online` / `emergency` |
-| 2 | legacy `default_N` 配置：读取不崩、渲染内容完整、保存后迁移为规范 ID 且文案/图标不丢 |
-| 3 | legacy `custom_<timestamp>` 配置：编辑保存后**原 ID 不变**，未编辑按钮内容与 ID 均不变 |
-| 4 | 新建自定义按钮：同批次两个 ID 互不相同；连续保存 / 刷新后再保存 ID 不变 |
-| 5 | 删除中间自定义按钮 + 编辑默认按钮：存活按钮 ID 不被连带改变 |
-| 6 | 未知字段（`color` / `weight` / `tag` / 嵌套对象）在保存后保留 |
-| 7 | 回归：新增 → 选图标 → 保存 → 重开回显 → 首页渲染 → 可点击 |
-| 8 | 幂等：同一份规范配置连续保存 3 次，ID 序列完全稳定 |
+| 用例 | 覆盖内容                                                                               |
+| ---- | -------------------------------------------------------------------------------------- |
+| 1    | 无配置启动 → 落盘规范 ID 默认按钮；保存后 ID 为 `quick_online` / `emergency`           |
+| 2    | legacy `default_N` 配置：读取不崩、渲染内容完整、保存后迁移为规范 ID 且文案/图标不丢   |
+| 3    | legacy `custom_<timestamp>` 配置：编辑保存后**原 ID 不变**，未编辑按钮内容与 ID 均不变 |
+| 4    | 新建自定义按钮：同批次两个 ID 互不相同；连续保存 / 刷新后再保存 ID 不变                |
+| 5    | 删除中间自定义按钮 + 编辑默认按钮：存活按钮 ID 不被连带改变                            |
+| 6    | 未知字段（`color` / `weight` / `tag` / 嵌套对象）在保存后保留                          |
+| 7    | 回归：新增 → 选图标 → 保存 → 重开回显 → 首页渲染 → 可点击                              |
+| 8    | 幂等：同一份规范配置连续保存 3 次，ID 序列完全稳定                                     |
 
 > **用例隔离**：`injectAndLoad` 每次先 `localStorage.clear()` 再注入，
 > 所以脚本可**重复运行**且用例互不污染。传 `buttonConfig: null` 表示"刻意不注入该 key"，
@@ -430,17 +431,17 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 对齐 CM-005 验收标准（含 icon 白名单返工），共 **97** 项断言，分 9 个用例：
 
-| 用例 | 覆盖内容 | 断言数 |
-|---|---|---|
-| 1 | 首页按钮渲染：恶意 `message`（`<script>` / `<img onerror>`）与恶意 `icon` | 9 |
-| 2 | 按钮编辑表单：恶意 `message` 经 `value` **完整回显**，不产生额外属性 | 7 |
-| 3 | 恶意 icon：不注入 class，且**不静默丢失原值** | 15 |
-| 3b | **严格允许列表**：白名单外的历史值不进入 class，且保存保留原值 | 29 |
-| 4 | 自定义按钮表单：结构注入载荷（`</span><b id="inj">`）只作文本 | 6 |
-| 5 | 历史渲染：恶意 `nickname` / `message` / `emoji` / `webhook` | 9 |
-| 6 | 历史 `_status`：未知值不产生状态 class；`success` / `error` / 缺失三种情形不回归 | 10 |
-| 7 | 合法数据不回归：`fire` / `random` / `star` 渲染、文案、`data-button-index`、选择器回显 | 11 |
-| 8 | 全流程无未捕获异常 / `console.error` | 1 |
+| 用例 | 覆盖内容                                                                               | 断言数 |
+| ---- | -------------------------------------------------------------------------------------- | ------ |
+| 1    | 首页按钮渲染：恶意 `message`（`<script>` / `<img onerror>`）与恶意 `icon`              | 9      |
+| 2    | 按钮编辑表单：恶意 `message` 经 `value` **完整回显**，不产生额外属性                   | 7      |
+| 3    | 恶意 icon：不注入 class，且**不静默丢失原值**                                          | 15     |
+| 3b   | **严格允许列表**：白名单外的历史值不进入 class，且保存保留原值                         | 29     |
+| 4    | 自定义按钮表单：结构注入载荷（`</span><b id="inj">`）只作文本                          | 6      |
+| 5    | 历史渲染：恶意 `nickname` / `message` / `emoji` / `webhook`                            | 9      |
+| 6    | 历史 `_status`：未知值不产生状态 class；`success` / `error` / 缺失三种情形不回归       | 10     |
+| 7    | 合法数据不回归：`fire` / `random` / `star` 渲染、文案、`data-button-index`、选择器回显 | 11     |
+| 8    | 全流程无未捕获异常 / `console.error`                                                   | 1      |
 
 **判定"注入未发生"的四类独立证据**（每类都单独断言，不靠单一信号）：
 
@@ -467,11 +468,11 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 
 三个必须分清的概念（混用会互相打架）：
 
-| 概念 | 值 | 说明 |
-|---|---|---|
-| 存储值 | 任意 | 来自 LocalStorage，可能在允许列表外；**不因显示兜底而被改写** |
-| 首页按钮字形 | `displayIcon(存储值)` | 列表外 → `fa-random` |
-| 选择器字形 | `pickerGlyph(...)` | `random` 语义用表现层常量 `shuffle` → `fa-shuffle` |
+| 概念         | 值                    | 说明                                                          |
+| ------------ | --------------------- | ------------------------------------------------------------- |
+| 存储值       | 任意                  | 来自 LocalStorage，可能在允许列表外；**不因显示兜底而被改写** |
+| 首页按钮字形 | `displayIcon(存储值)` | 列表外 → `fa-random`                                          |
+| 选择器字形   | `pickerGlyph(...)`    | `random` 语义用表现层常量 `shuffle` → `fa-shuffle`            |
 
 > `displayIcon`（存储值 → 字形）与 `pickerGlyph`（表现层常量）必须分开。
 > 早期版本把 `"shuffle"` 也交给 `displayIcon`，它被判成白名单外并回退成 `random`，
@@ -539,23 +540,23 @@ FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missi
 
 对外接口：
 
-| 接口 | 用途 |
-|---|---|
-| `restore()` | 页面加载 / 刷新：按 storage 恢复，或清理不可用的值 |
-| `startFromNow()` | 用户点击：以当前时间为起点开始冷却 |
-| `cancel()` | 请求失败回滚：放行 + 清除持久化 + 停 timer |
-| `remaining()` | 只读：剩余秒数（提示文案与断言用） |
-| `init()` / `updateDisplay()` | 显示层初始化与刷新 |
+| 接口                         | 用途                                               |
+| ---------------------------- | -------------------------------------------------- |
+| `restore()`                  | 页面加载 / 刷新：按 storage 恢复，或清理不可用的值 |
+| `startFromNow()`             | 用户点击：以当前时间为起点开始冷却                 |
+| `cancel()`                   | 请求失败回滚：放行 + 清除持久化 + 停 timer         |
+| `remaining()`                | 只读：剩余秒数（提示文案与断言用）                 |
+| `init()` / `updateDisplay()` | 显示层初始化与刷新                                 |
 
 **时间戳的定义行为**（全部有断言覆盖）：
 
-| 存储值 | 行为 |
-|---|---|
-| 缺失 / 空串 | 无冷却，放行；不写 storage |
-| 非数字 / `NaN` / `Infinity` / `0` / 负数 | 视为非法：**清除该 key** 并放行（沿用既有清理语义） |
-| 已过期 | **清除该 key** 并放行 |
-| 未来时间戳 | 视为"刚点击过"，剩余 **clamp 到 `CONFIG.cooldownTime`** |
-| 合法且未过期 | 按其剩余时间进入冷却，**不重写**存储 |
+| 存储值                                   | 行为                                                    |
+| ---------------------------------------- | ------------------------------------------------------- |
+| 缺失 / 空串                              | 无冷却，放行；不写 storage                              |
+| 非数字 / `NaN` / `Infinity` / `0` / 负数 | 视为非法：**清除该 key** 并放行（沿用既有清理语义）     |
+| 已过期                                   | **清除该 key** 并放行                                   |
+| 未来时间戳                               | 视为"刚点击过"，剩余 **clamp 到 `CONFIG.cooldownTime`** |
+| 合法且未过期                             | 按其剩余时间进入冷却，**不重写**存储                    |
 
 > 「未来时间戳 clamp」是本任务新增的定义：旧实现会算出 `60 + 偏移量` 的剩余时间
 > 并直接启动倒计时 —— 时钟被向前校正一小时后，用户会被锁死 **3660 秒**。
@@ -572,18 +573,18 @@ FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missi
 
 **断言分组（87 项）**：
 
-| 场景 | 覆盖 |
-|---|---|
-| S1 首次加载 | 放行、无 timer、无 key、接口齐全 |
-| S2 刷新恢复 | 剩余时间、元素激活、文本、key 保留、**无长延时 timeout** |
-| S3 归零 | 放行、清 key、interval 释放、元素取消激活 |
-| S4/S5 请求成功与重复点击 | 单次写入、冷却期间被阻止、不重复写 key、不叠加 timer |
-| S6 失败回滚 | 立即放行、清 key、释放 timer；重试成功后重新进入冷却 |
-| S7/S8 非法与过期 | 7 种非法值 + 过期值均清理并放行 |
-| S9 未来时间戳 | clamp 到 60 且显示文本不含 3660 |
-| S10/S11 timer 去重 | 重复调用后恒为 1 个 interval；**手工执行旧代回调不得改写新状态** |
-| S12 页面异常 | 无未捕获异常 / 非预期 `console.error` |
-| S13 同源性扫描 | 5 个源码中只有 `countdown.js` 触碰 key 与 `canClick` |
+| 场景                     | 覆盖                                                             |
+| ------------------------ | ---------------------------------------------------------------- |
+| S1 首次加载              | 放行、无 timer、无 key、接口齐全                                 |
+| S2 刷新恢复              | 剩余时间、元素激活、文本、key 保留、**无长延时 timeout**         |
+| S3 归零                  | 放行、清 key、interval 释放、元素取消激活                        |
+| S4/S5 请求成功与重复点击 | 单次写入、冷却期间被阻止、不重复写 key、不叠加 timer             |
+| S6 失败回滚              | 立即放行、清 key、释放 timer；重试成功后重新进入冷却             |
+| S7/S8 非法与过期         | 7 种非法值 + 过期值均清理并放行                                  |
+| S9 未来时间戳            | clamp 到 60 且显示文本不含 3660                                  |
+| S10/S11 timer 去重       | 重复调用后恒为 1 个 interval；**手工执行旧代回调不得改写新状态** |
+| S12 页面异常             | 无未捕获异常 / 非预期 `console.error`                            |
+| S13 同源性扫描           | 5 个源码中只有 `countdown.js` 触碰 key 与 `canClick`             |
 
 > S12 允许 **1 条预期内的 `console.error`** —— 失败回滚场景故意让 fetch 抛错，
 > 应用自身的 `catch` 会记录 `Fetch error:`。脚本把它单独归类，不计入非预期错误。
@@ -625,31 +626,31 @@ FAIL  责任者提供 restore / startFromNow 接口 -> countdown.restore is not 
 
 **做法**：历史页复用首页的语言初始化与回退规则，不新建语言状态。
 
-| 关注点 | 实现 |
-|---|---|
-| 语言来源 | `history.js` 在 `init()` 里调用 `language.init()` —— 读取 `appLanguage`、校验是否受支持、落到 `state.currentLang` |
-| 查找翻译 | 沿用 `utils.getTranslation()`（读的正是首页那份 `state.currentLang`），不建第二张表 |
+| 关注点               | 实现                                                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 语言来源             | `history.js` 在 `init()` 里调用 `language.init()` —— 读取 `appLanguage`、校验是否受支持、落到 `state.currentLang`                                                                                       |
+| 查找翻译             | 沿用 `utils.getTranslation()`（读的正是首页那份 `state.currentLang`），不建第二张表                                                                                                                     |
 | `language.js` 的改动 | **只加元素存在性判断**（`init(domElements = {})` + 各方法守卫）。历史页没有语言切换控件，而 `bindEvents()` 注册的全局 click 监听会调用 `hideLanguageMenu()`，不判断就会在历史页任意点击时抛 `TypeError` |
-| 页面文案 | `history.js` 的 `applyPageTexts()` 覆盖文档标题 / 顶部标题 / 返回按钮 title / 清除按钮 title；空状态与 Webhook 标签在 `render()` 内、清除 toast 在 `clear()` 内 |
+| 页面文案             | `history.js` 的 `applyPageTexts()` 覆盖文档标题 / 顶部标题 / 返回按钮 title / 清除按钮 title；空状态与 Webhook 标签在 `render()` 内、清除 toast 在 `clear()` 内                                         |
 
 **新增翻译键**（`history.*`，四语言齐全）：
 
-| 键 | zh | en | ja | ko |
-|---|---|---|---|---|
-| `pageTitle` | 通知历史 | Notification History | 通知履歴 | 알림 기록 |
-| `backTitle` | 返回 | Back | 戻る | 뒤로 |
-| `clearTitle` | 清除记录 | Clear records | 記録を消去 | 기록 지우기 |
-| `cleared` | 历史记录已清除 | History cleared | 履歴を消去しました | 기록이 지워졌습니다 |
-| `webhookLabel` | Webhook | Webhook URL | Webhook URL | Webhook 주소 |
+| 键             | zh             | en                   | ja                 | ko                  |
+| -------------- | -------------- | -------------------- | ------------------ | ------------------- |
+| `pageTitle`    | 通知历史       | Notification History | 通知履歴           | 알림 기록           |
+| `backTitle`    | 返回           | Back                 | 戻る               | 뒤로                |
+| `clearTitle`   | 清除记录       | Clear records        | 記録を消去         | 기록 지우기         |
+| `cleared`      | 历史记录已清除 | History cleared      | 履歴を消去しました | 기록이 지워졌습니다 |
+| `webhookLabel` | Webhook        | Webhook URL          | Webhook URL        | Webhook 주소        |
 
 > ⚠️ **`zh.webhookLabel` 必须保持 `Webhook`** —— 这是一条**跨任务兼容约束**：
 > `tools/input-safety.mjs:1024`（CM-005）把 `Webhook: ` 这个前缀钉进了期望字符串
 > （`f.err === \`Webhook: ${...}\``）。该文件不在 CM-007 的 SCOPE 内、未作修改，
-> 因此 zh 取值不能改。若将来要把它改成「Webhook 地址」一类更具体的说法，
-> 必须同时更新 `input-safety.mjs` 的那条断言。
-> `history-language.mjs` 已把这条约束写成显式断言，避免以后被静默改坏。
+因此 zh 取值不能改。若将来要把它改成「Webhook 地址」一类更具体的说法，
+必须同时更新 `input-safety.mjs`的那条断言。`history-language.mjs` 已把这条约束写成显式断言，避免以后被静默改坏。
 
 **观测手法**：
+
 1. Node 侧直接 `import { TRANSLATIONS }`（纯数据模块，无 DOM 依赖）做表级检查：
    四语言键齐全、四个本地化键取值互不相同（防止把英文串复制到其他语言）、少量 golden 值。
 2. 页面侧读 DOM 实际渲染值，与该语言在表里的值逐项比对；
@@ -659,17 +660,17 @@ FAIL  责任者提供 restore / startFromNow 接口 -> countdown.restore is not 
 
 **断言分组（107 项）**：
 
-| 场景 | 覆盖 |
-|---|---|
-| T1/T2 翻译表 | 四语言六个键齐全非空；四个本地化键取值互不相同；golden 值；`zh.webhookLabel` 兼容约束 |
-| T3 四语言静态文案 | 文档标题 / 顶部标题 / 返回 title / 清除 title / 错误行 Webhook 标签 |
-| T4 空状态 | 四语言空状态文本；`notificationHistory` 缺失时同样走空状态 |
-| T5 记录渲染 | 条数、状态 class、昵称/消息/emoji 文本、success 行不显示 Webhook 标签 |
-| T6 语言回退 | 未设置 / 非法 `fr` / 空串 → 按既有规则回退，且不阻断页面 |
-| T7 清除动作 | 只删 `notificationHistory`（其余 4 个 key 原样）、toast 跟随语言、清除后回到空状态 |
-| T8 输入安全 | `__pwned` 未设置、无注入元素、无 `on*`、非法 class、恶意字段为字面文本 |
-| T9 首页不回归 | 四语言下首页标题/副标题/语言指示器/用户名；语言菜单可开可关 |
-| T10 页面异常 | 无未捕获异常 / `console.error` |
+| 场景              | 覆盖                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| T1/T2 翻译表      | 四语言六个键齐全非空；四个本地化键取值互不相同；golden 值；`zh.webhookLabel` 兼容约束 |
+| T3 四语言静态文案 | 文档标题 / 顶部标题 / 返回 title / 清除 title / 错误行 Webhook 标签                   |
+| T4 空状态         | 四语言空状态文本；`notificationHistory` 缺失时同样走空状态                            |
+| T5 记录渲染       | 条数、状态 class、昵称/消息/emoji 文本、success 行不显示 Webhook 标签                 |
+| T6 语言回退       | 未设置 / 非法 `fr` / 空串 → 按既有规则回退，且不阻断页面                              |
+| T7 清除动作       | 只删 `notificationHistory`（其余 4 个 key 原样）、toast 跟随语言、清除后回到空状态    |
+| T8 输入安全       | `__pwned` 未设置、无注入元素、无 `on*`、非法 class、恶意字段为字面文本                |
+| T9 首页不回归     | 四语言下首页标题/副标题/语言指示器/用户名；语言菜单可开可关                           |
+| T10 页面异常      | 无未捕获异常 / `console.error`                                                        |
 
 **反向验证（`negative-history-language.mjs`）实测**：
 
@@ -704,14 +705,14 @@ timer 不保存在状态中，新请求无法取消旧请求。
 
 **改造后**（做法与 CM-006 `countdown.generation` 一致）：
 
-| 关注点 | 实现 |
-|---|---|
-| 状态 | `notification.receiptPollTimer`（句柄，null = 无已排队轮询）+ `receiptPollGeneration`（代际） |
-| 停止 | `stopReceiptPolling()`：自增代际 + `clearTimeout` + 句柄置 null。**不写状态条** |
-| 单一所有权 | `pollReadStatus()` 启动前先 `stopReceiptPolling()` → 同一时刻活跃轮询 ≤ 1 |
+| 关注点     | 实现                                                                                                                 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| 状态       | `notification.receiptPollTimer`（句柄，null = 无已排队轮询）+ `receiptPollGeneration`（代际）                        |
+| 停止       | `stopReceiptPolling()`：自增代际 + `clearTimeout` + 句柄置 null。**不写状态条**                                      |
+| 单一所有权 | `pollReadStatus()` 启动前先 `stopReceiptPolling()` → 同一时刻活跃轮询 ≤ 1                                            |
 | 旧轮询失效 | 回调入口、`await fetch` 之后、`await res.json()` 之后**三处**校验代际；不等则直接返回，不写状态条（含 timeout 分支） |
-| 终态 | read 命中 / 15 次超时：先清句柄再写状态条，使「句柄非空」⇔「有轮询在等待」 |
-| 参数遮蔽 | `setReceiptStatus(state)` → `setReceiptStatus(statusName)`（原参数名遮蔽了导入的 `state` 模块） |
+| 终态       | read 命中 / 15 次超时：先清句柄再写状态条，使「句柄非空」⇔「有轮询在等待」                                           |
+| 参数遮蔽   | `setReceiptStatus(state)` → `setReceiptStatus(statusName)`（原参数名遮蔽了导入的 `state` 模块）                      |
 
 > 刻意**不用 AbortController**：那会改动既有 JSONBin 读取方式（NON-GOALS）。
 > 代际校验已足以保证旧轮询不写状态条；旧轮询在飞的请求返回后被直接丢弃。
@@ -724,17 +725,17 @@ timer 不保存在状态中，新请求无法取消旧请求。
 
 **断言分组（54 项）**：
 
-| 场景 | 覆盖 |
-|---|---|
-| S0 前置 | 模块可导入、配置里有 `jsonBin.binUrl` |
-| S1 单次发送 → read | sent 起步、轮询在等、2s 内 1 次请求即命中、命中后句柄清空 |
-| S2 单次发送 → timeout | 共 **15 次** bin 请求、耗时落在 30–36s、超时后句柄清空 |
-| S3 并发打断（核心） | 第二次发送时第一次仍在跑：代际自增、状态条重新从 sent 开始、第二次读到 read；**越过后第一次的原超时点，状态条仍为 read** |
-| S4 宽容语义 | `msgId` 空/缺失、`binUrl` 缺失：不抛异常、不启动轮询、不发请求 |
-| S5 可取消性 | `stopReceiptPolling()` 后越过原超时点：状态条不被改写、不再发请求、无活跃轮询 |
-| S6 定时器计数 | 待触发的 2000ms 定时器数量作为**辅助**证据（容忍 toast，`notificationDuration = 4000`） |
-| S7 同源性 | 参数名已改、轮询的 `setTimeout` 全部被句柄接住、终态清句柄（Node 侧扫源码） |
-| S8 页面异常 | 无未捕获异常 / `console.error` |
+| 场景                  | 覆盖                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| S0 前置               | 模块可导入、配置里有 `jsonBin.binUrl`                                                                                    |
+| S1 单次发送 → read    | sent 起步、轮询在等、2s 内 1 次请求即命中、命中后句柄清空                                                                |
+| S2 单次发送 → timeout | 共 **15 次** bin 请求、耗时落在 30–36s、超时后句柄清空                                                                   |
+| S3 并发打断（核心）   | 第二次发送时第一次仍在跑：代际自增、状态条重新从 sent 开始、第二次读到 read；**越过后第一次的原超时点，状态条仍为 read** |
+| S4 宽容语义           | `msgId` 空/缺失、`binUrl` 缺失：不抛异常、不启动轮询、不发请求                                                           |
+| S5 可取消性           | `stopReceiptPolling()` 后越过原超时点：状态条不被改写、不再发请求、无活跃轮询                                            |
+| S6 定时器计数         | 待触发的 2000ms 定时器数量作为**辅助**证据（容忍 toast，`notificationDuration = 4000`）                                  |
+| S7 同源性             | 参数名已改、轮询的 `setTimeout` 全部被句柄接住、终态清句柄（Node 侧扫源码）                                              |
+| S8 页面异常           | 无未捕获异常 / `console.error`                                                                                           |
 
 > **并发场景用直接调用被测模块而不是点两次按钮**：CM-006 之后点击链路会启动 60s 冷却，
 > 第二次点击会被闸门拦掉，根本进不到 `sendNotification`。
@@ -772,11 +773,11 @@ FAIL  轮询的 setTimeout 全部被句柄接住 -> bare=2, handled=0
 
 **改动前的问题**：
 
-| 问题 | 位置 |
-|---|---|
-| 密码配置**重复定义** | `config.js` 的 `defaultPassword`/`expiryDays` 与 `password.js` 的 `'666888'`/`7` 各存一份，后者从不读 config |
-| 文案**不诚实** | `password.hint` 声称「密码每周更新，请联系管理员获取最新密码」—— 实际没有任何每周更新机制，密码就是源码里的常量 |
-| 坏数据**反而放行** | `parseInt` 结果是 NaN 时 `(Date.now() - NaN) > expiry` 恒为 `false` → 时间戳损坏时**永远不要求验证** |
+| 问题                 | 位置                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 密码配置**重复定义** | `config.js` 的 `defaultPassword`/`expiryDays` 与 `password.js` 的 `'666888'`/`7` 各存一份，后者从不读 config    |
+| 文案**不诚实**       | `password.hint` 声称「密码每周更新，请联系管理员获取最新密码」—— 实际没有任何每周更新机制，密码就是源码里的常量 |
+| 坏数据**反而放行**   | `parseInt` 结果是 NaN 时 `(Date.now() - NaN) > expiry` 恒为 `false` → 时间戳损坏时**永远不要求验证**            |
 
 **改造后**：`password.js` 从 `CONFIG.password` 读默认密码与有效期（单一来源）；
 四语言 `hint` 改为诚实表述（明确说明"任何能打开本页的人都能绕过它"）；
@@ -784,15 +785,15 @@ FAIL  轮询的 setTimeout 全部被句柄接住 -> bare=2, handled=0
 
 **断言分组（60 项）**：
 
-| 场景 | 覆盖 |
-|---|---|
-| S0 前置 | 模块可导入、`CONFIG.password` 两个字段存在 |
-| S1 触发语义 | 无 key / 空串 / 3 天前 / 第 6 天 / 超 7 天 → 弹或不弹；5 种损坏时间戳 → 均弹窗 |
-| S2 验证交互 | 错密码 → 报错文案 + 弹窗仍在 + 不写时间戳；默认密码 → 弹窗关闭 + 写时间戳 |
-| S3 模块语义 | `verify` 默认/错误；`setPassword` 覆盖生效；`clearPassword` 回退默认密码 |
-| S4 诚实文案 | 四语言 hint：不含安全性暗示词、**不声称"每周更新/联系管理员"**、**明确说明可被绕过**、与翻译表一致、四语言互不相同 |
+| 场景        | 覆盖                                                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0 前置     | 模块可导入、`CONFIG.password` 两个字段存在                                                                                                    |
+| S1 触发语义 | 无 key / 空串 / 3 天前 / 第 6 天 / 超 7 天 → 弹或不弹；5 种损坏时间戳 → 均弹窗                                                                |
+| S2 验证交互 | 错密码 → 报错文案 + 弹窗仍在 + 不写时间戳；默认密码 → 弹窗关闭 + 写时间戳                                                                     |
+| S3 模块语义 | `verify` 默认/错误；`setPassword` 覆盖生效；`clearPassword` 回退默认密码                                                                      |
+| S4 诚实文案 | 四语言 hint：不含安全性暗示词、**不声称"每周更新/联系管理员"**、**明确说明可被绕过**、与翻译表一致、四语言互不相同                            |
 | S5 单一来源 | `password.js` 无默认密码字面量 / 无 `PASSWORD_EXPIRY_DAYS` / 无 `correctPassword` / 从 `CONFIG.password` 读；`js/` 下字面量只命中 `config.js` |
-| S6 页面异常 | 无未捕获异常 / `console.error` |
+| S6 页面异常 | 无未捕获异常 / `console.error`                                                                                                                |
 
 > **S4 为什么不能只查禁用词**：旧文案「密码每周更新，请联系管理员获取最新密码」
 > **并不含**「保护/安全/加密/授权」，所以只查禁用词会在旧代码上"通过"。
@@ -861,11 +862,11 @@ node scripts/worktree-guard.mjs post-commit
 于是**守卫与被保护物同归于尽**：钩子报 `MODULE_NOT_FOUND`，恢复从未发生。
 四次事故同一根因。现在的三层设计：
 
-| 层 | 位置 | 作用 |
-|---|---|---|
-| 1 | `scripts/worktree-guard.mjs` | 权威版本（已移出 `tools/`），随仓库分发 |
-| 2 | `<git-dir>/worktree-guard.mjs` | **每次运行时自安装**的副本。`.git/` 在工作树之外，级联搬不到它 |
-| 3 | `.githooks/*` 内联的纯 git 回退 | 前两层都没有时，直接 `git restore` 恢复 `--diff-filter=D HEAD` 的文件 |
+| 层  | 位置                            | 作用                                                                  |
+| --- | ------------------------------- | --------------------------------------------------------------------- |
+| 1   | `scripts/worktree-guard.mjs`    | 权威版本（已移出 `tools/`），随仓库分发                               |
+| 2   | `<git-dir>/worktree-guard.mjs`  | **每次运行时自安装**的副本。`.git/` 在工作树之外，级联搬不到它        |
+| 3   | `.githooks/*` 内联的纯 git 回退 | 前两层都没有时，直接 `git restore` 恢复 `--diff-filter=D HEAD` 的文件 |
 
 钩子按 1 → 2 → 3 依次尝试，任一层可用即可完成恢复。
 

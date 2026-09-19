@@ -117,4 +117,3 @@ password.init()
 ```
 
 密码 modal 没有服务端验证；`accessPassword` 与默认密码逻辑均可由用户查看/修改。它只能作为个人工具的 UI 级阻挡，不能保护 webhook 或数据资源。
-

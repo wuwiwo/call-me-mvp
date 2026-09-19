@@ -8,10 +8,10 @@
 
 ## 一、被审查的提交
 
-| Commit | 内容 | 文件 | 性质 |
-|---|---|---|---|
-| `0b14d70` | `fix: 修复已有自定义按钮编辑时访问不存在的 .icon-selector` | `js/modules/buttonManager.js` | 任务范围内 |
-| `c4b074f` | `chore: 忽略 .workbuddy 会话与记忆目录` | `.gitignore` | **任务范围外**（见第五节说明） |
+| Commit    | 内容                                                       | 文件                          | 性质                           |
+| --------- | ---------------------------------------------------------- | ----------------------------- | ------------------------------ |
+| `0b14d70` | `fix: 修复已有自定义按钮编辑时访问不存在的 .icon-selector` | `js/modules/buttonManager.js` | 任务范围内                     |
+| `c4b074f` | `chore: 忽略 .workbuddy 会话与记忆目录`                    | `.gitignore`                  | **任务范围外**（见第五节说明） |
 
 ---
 
@@ -43,14 +43,14 @@
 
 ## 三、独立验证结果
 
-| 检查项 | 命令 | 结果 |
-|---|---|---|
-| ESLint | `npm run lint` | **PASS**（0 error / 0 warning） |
-| 语法检查 | `node --check js/modules/buttonManager.js` | **PASS** |
-| 提交空白检查 | `git diff --check` | **PASS** |
-| Prettier | `npx prettier --check js/modules/buttonManager.js` | **FAIL（既有工程问题）** |
-| 浏览器端到端 | `node tools/e2e.mjs` | **PASS**（29 passed / 0 failed） |
-| 反向验证 | `node tools/negative.mjs` | **PASS**（buggy 版本确实失败，测试有效） |
+| 检查项       | 命令                                               | 结果                                     |
+| ------------ | -------------------------------------------------- | ---------------------------------------- |
+| ESLint       | `npm run lint`                                     | **PASS**（0 error / 0 warning）          |
+| 语法检查     | `node --check js/modules/buttonManager.js`         | **PASS**                                 |
+| 提交空白检查 | `git diff --check`                                 | **PASS**                                 |
+| Prettier     | `npx prettier --check js/modules/buttonManager.js` | **FAIL（既有工程问题）**                 |
+| 浏览器端到端 | `node tools/e2e.mjs`                               | **PASS**（29 passed / 0 failed）         |
+| 反向验证     | `node tools/negative.mjs`                          | **PASS**（buggy 版本确实失败，测试有效） |
 
 ### Prettier FAIL 的证据链（与本次改动无关）
 
@@ -76,13 +76,13 @@ Code style issues found in 39 files.
 
 ### 测试环境
 
-| 项 | 值 |
-|---|---|
-| 浏览器 | Chrome/152.0.7977.84（`--headless=new`） |
-| UA | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36` |
-| 测试 URL | `http://127.0.0.1:8899/index.html` |
-| 驱动方式 | Chrome DevTools Protocol（WebSocket，端口 9444） |
-| 依赖 | 仅 Node 内置模块 + 本机 Chrome，**零 npm 依赖** |
+| 项       | 值                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 浏览器   | Chrome/152.0.7977.84（`--headless=new`）                                                                                  |
+| UA       | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36` |
+| 测试 URL | `http://127.0.0.1:8899/index.html`                                                                                        |
+| 驱动方式 | Chrome DevTools Protocol（WebSocket，端口 9444）                                                                          |
+| 依赖     | 仅 Node 内置模块 + 本机 Chrome，**零 npm 依赖**                                                                           |
 
 ### 复现步骤
 
@@ -94,22 +94,22 @@ node tools/negative.mjs        # 终端 3：反向验证
 
 ### 40 步手工清单 → 脚本化映射
 
-| 验收要求的手工步骤 | 脚本步骤 | 断言数 |
-|---|---|---|
-| 新增自定义按钮 | 2 | 3 |
-| 选择具体图标 | 2 | 含"data-value = fire" |
-| 保存 | 3 | 2 |
-| **再次打开编辑** | **4** | **5** |
-| 修改文字和图标 | 5 | 3 |
-| 保存 | 5 | 含"图标已更新为 star" |
-| 刷新页面 | 6 | 4 |
-| 确认图标和文字仍正确 | 6 | 含"刷新后 UI 回显 star" |
-| 改为 random | 7 | 5 |
-| 再次打开确认 random 回显 | 7 | 含"random selected = random" |
-| — 回归：删除按钮 | 8 | 3 |
-| — 回归：默认按钮编辑 | 9 | 2 |
-| — 页面异常 | 10 | 1 |
-| **合计** | | **29** |
+| 验收要求的手工步骤       | 脚本步骤 | 断言数                       |
+| ------------------------ | -------- | ---------------------------- |
+| 新增自定义按钮           | 2        | 3                            |
+| 选择具体图标             | 2        | 含"data-value = fire"        |
+| 保存                     | 3        | 2                            |
+| **再次打开编辑**         | **4**    | **5**                        |
+| 修改文字和图标           | 5        | 3                            |
+| 保存                     | 5        | 含"图标已更新为 star"        |
+| 刷新页面                 | 6        | 4                            |
+| 确认图标和文字仍正确     | 6        | 含"刷新后 UI 回显 star"      |
+| 改为 random              | 7        | 5                            |
+| 再次打开确认 random 回显 | 7        | 含"random selected = random" |
+| — 回归：删除按钮         | 8        | 3                            |
+| — 回归：默认按钮编辑     | 9        | 2                            |
+| — 页面异常               | 10       | 1                            |
+| **合计**                 |          | **29**                       |
 
 ### 逐项断言结果
 
@@ -164,6 +164,7 @@ Error: 页面内异常: TypeError: Cannot read properties of undefined (reading 
 **验证脚本当时存在过，是应 Human 的明确指令删除的。**
 
 原对话记录：
+
 - Human：「`.cm002_evidence.txt` 怎么处理（删掉），提交内容保持工作区干净」
 - 执行代理随即删除了 `.cm002_evidence.txt`，并在清理阶段一并清掉了 `.cm002_e2e.mjs` 等脚本
 
@@ -190,13 +191,13 @@ Error: 页面内异常: TypeError: Cannot read properties of undefined (reading 
 
 ## 六、流程改进项（采纳）
 
-| # | 问题 | 改进措施 | 状态 |
-|---|---|---|---|
-| 1 | 直接提交 `main` | 改为 feature branch → 修改 → review → 合并 | **采纳**，下个任务起执行 |
-| 2 | 验证无可追溯证据 | 脚本 + 日志落盘进 `tools/` | **本轮已实施** |
-| 3 | 报告只有口头断言数 | 报告须含环境/URL/步骤/逐项断言/失败项 | **本轮已实施**（本文件） |
-| 4 | 范围外变更未单独说明 | 范围外改动须先报备再提交 | **采纳** |
-| 5 | Prettier 失败 | 记录为独立 DX 任务，不在 bugfix 中混格式化 | **采纳** |
+| #   | 问题                 | 改进措施                                   | 状态                     |
+| --- | -------------------- | ------------------------------------------ | ------------------------ |
+| 1   | 直接提交 `main`      | 改为 feature branch → 修改 → review → 合并 | **采纳**，下个任务起执行 |
+| 2   | 验证无可追溯证据     | 脚本 + 日志落盘进 `tools/`                 | **本轮已实施**           |
+| 3   | 报告只有口头断言数   | 报告须含环境/URL/步骤/逐项断言/失败项      | **本轮已实施**（本文件） |
+| 4   | 范围外变更未单独说明 | 范围外改动须先报备再提交                   | **采纳**                 |
+| 5   | Prettier 失败        | 记录为独立 DX 任务，不在 bugfix 中混格式化 | **采纳**                 |
 
 ### 关于第 1 项的技术说明
 
@@ -227,6 +228,7 @@ Lint：PASS（0 error / 0 warning）
 3. 本机 `HTTP_PROXY` 会劫持回环请求，脚本已内置绕开逻辑；换环境时若代理行为不同，需复核该部分。
 
 ---
+
 ---
 
 # CM-003 验收报告（可复核版）
@@ -255,12 +257,12 @@ Lint：PASS（0 error / 0 warning）
 
 ### 返工改动
 
-| 文件 | 改动 |
-|---|---|
-| `js/modules/notification.js` | `addHistoryRecord()` 改用 `readJsonSafe`，并用新记录覆盖损坏值 |
-| `tools/storage-resilience.mjs` | 新增用例 5 / 5b / 5c（22 项断言），覆盖写入路径 |
-| `tools/negative-storage.mjs` | 反向验证扩展为 4 个文件，含 `notification.js` |
-| `tools/README.md` | 补充写入路径用例说明与 fetch 桩的必要性 |
+| 文件                           | 改动                                                           |
+| ------------------------------ | -------------------------------------------------------------- |
+| `js/modules/notification.js`   | `addHistoryRecord()` 改用 `readJsonSafe`，并用新记录覆盖损坏值 |
+| `tools/storage-resilience.mjs` | 新增用例 5 / 5b / 5c（22 项断言），覆盖写入路径                |
+| `tools/negative-storage.mjs`   | 反向验证扩展为 4 个文件，含 `notification.js`                  |
+| `tools/README.md`              | 补充写入路径用例说明与 fetch 桩的必要性                        |
 
 ### 关键设计权衡：写入路径为什么能覆盖损坏值
 
@@ -315,12 +317,12 @@ Lint：PASS（0 error / 0 warning）
 
 ## 二、代码改动
 
-| 文件 | 改动 |
-|---|---|
-| `js/modules/state.js` | 新增导出 `readJsonSafe(key, fallback, isValid)`；`init()` 改用它读取 `userProfile`；`checkCooldownStatus()` 对非数字时间戳做清理 |
-| `js/modules/history.js` | `render()` 改用 `readJsonSafe('notificationHistory', [], Array.isArray)` |
-| `js/modules/buttonManager.js` | `loadButtonConfig()` 重写，用 `readJsonSafe` + `Array.isArray` / `typeof` 校验，废弃原 `try/catch` |
-| `js/modules/notification.js` | `addHistoryRecord()` 改用 `readJsonSafe`，损坏时用新记录覆盖（**返工新增**） |
+| 文件                          | 改动                                                                                                                             |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `js/modules/state.js`         | 新增导出 `readJsonSafe(key, fallback, isValid)`；`init()` 改用它读取 `userProfile`；`checkCooldownStatus()` 对非数字时间戳做清理 |
+| `js/modules/history.js`       | `render()` 改用 `readJsonSafe('notificationHistory', [], Array.isArray)`                                                         |
+| `js/modules/buttonManager.js` | `loadButtonConfig()` 重写，用 `readJsonSafe` + `Array.isArray` / `typeof` 校验，废弃原 `try/catch`                               |
+| `js/modules/notification.js`  | `addHistoryRecord()` 改用 `readJsonSafe`，损坏时用新记录覆盖（**返工新增**）                                                     |
 
 **设计要点**：解析规则集中在 `state.js` 一处，另两个模块复用，
 满足任务卡"回退逻辑应集中在最小必要范围内，避免复制多套解析规则"的要求。
@@ -328,25 +330,25 @@ Lint：PASS（0 error / 0 warning）
 
 **回退语义**（刻意区分三态）：
 
-| 场景 | 行为 |
-|---|---|
-| key 不存在 / 空串 | 返回 fallback |
-| JSON 非法 | 返回 fallback，**原始值保留在 storage 中不删除**（供用户排查） |
-| 解析成功但顶层类型不符 | 返回 fallback |
-| `buttonConfig` 无配置 | 用默认按钮 + 主动 `saveConfig()` 落盘 |
-| `buttonConfig` 损坏 | 用默认按钮，**不覆盖原始值** |
-| `buttonConfig` 合法 | 保留未知字段；`buttons` 非数组才回退，`activeGroup` 非字符串才置 `"default"` |
+| 场景                   | 行为                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| key 不存在 / 空串      | 返回 fallback                                                                |
+| JSON 非法              | 返回 fallback，**原始值保留在 storage 中不删除**（供用户排查）               |
+| 解析成功但顶层类型不符 | 返回 fallback                                                                |
+| `buttonConfig` 无配置  | 用默认按钮 + 主动 `saveConfig()` 落盘                                        |
+| `buttonConfig` 损坏    | 用默认按钮，**不覆盖原始值**                                                 |
+| `buttonConfig` 合法    | 保留未知字段；`buttons` 非数组才回退，`activeGroup` 非字符串才置 `"default"` |
 
 ---
 
 ## 三、独立验证结果
 
-| 检查项 | 命令 | 结果 |
-|---|---|---|
-| ESLint | `node node_modules/eslint/bin/eslint.js .` | **PASS**（0 error / 0 warning，exit 0） |
-| 浏览器端到端 | `node tools/storage-resilience.mjs` | **PASS**（51 passed / 0 failed，exit 0） |
-| 反向验证 | `node tools/negative-storage.mjs` | **PASS**（回退 4 个文件后 exit 1） |
-| 范围检查 | `git diff --stat` | **PASS**（仅 4 个源码文件 + 3 个工具/文档文件） |
+| 检查项       | 命令                                       | 结果                                            |
+| ------------ | ------------------------------------------ | ----------------------------------------------- |
+| ESLint       | `node node_modules/eslint/bin/eslint.js .` | **PASS**（0 error / 0 warning，exit 0）         |
+| 浏览器端到端 | `node tools/storage-resilience.mjs`        | **PASS**（51 passed / 0 failed，exit 0）        |
+| 反向验证     | `node tools/negative-storage.mjs`          | **PASS**（回退 4 个文件后 exit 1）              |
+| 范围检查     | `git diff --stat`                          | **PASS**（仅 4 个源码文件 + 3 个工具/文档文件） |
 
 ### 关于 `npm run lint` 的退出码（**本机环境问题，非 lint 失败**）
 
@@ -383,12 +385,12 @@ node node_modules/eslint/bin/eslint.js .
 
 ### 测试环境
 
-| 项 | 值 |
-|---|---|
-| 浏览器 | Chrome/152.0.7977.84（`--headless=new`） |
+| 项       | 值                                               |
+| -------- | ------------------------------------------------ |
+| 浏览器   | Chrome/152.0.7977.84（`--headless=new`）         |
 | 驱动方式 | Chrome DevTools Protocol（WebSocket，端口 9445） |
-| 服务器 | 脚本**进程内自建**静态服务（端口 8899） |
-| 依赖 | 仅 Node 内置模块 + 本机 Chrome，**零 npm 依赖** |
+| 服务器   | 脚本**进程内自建**静态服务（端口 8899）          |
+| 依赖     | 仅 Node 内置模块 + 本机 Chrome，**零 npm 依赖**  |
 
 > **与 CM-002 的关键差异**：CM-002 用两个终端（`server.mjs` + `e2e.mjs`），
 > 但在本机环境下服务器子进程**无法跨 Bash 命令存活**，导致 CM-003 调试时
@@ -403,22 +405,22 @@ node tools/negative-storage.mjs     # 反向验证（手工工具，非常规 CI
 
 ### 用例分组的断言分配
 
-| 用例 | 场景 | 断言数 |
-|---|---|---|
-| 1 | `userProfile` 非法 JSON → 首页可加载 | 2 |
-| 1b | `userProfile` 错误顶层类型（数组/字符串/数字） | 3 |
-| 2 | `notificationHistory` 非法 JSON → 历史页显示空状态 | 4 |
-| 2b | `notificationHistory` 错误顶层类型（对象/数字/字符串） | 3 |
-| 3 | `buttonConfig` 非法 JSON → 回退默认按钮 | 4 |
-| 3b | `buttonConfig` 错误顶层类型（数组/字符串/数字） | 3 |
-| 3c | `buttonConfig` 合法但 `buttons` 非数组 | 1 |
-| 4 | 合法 `buttonConfig` 不回归 | 4 |
-| 4b | 合法 `notificationHistory` 正常渲染 | 3 |
-| 4c | 合法 `userProfile` 正常回显 | 2 |
-| **5** | **`notificationHistory` 损坏后 `addHistoryRecord`（写入路径）** | **9** |
-| **5b** | **损坏 history 后完整 `sendNotification` 流程（200/500 两分支）** | **8** |
-| **5c** | **合法 history 在写入路径上不被吞掉** | **5** |
-| **合计** | | **51** |
+| 用例     | 场景                                                              | 断言数 |
+| -------- | ----------------------------------------------------------------- | ------ |
+| 1        | `userProfile` 非法 JSON → 首页可加载                              | 2      |
+| 1b       | `userProfile` 错误顶层类型（数组/字符串/数字）                    | 3      |
+| 2        | `notificationHistory` 非法 JSON → 历史页显示空状态                | 4      |
+| 2b       | `notificationHistory` 错误顶层类型（对象/数字/字符串）            | 3      |
+| 3        | `buttonConfig` 非法 JSON → 回退默认按钮                           | 4      |
+| 3b       | `buttonConfig` 错误顶层类型（数组/字符串/数字）                   | 3      |
+| 3c       | `buttonConfig` 合法但 `buttons` 非数组                            | 1      |
+| 4        | 合法 `buttonConfig` 不回归                                        | 4      |
+| 4b       | 合法 `notificationHistory` 正常渲染                               | 3      |
+| 4c       | 合法 `userProfile` 正常回显                                       | 2      |
+| **5**    | **`notificationHistory` 损坏后 `addHistoryRecord`（写入路径）**   | **9**  |
+| **5b**   | **损坏 history 后完整 `sendNotification` 流程（200/500 两分支）** | **8**  |
+| **5c**   | **合法 history 在写入路径上不被吞掉**                             | **5**  |
+| **合计** |                                                                   | **51** |
 
 粗体为**返工新增**（22 项）。用例 1–4c 覆盖只读路径，用例 5–5c 覆盖写入路径。
 
@@ -544,6 +546,7 @@ node tools/storage-resilience.mjs    # 终端直接输出全部断言；退出�
 日志文件只是本次运行的快照，不入库不影响可复核性。
 
 ---
+
 ---
 
 # CM-004 验收报告（可复核版）
@@ -572,15 +575,15 @@ CM-004 要固化三件事：
 
 ## 一、代码改动
 
-| 文件 | 性质 | 改动 |
-|---|---|---|
-| `js/modules/config.js` | 修改 | 新增 `legacyDefaultIdMap`（位置式旧 ID → 数组下标）与 `customIdPrefix` |
-| `js/modules/buttonManager.js` | 修改 | 新增 `normalizeButtonIds()` / `pickExtraFields()` / `createCustomButtonId()`；重写 `loadButtonConfig()` / `showEditModal()` / `addCustomButtonForm()` / `saveButtonConfig()` |
-| `tools/button-ids.mjs` | 新增 | CM-004 主回归脚本（52 项断言，进程内自建服务器） |
-| `tools/negative-button-ids.mjs` | 新增 | 反向验证脚本（回退 3 个修复点） |
-| `tools/e2e.mjs` | 修改 | 改为进程内自建服务器（原依赖跨命令存活的 `server.mjs`） |
-| `tools/README.md` | 修改 | 补充 CM-004 用例表、反向验证证据、环境注意项 |
-| `tools/ACCEPTANCE.md` | 修改 | 本报告 |
+| 文件                            | 性质 | 改动                                                                                                                                                                         |
+| ------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `js/modules/config.js`          | 修改 | 新增 `legacyDefaultIdMap`（位置式旧 ID → 数组下标）与 `customIdPrefix`                                                                                                       |
+| `js/modules/buttonManager.js`   | 修改 | 新增 `normalizeButtonIds()` / `pickExtraFields()` / `createCustomButtonId()`；重写 `loadButtonConfig()` / `showEditModal()` / `addCustomButtonForm()` / `saveButtonConfig()` |
+| `tools/button-ids.mjs`          | 新增 | CM-004 主回归脚本（52 项断言，进程内自建服务器）                                                                                                                             |
+| `tools/negative-button-ids.mjs` | 新增 | 反向验证脚本（回退 3 个修复点）                                                                                                                                              |
+| `tools/e2e.mjs`                 | 修改 | 改为进程内自建服务器（原依赖跨命令存活的 `server.mjs`）                                                                                                                      |
+| `tools/README.md`               | 修改 | 补充 CM-004 用例表、反向验证证据、环境注意项                                                                                                                                 |
+| `tools/ACCEPTANCE.md`           | 修改 | 本报告                                                                                                                                                                       |
 
 **改动规模**：`config.js +15`、`buttonManager.js +161/-?`、`tools/e2e.mjs +84`、`tools/README.md +111`。
 
@@ -627,7 +630,7 @@ normalizeButtonIds(buttons) {
 
 ```js
 // addCustomButtonForm()：已有按钮把 ID 挂在表单上，保存时原样带回
-if (buttonData && typeof buttonData.id === "string" && buttonData.id) {
+if (buttonData && typeof buttonData.id === 'string' && buttonData.id) {
     form.dataset.buttonId = buttonData.id;
 }
 ```
@@ -681,31 +684,31 @@ pickExtraFields(button) {
 
 ## 三、验证结果
 
-| 检查项 | 命令 | 结果 | 退出码 |
-|---|---|---|---|
-| 主回归 | `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
-| 反向验证 | `node tools/negative-button-ids.mjs` | 修复版 0 / 回退版 1 | **0** |
-| 既有 E2E | `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
-| CM-003 容错 | `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
-| ESLint | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
-| 空白检查 | `git diff --check` | clean | **0** |
+| 检查项      | 命令                                       | 结果                    | 退出码 |
+| ----------- | ------------------------------------------ | ----------------------- | ------ |
+| 主回归      | `node tools/button-ids.mjs`                | **52 passed, 0 failed** | **0**  |
+| 反向验证    | `node tools/negative-button-ids.mjs`       | 修复版 0 / 回退版 1     | **0**  |
+| 既有 E2E    | `node tools/e2e.mjs`                       | **29 passed, 0 failed** | **0**  |
+| CM-003 容错 | `node tools/storage-resilience.mjs`        | **51 passed, 0 failed** | **0**  |
+| ESLint      | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning     | **0**  |
+| 空白检查    | `git diff --check`                         | clean                   | **0**  |
 
 环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP **9446**，
 脚本进程内自建静态服务器，零 npm 依赖。
 
 ### 3.1 主回归用例分配（52 项）
 
-| # | 用例 | 断言数 |
-|---|---|---|
-| 1 | 无配置启动 → 规范默认 ID；保存后为 `quick_online`/`emergency` | 6 |
-| 2 | 旧 `default_N` 配置：可读、内容完整、保存后迁到规范 ID、读取阶段不改 storage | 9 |
-| 3 | 旧 `custom_<timestamp>`：编辑后保留原 ID；未编辑按钮 ID 与内容不变 | 7 |
-| 4 | 新建自定义按钮：同批两个 ID 互异；连续保存 + 刷新后再保存 ID 稳定 | 9 |
-| 5 | 删除中间自定义按钮 + 编辑默认按钮：存活按钮 ID 不变 | 5 |
-| 6 | 未知字段保留（含嵌套对象） | 5 |
-| 7 | 回归：新增 → 选图标 → 保存 → 重开回显 → 渲染 → 可点击 | 8 |
-| 8 | 幂等：连续 3 次保存 ID 序列完全一致 | 3 |
-| **合计** | | **52** |
+| #        | 用例                                                                         | 断言数 |
+| -------- | ---------------------------------------------------------------------------- | ------ |
+| 1        | 无配置启动 → 规范默认 ID；保存后为 `quick_online`/`emergency`                | 6      |
+| 2        | 旧 `default_N` 配置：可读、内容完整、保存后迁到规范 ID、读取阶段不改 storage | 9      |
+| 3        | 旧 `custom_<timestamp>`：编辑后保留原 ID；未编辑按钮 ID 与内容不变           | 7      |
+| 4        | 新建自定义按钮：同批两个 ID 互异；连续保存 + 刷新后再保存 ID 稳定            | 9      |
+| 5        | 删除中间自定义按钮 + 编辑默认按钮：存活按钮 ID 不变                          | 5      |
+| 6        | 未知字段保留（含嵌套对象）                                                   | 5      |
+| 7        | 回归：新增 → 选图标 → 保存 → 重开回显 → 渲染 → 可点击                        | 8      |
+| 8        | 幂等：连续 3 次保存 ID 序列完全一致                                          | 3      |
+| **合计** |                                                                              | **52** |
 
 用例 2 额外断言了**读取阶段不落盘**：注入旧配置 → 加载页面 → 读取 `localStorage`
 原始值，确认它**仍是 `default_1`/`default_2`**，没有被悄悄改写。
@@ -789,6 +792,7 @@ Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
    映射表需同步维护 —— 这是刻意的显式依赖，好过隐式位置推断。
 
 ---
+
 ---
 
 # CM-005 验收报告（可复核版）
@@ -832,33 +836,30 @@ Lint：PASS（0 error / 0 warning，经 eslint 真实入口）
 
 ### 返工改动
 
-| 文件 | 改动 |
-|---|---|
-| `js/modules/buttonManager.js` | 删除 `ICON_TOKEN_RE` 与 `isSafeIconName()`；改为 `ALLOWED_ICON_NAMES` 闭集 + `isAllowedIcon()` / `displayIcon()`；新增表现层 `PICKER_GLYPH_NAMES` + `pickerGlyph()`；`createIconPicker()` 分离"显示值"与"保存回写值" |
-| `tools/input-safety.mjs` | 64 → **97** 项断言：新增用例 3b（29 项），重写用例 3（15 项） |
-| `tools/negative-input-safety.mjs` | 失败关键字从"仅注入类"扩展为"注入类 + 允许列表类"两组，两组都必须命中 |
-| `tools/README.md` | 更新用例表、三概念对照表、反向验证证据 |
+| 文件                              | 改动                                                                                                                                                                                                                 |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `js/modules/buttonManager.js`     | 删除 `ICON_TOKEN_RE` 与 `isSafeIconName()`；改为 `ALLOWED_ICON_NAMES` 闭集 + `isAllowedIcon()` / `displayIcon()`；新增表现层 `PICKER_GLYPH_NAMES` + `pickerGlyph()`；`createIconPicker()` 分离"显示值"与"保存回写值" |
+| `tools/input-safety.mjs`          | 64 → **97** 项断言：新增用例 3b（29 项），重写用例 3（15 项）                                                                                                                                                        |
+| `tools/negative-input-safety.mjs` | 失败关键字从"仅注入类"扩展为"注入类 + 允许列表类"两组，两组都必须命中                                                                                                                                                |
+| `tools/README.md`                 | 更新用例表、三概念对照表、反向验证证据                                                                                                                                                                               |
 
 ### 设计：三个必须分清的概念
 
 混用它们会互相打架，这是本轮返工的核心：
 
-| 概念 | 取值 | 作用 |
-|---|---|---|
-| **存储值** | 任意字符串 | 来自 LocalStorage，可能在允许列表外。**不因显示兜底而被改写** |
-| **首页按钮字形** | `displayIcon(存储值)` | 列表外 → `FALLBACK_ICON`("random") → 渲染 `fa-random` |
-| **选择器字形** | `pickerGlyph(...)` | `random` 语义用表现层常量 `shuffle` → 渲染 `fa-shuffle` |
+| 概念             | 取值                  | 作用                                                          |
+| ---------------- | --------------------- | ------------------------------------------------------------- |
+| **存储值**       | 任意字符串            | 来自 LocalStorage，可能在允许列表外。**不因显示兜底而被改写** |
+| **首页按钮字形** | `displayIcon(存储值)` | 列表外 → `FALLBACK_ICON`("random") → 渲染 `fa-random`         |
+| **选择器字形**   | `pickerGlyph(...)`    | `random` 语义用表现层常量 `shuffle` → 渲染 `fa-shuffle`       |
 
 ```js
 // 闭集：只有配置承认的值 + 选择器的随机语义
-const ALLOWED_ICON_NAMES = new Set([
-    ...(CONFIG.buttons.availableIcons || []),
-    "random"
-]);
-const FALLBACK_ICON = "random";
+const ALLOWED_ICON_NAMES = new Set([...(CONFIG.buttons.availableIcons || []), 'random']);
+const FALLBACK_ICON = 'random';
 
 function isAllowedIcon(name) {
-    return typeof name === "string" && ALLOWED_ICON_NAMES.has(name);
+    return typeof name === 'string' && ALLOWED_ICON_NAMES.has(name);
 }
 // 只用于「要变成 class」的场合：列表外一律回退，绝不放行任意值
 function displayIcon(name) {
@@ -868,11 +869,12 @@ function displayIcon(name) {
 
 ```js
 // createIconPicker()：显示与回写分离
-const original = typeof selectedIcon === "string" && selectedIcon
-    ? selectedIcon            // ← 可能是白名单外的历史值，原样保留
-    : FALLBACK_ICON;
-const current = displayIcon(original);   // ← 预览只使用列表内的值
-picker.dataset.value = original;         // ← 保存回写载体 = 原值
+const original =
+    typeof selectedIcon === 'string' && selectedIcon
+        ? selectedIcon // ← 可能是白名单外的历史值，原样保留
+        : FALLBACK_ICON;
+const current = displayIcon(original); // ← 预览只使用列表内的值
+picker.dataset.value = original; // ← 保存回写载体 = 原值
 ```
 
 因为 `saveButtonConfig()` 读的正是 `picker.dataset.value`，
@@ -895,11 +897,11 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 
 ### 未知历史 icon 的定义行为（返工要求）
 
-| 场景 | 显示 | 存储 |
-|---|---|---|
-| 值在允许列表内 | 原样渲染 | 不变 |
+| 场景                                              | 显示                                         | 存储         |
+| ------------------------------------------------- | -------------------------------------------- | ------------ |
+| 值在允许列表内                                    | 原样渲染                                     | 不变         |
 | 值不在允许列表内（如 `not-configured`、`circle`） | 回退为 `fa-random`；选择器**不点亮任何选项** | **原样保留** |
-| 用户主动改选图标 | 渲染新值 | 写入新值 |
+| 用户主动改选图标                                  | 渲染新值                                     | 写入新值     |
 
 **关于 `circle`**：`saveButtonConfig()` 有一个 `icon || "circle"` 的防御性默认值，
 `language.js:204` 也有一个同值的兜底。但 `circle` 既不在 `availableIcons`、
@@ -913,17 +915,18 @@ picker.dataset.value = original;         // ← 保存回写载体 = 原值
 
 ### 返工后验证
 
-| 命令 | 结果 | 退出码 |
-|---|---|---|
-| `node tools/input-safety.mjs` | **97 passed, 0 failed**（原 64） | **0** |
-| `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
-| `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
-| `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
-| `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
-| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
-| `git diff --check` | clean | **0** |
+| 命令                                       | 结果                             | 退出码 |
+| ------------------------------------------ | -------------------------------- | ------ |
+| `node tools/input-safety.mjs`              | **97 passed, 0 failed**（原 64） | **0**  |
+| `node tools/negative-input-safety.mjs`     | 修复版 0 / 回退版 1              | **0**  |
+| `node tools/button-ids.mjs`                | **52 passed, 0 failed**          | **0**  |
+| `node tools/storage-resilience.mjs`        | **51 passed, 0 failed**          | **0**  |
+| `node tools/e2e.mjs`                       | **29 passed, 0 failed**          | **0**  |
+| `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning              | **0**  |
+| `git diff --check`                         | clean                            | **0**  |
 
 新增用例 3b（29 项）覆盖：
+
 - 白名单外的 `not-configured` **不渲染为** `fa-not-configured`（主指挥初审的反例原文）
 - 白名单外的 `circle` 同样回退
 - 白名单内的 `fire` 正常渲染（对照）
@@ -975,13 +978,13 @@ FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置） -> true
 
 审计后确认的注入点**比任务卡提示的更多**，且分四类（不只是"拼字符串"）：
 
-| 类 | 位置 | 载体 |
-|---|---|---|
-| A. 元素注入 | `buttonManager.createButtonElement` 的 `<span>${message}</span>` | 用户可控文本 |
-| B. **属性突破** | `addDefaultButtonForm` / `addCustomButtonForm` 的 `value="${message}"` | 一个双引号即可逃逸 |
-| C. **class 注入** | `createButtonElement` 的 `fa-${button.icon}`、`createIconPicker` 的 `data-value="${current}"` | LocalStorage 中的 icon |
-| D. 元素注入 | `history.render()` 的 `${record.emoji/nickname/message/webhook}` | 历史记录字段 |
-| E. **class 注入** | `history.render()` 的 `class="history-item ${record._status}"` | LocalStorage 中的 `_status` |
+| 类                | 位置                                                                                          | 载体                        |
+| ----------------- | --------------------------------------------------------------------------------------------- | --------------------------- |
+| A. 元素注入       | `buttonManager.createButtonElement` 的 `<span>${message}</span>`                              | 用户可控文本                |
+| B. **属性突破**   | `addDefaultButtonForm` / `addCustomButtonForm` 的 `value="${message}"`                        | 一个双引号即可逃逸          |
+| C. **class 注入** | `createButtonElement` 的 `fa-${button.icon}`、`createIconPicker` 的 `data-value="${current}"` | LocalStorage 中的 icon      |
+| D. 元素注入       | `history.render()` 的 `${record.emoji/nickname/message/webhook}`                              | 历史记录字段                |
+| E. **class 注入** | `history.render()` 的 `class="history-item ${record._status}"`                                | LocalStorage 中的 `_status` |
 
 **B 与 C/E 是任务卡特别警告的"同类路径"**：如果只做"加一个转义函数"，
 属性突破与 class 注入会被完整保留 —— 因为转义不会让 `class="a b"` 里的
@@ -992,14 +995,14 @@ FAIL  首页按钮容器：脚本/事件未执行（__pwned 未设置） -> true
 
 ## 一、代码改动
 
-| 文件 | 性质 | 改动 |
-|---|---|---|
-| `js/modules/history.js` | 修改 | `render()` 改为 `createElement` + `textContent` 构建；新增 `HISTORY_STATUSES` 白名单与 `safeStatus()` |
-| `js/modules/buttonManager.js` | 修改 | `createButtonElement` / `createIconPicker` / `addDefaultButtonForm` / `addCustomButtonForm` / `showConfirmDialog` 改为 DOM API；新增图标双闸门 `SAFE_ICON_NAMES` + `ICON_TOKEN_RE` + `isSafeIconName()` + `UNUSABLE_ICON` |
-| `tools/input-safety.mjs` | 新增 | CM-005 主回归脚本，**64 项断言**，进程内自建服务器（CDP 9447） |
-| `tools/negative-input-safety.mjs` | 新增 | 反向验证（从基线 ref 取原文覆盖，`try/finally` 还原） |
-| `tools/README.md` | 修改 | 补充 CM-005 用例表、环境变量、反向验证证据、四类注入证据说明 |
-| `tools/ACCEPTANCE.md` | 修改 | 本报告 |
+| 文件                              | 性质 | 改动                                                                                                                                                                                                                      |
+| --------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `js/modules/history.js`           | 修改 | `render()` 改为 `createElement` + `textContent` 构建；新增 `HISTORY_STATUSES` 白名单与 `safeStatus()`                                                                                                                     |
+| `js/modules/buttonManager.js`     | 修改 | `createButtonElement` / `createIconPicker` / `addDefaultButtonForm` / `addCustomButtonForm` / `showConfirmDialog` 改为 DOM API；新增图标双闸门 `SAFE_ICON_NAMES` + `ICON_TOKEN_RE` + `isSafeIconName()` + `UNUSABLE_ICON` |
+| `tools/input-safety.mjs`          | 新增 | CM-005 主回归脚本，**64 项断言**，进程内自建服务器（CDP 9447）                                                                                                                                                            |
+| `tools/negative-input-safety.mjs` | 新增 | 反向验证（从基线 ref 取原文覆盖，`try/finally` 还原）                                                                                                                                                                     |
+| `tools/README.md`                 | 修改 | 补充 CM-005 用例表、环境变量、反向验证证据、四类注入证据说明                                                                                                                                                              |
+| `tools/ACCEPTANCE.md`             | 修改 | 本报告                                                                                                                                                                                                                    |
 
 **改动规模**：`buttonManager.js +259/-?`、`history.js +95/-?`、`tools/README.md +90`，
 新增脚本 919 + 202 行。
@@ -1052,15 +1055,15 @@ FAIL  迁移后图标不丢 -> [...{"icon":"random"}]     （原值 "heart" 被�
 
 ```js
 const SAFE_ICON_NAMES = new Set([
-    ...(CONFIG.buttons.availableIcons || []),   // 闸门 1：UI 能产生的全部取值
-    "random",   // 图标选择器的"随机"语义，会持久化
-    "circle",   // saveButtonConfig() 未取到图标时的保存默认值
+    ...(CONFIG.buttons.availableIcons || []), // 闸门 1：UI 能产生的全部取值
+    'random', // 图标选择器的"随机"语义，会持久化
+    'circle' // saveButtonConfig() 未取到图标时的保存默认值
 ]);
 
-const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/;   // 闸门 2：语法安全的 token
+const ICON_TOKEN_RE = /^[a-z0-9][a-z0-9-]{0,49}$/; // 闸门 2：语法安全的 token
 
 function isSafeIconName(name) {
-    if (typeof name !== "string") return false;
+    if (typeof name !== 'string') return false;
     if (SAFE_ICON_NAMES.has(name)) return true;
     return ICON_TOKEN_RE.test(name);
 }
@@ -1090,7 +1093,7 @@ git show b5c77ed:js/modules/config.js           → 扩充为 18 个
 用户一保存又变成第三个值。已统一为单一常量：
 
 ```js
-const UNUSABLE_ICON = "random";
+const UNUSABLE_ICON = 'random';
 ```
 
 取 `"random"` 而非另造占位值，因为它本来就是图标选择器**原有的**回退语义
@@ -1122,43 +1125,43 @@ function safeStatus(status) {
 
 ### 2.6 审计过但**未**修改的路径
 
-| 路径 | 结论 |
-|---|---|
+| 路径                                                                            | 结论                                                                                                                                                                               |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `notification.js:40` `/json/version`… 实为 `notification.show()` 的 `innerHTML` | **未改**。逐一核对全部 8 个调用点，实参均为内部字符串或 `utils.getTranslation()`，**没有任何用户输入到达这里**，因此不构成注入路径。且该文件不在 Scope。已在 `Known issues` 记录。 |
-| `main.js:172` | 静态字符串 `<i class="fas fa-history">`，无插值 |
-| `onboarding.js:102` / `password.js:45` | 引导与密码提示模板，插值为应用自带文案 |
-| `countdown.js:64` | 已使用 `textContent` |
+| `main.js:172`                                                                   | 静态字符串 `<i class="fas fa-history">`，无插值                                                                                                                                    |
+| `onboarding.js:102` / `password.js:45`                                          | 引导与密码提示模板，插值为应用自带文案                                                                                                                                             |
+| `countdown.js:64`                                                               | 已使用 `textContent`                                                                                                                                                               |
 
 ---
 
 ## 三、验证结果
 
-| 检查项 | 命令 | 结果 | 退出码 |
-|---|---|---|---|
-| CM-005 主回归 | `node tools/input-safety.mjs` | **64 passed, 0 failed** | **0** |
-| CM-005 反向验证 | `node tools/negative-input-safety.mjs` | 修复版 0 / 回退版 1 | **0** |
-| CM-004 不回归 | `node tools/button-ids.mjs` | **52 passed, 0 failed** | **0** |
-| CM-003 不回归 | `node tools/storage-resilience.mjs` | **51 passed, 0 failed** | **0** |
-| CM-002 不回归 | `node tools/e2e.mjs` | **29 passed, 0 failed** | **0** |
-| ESLint | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning | **0** |
-| 空白检查 | `git diff --check` | clean | **0** |
+| 检查项          | 命令                                       | 结果                    | 退出码 |
+| --------------- | ------------------------------------------ | ----------------------- | ------ |
+| CM-005 主回归   | `node tools/input-safety.mjs`              | **64 passed, 0 failed** | **0**  |
+| CM-005 反向验证 | `node tools/negative-input-safety.mjs`     | 修复版 0 / 回退版 1     | **0**  |
+| CM-004 不回归   | `node tools/button-ids.mjs`                | **52 passed, 0 failed** | **0**  |
+| CM-003 不回归   | `node tools/storage-resilience.mjs`        | **51 passed, 0 failed** | **0**  |
+| CM-002 不回归   | `node tools/e2e.mjs`                       | **29 passed, 0 failed** | **0**  |
+| ESLint          | `node node_modules/eslint/bin/eslint.js .` | 0 error / 0 warning     | **0**  |
+| 空白检查        | `git diff --check`                         | clean                   | **0**  |
 
 环境：Chrome/152.0.7977.84，URL `http://127.0.0.1:8899`，CDP **9447**，
 脚本进程内自建静态服务器，零 npm 依赖。
 
 ### 3.1 主回归用例分配（64 项）
 
-| # | 用例 | 断言数 |
-|---|---|---|
-| 1 | 首页按钮渲染：恶意 message 与恶意 icon | 9 |
-| 2 | 按钮编辑表单：恶意 message 经 `value` 回显 | 7 |
-| 3 | 图标选择器：恶意 icon 不注入任意 class / 属性 | 11 |
-| 4 | 自定义按钮表单：恶意 message 与 icon | 6 |
-| 5 | 历史渲染：恶意 nickname / message / emoji / webhook | 9 |
-| 6 | 历史 `_status`：未知值不突破 class，success/error 不回归 | 10 |
-| 7 | 合法数据不回归：图标渲染 / 文本 / 随机图标 | 11 |
-| 8 | 页面异常检查 | 1 |
-| **合计** | | **64** |
+| #        | 用例                                                     | 断言数 |
+| -------- | -------------------------------------------------------- | ------ |
+| 1        | 首页按钮渲染：恶意 message 与恶意 icon                   | 9      |
+| 2        | 按钮编辑表单：恶意 message 经 `value` 回显               | 7      |
+| 3        | 图标选择器：恶意 icon 不注入任意 class / 属性            | 11     |
+| 4        | 自定义按钮表单：恶意 message 与 icon                     | 6      |
+| 5        | 历史渲染：恶意 nickname / message / emoji / webhook      | 9      |
+| 6        | 历史 `_status`：未知值不突破 class，success/error 不回归 | 10     |
+| 7        | 合法数据不回归：图标渲染 / 文本 / 随机图标               | 11     |
+| 8        | 页面异常检查                                             | 1      |
+| **合计** |                                                          | **64** |
 
 ### 3.2 判定"注入未发生"的四类独立证据
 
@@ -1177,19 +1180,19 @@ function safeStatus(status) {
 
 ```js
 const P = {
-    scriptTag: "<script>window.__pwned=1</script>",
+    scriptTag: '<script>window.__pwned=1</script>',
     imgOnerror: '<img src=x onerror="window.__pwned=1">',
-    attrBreak: '"><img src=x onerror="window.__pwned=1">',      // 属性突破
-    eventAttr: '" onmouseover="window.__pwned=1',                // 双引号逃逸
-    eventAttrSingle: "' onfocus='window.__pwned=1",              // 单引号逃逸
-    svgOnload: "<svg/onload=window.__pwned=1>",
-    structBreak: '</span><b id="inj">INJECTED</b>',               // 结构注入
+    attrBreak: '"><img src=x onerror="window.__pwned=1">', // 属性突破
+    eventAttr: '" onmouseover="window.__pwned=1', // 双引号逃逸
+    eventAttrSingle: "' onfocus='window.__pwned=1", // 单引号逃逸
+    svgOnload: '<svg/onload=window.__pwned=1>',
+    structBreak: '</span><b id="inj">INJECTED</b>' // 结构注入
 };
 const ICON_P = {
     attrBreak: 'bolt"><img src=x onerror="window.__pwned=1">',
-    withSpace: "bolt onmouseover=window.__pwned=1",
+    withSpace: 'bolt onmouseover=window.__pwned=1',
     quoteOnly: 'bolt"',
-    slash: "bolt/onload",
+    slash: 'bolt/onload'
 };
 ```
 
@@ -1249,8 +1252,8 @@ FAIL  首页：恶意 icon 被替换为安全值（非原样拼接）      -> fa
 修法相同：给可能缺失的元素查询加哨兵返回值。
 
 ```js
-const p = document.getElementById("button1Icon");
-if (!p) return JSON.stringify(["(no picker)"]);   // 把"结构崩了"变成一条可读 FAIL
+const p = document.getElementById('button1Icon');
+if (!p) return JSON.stringify(['(no picker)']); // 把"结构崩了"变成一条可读 FAIL
 ```
 
 加固后回退版本输出**完整清单**（`36 passed, 28 failed`），而不是中断。

@@ -24,6 +24,7 @@ TypeError: this.loadDisplayMode is not a function
 已在 `js/modules/buttonManager.js` 文件末尾添加缺失的4个方法：
 
 ### 1. loadDisplayMode()
+
 ```javascript
 loadDisplayMode() {
     const savedMode = localStorage.getItem('buttonDisplayMode');
@@ -34,6 +35,7 @@ loadDisplayMode() {
 ```
 
 ### 2. saveDisplayMode()
+
 ```javascript
 saveDisplayMode() {
     localStorage.setItem('buttonDisplayMode', this.displayMode);
@@ -41,6 +43,7 @@ saveDisplayMode() {
 ```
 
 ### 3. toggleDisplayMode()
+
 ```javascript
 toggleDisplayMode() {
     this.displayMode = this.displayMode === 'default' ? 'minimal' : 'default';
@@ -50,6 +53,7 @@ toggleDisplayMode() {
 ```
 
 ### 4. updateModeDisplay()
+
 ```javascript
 updateModeDisplay() {
     const buttonsArea = this.elements.buttonsEditArea;
@@ -99,6 +103,7 @@ updateModeDisplay() {
 ## 📝 注意事项
 
 其他控制台警告（非错误）：
+
 - `NotAllowedError: play() failed` - 这是正常的，浏览器要求用户交互后才能播放音频
 - `404 (Not Found)` for sound files - 需要确保音效文件存在于正确路径
 

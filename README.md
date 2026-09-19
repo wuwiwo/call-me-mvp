@@ -9,6 +9,7 @@
 ## ✨ 功能特性
 
 ### 🎯 核心功能
+
 - **智能通知按钮** - 点击即可发送 webhook 通知到指定设备
 - **冷却倒计时** - 60 秒冷却机制，防止频繁触发
 - **多语言支持** - 中文、English、日本語、한국어 一键切换
@@ -17,6 +18,7 @@
 - **历史记录** - 完整记录所有通知发送历史
 
 ### 🎨 界面设计
+
 - **Notion 风格** - 简洁优雅的 UI 设计
 - **动态标题** - 霓虹渐变色动画效果
 - **流畅过渡** - 所有交互都有丝滑动画
@@ -24,12 +26,14 @@
 - **触摸优化** - 移除点击高亮，移动端体验更佳
 
 ### ⚙️ 自定义配置
+
 - **按钮编辑** - 修改按钮文字和图标
 - **自定义按钮** - 添加专属功能按钮（最多 5 个）
 - **头像选择** - 10 种可爱 Emoji 可选
 - **图标库** - 8 种 Font Awesome 图标可配置
 
 ### 🔐 新增功能
+
 - **新手引导** - 首次访问时的交互式教程，帮助用户快速上手
 - **密码验证** - 简单访问控制，密码每周自动过期
 
@@ -79,28 +83,30 @@ call-me-mvp/
 ### 本地运行
 
 1. **克隆项目**
-   ```bash
-   git clone https://github.com/wuwiwo/call-me-mvp.git
-   cd call-me-mvp
-   ```
+
+    ```bash
+    git clone https://github.com/wuwiwo/call-me-mvp.git
+    cd call-me-mvp
+    ```
 
 2. **启动服务**
-   
-   使用任意静态服务器，例如：
-   ```bash
-   # Python 3
-   python -m http.server 8000
-   
-   # Node.js (需要先安装 npx)
-   npx serve
-   
-   # PHP
-   php -S localhost:8000
-   ```
+
+    使用任意静态服务器，例如：
+
+    ```bash
+    # Python 3
+    python -m http.server 8000
+
+    # Node.js (需要先安装 npx)
+    npx serve
+
+    # PHP
+    php -S localhost:8000
+    ```
 
 3. **访问页面**
-   
-   打开浏览器访问 `http://localhost:8000`
+
+    打开浏览器访问 `http://localhost:8000`
 
 ### 部署到 GitHub Pages
 
@@ -120,9 +126,9 @@ call-me-mvp/
 
 ```javascript
 export const CONFIG = {
-    webhookUrl: "YOUR_WEBHOOK_URL_HERE",  // 修改为你的 webhook 地址
-    cooldownTime: 60,                      // 冷却时间（秒）
-    maxHistoryRecords: 100,                // 最大历史记录数
+    webhookUrl: 'YOUR_WEBHOOK_URL_HERE', // 修改为你的 webhook 地址
+    cooldownTime: 60, // 冷却时间（秒）
+    maxHistoryRecords: 100 // 最大历史记录数
     // ... 其他配置
 };
 ```
@@ -153,12 +159,13 @@ buttons: {
 
 ```javascript
 export const password = {
-    correctPassword: 'YOUR_NEW_PASSWORD', // 修改为你的密码
+    correctPassword: 'YOUR_NEW_PASSWORD' // 修改为你的密码
     // ...
 };
 ```
 
 或者在浏览器控制台执行：
+
 ```javascript
 // 设置新密码
 password.setPassword('new_password_here');
@@ -184,12 +191,13 @@ onboarding: {
 
 ```javascript
 export const TRANSLATIONS = {
-    fr: {  // 法语
-        title: "APPELEZ MOI",
-        subtitle: "Cliquez pour notifier",
+    fr: {
+        // 法语
+        title: 'APPELEZ MOI',
+        subtitle: 'Cliquez pour notifier'
         // ... 其他翻译
     }
-}
+};
 ```
 
 ---
@@ -207,6 +215,7 @@ export const TRANSLATIONS = {
 ### 🎓 新手引导（首次使用）
 
 首次访问时会自动显示新手引导，包含：
+
 - 欢迎介绍
 - 设置用户资料指引
 - 通知按钮使用说明
@@ -216,6 +225,7 @@ export const TRANSLATIONS = {
 - 冷却时间说明
 
 **跳过/重看**：
+
 - 引导过程中可随时点击“跳过”
 - 如需重看，打开浏览器控制台执行：`localStorage.removeItem('onboardingCompleted')`，然后刷新页面
 
@@ -307,19 +317,16 @@ export const TRANSLATIONS = {
 ### 配色方案
 
 ```css
---primary: #37352f        /* 主文字色 */
---secondary: #f1f1ef      /* 背景色 */
---accent: #337ea9         /* 强调色（蓝） */
---notion-blue: #337ea9    /* Notion 蓝 */
---notion-orange: #e9a15a  /* Notion 橙 */
---notion-gray: #f7f6f3    /* Notion 灰 */
+--primary: #37352f /* 主文字色 */ --secondary: #f1f1ef /* 背景色 */ --accent: #337ea9
+    /* 强调色（蓝） */ --notion-blue: #337ea9 /* Notion 蓝 */ --notion-orange: #e9a15a
+    /* Notion 橙 */ --notion-gray: #f7f6f3 /* Notion 灰 */;
 ```
 
 ### 阴影层级
 
 ```css
---shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06)   /* 轻阴影 */
---shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08)  /* 中阴影 */
+--shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06) /* 轻阴影 */ --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08)
+    /* 中阴影 */;
 ```
 
 ---
@@ -327,29 +334,36 @@ export const TRANSLATIONS = {
 ## 🐛 常见问题
 
 ### Q: 点击按钮没反应？
+
 A: 检查浏览器控制台是否有错误，确认已绑定用户资料。
 
 ### Q: 如何修改冷却时间？
+
 A: 编辑 `js/modules/config.js` 中的 `cooldownTime` 值。
 
 ### Q: 音效不播放？
+
 A: 确保浏览器允许自动播放音频，或检查音频文件路径。
 
 ### Q: 如何清除冷却状态？
+
 A: 打开浏览器控制台执行：`localStorage.removeItem('lastClickTime')`，然后刷新页面。
 
 ### Q: 密码忘记了怎么办？
+
 A: 默认密码写在 `js/modules/config.js` 里（`CONFIG.password.defaultPassword`），打开页面查看源码即可看到。如果需要修改，打开浏览器控制台执行：`password.setPassword('新密码')`。这只是 UI 级访问提示，不是安全边界 —— 详见 `docs/SECURITY.md`。
 
 ### Q: 如何重新显示新手引导？
+
 A: 打开浏览器控制台执行：`localStorage.removeItem('onboardingCompleted')`，然后刷新页面
 
 ### Q: 如何修改密码过期时间？
+
 A: 在 `js/modules/config.js` 中修改 `CONFIG.password.expiryDays` 的值（单位：天）
 
 ---
----
 
+---
 
 ## 📮 联系方式
 
