@@ -67,7 +67,7 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — CM-006 已实施完成并通过本地验证，等待主 AI 独立验收
+状态：PASS — CM-006 已通过主 AI 独立验收，等待 Human 合并门禁
 任务分支：codex/cm006-cooldown-ownership
 任务基线：37b496d（实测 HEAD；任务卡记的是 9d70c40，说明见下）
 当前工作分支：codex/cm006-cooldown-ownership
@@ -240,8 +240,22 @@ FAIL 责任者提供 restore / startFromNow 接口 -> countdown.restore is not a
 
 CM-005：PASS。GOV-001 和工作区文件完整性防线：已完成并验证。
 
-CM-006：尚未验收。
+CM-006：PASS。
+
+主 AI 独立验收记录（2026-09-19）：
+
+- `node tools/cooldown.mjs`：87 passed / 0 failed，退出码 0。
+- `node tools/negative-cooldown.mjs`：收敛版退出码 0；回退版退出码 1，命中写入点分散和重复 timer 失败，源码已还原。
+- `node tools/input-safety.mjs`：97 passed / 0 failed。
+- `node tools/button-ids.mjs`：52 passed / 0 failed。
+- `node tools/storage-resilience.mjs`：51 passed / 0 failed。
+- `node tools/e2e.mjs`：29 passed / 0 failed。
+- `node tools/check-worktree.mjs`：通过，已跟踪文件缺失数 0。
+- `npm run lint`：退出码 0；1 个 warning 来自本任务未修改的 `tools/worktree-guard.mjs`，属于既有基线问题。
+- `git diff --check`：通过。
+- 源码复核确认：`countdown.js` 是唯一 cooldown 责任者；其他模块不再写入 `lastClickTime` 或转换 `state.canClick`；恢复、归零、失败回滚、重复启动和旧 timer 代际保护均有覆盖。
+- `README.md` 的 API 表格是与本次公开接口变更直接相关的最小事实性文档修正，接受为相关文档变更；未发现其他范围外业务修改。
 
 ## NEXT ACTION
 
-外部 AI 请读取最新的 `AGENTS.md` 和本文件，确认实际 `HEAD` 后创建 `codex/cm006-cooldown-ownership`，按 `CURRENT TASK` 执行。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。不要修改或合并 `main`。
+CM-006 已通过验收。下一步等待 Human 明确授权合并 `codex/cm006-cooldown-ownership`；合并后必须在 `main` 上重新运行 cooldown、完整性检查和既有关键回归，再决定是否推送。合并前不要派发 CM-007，也不要修改或合并 `main`。
