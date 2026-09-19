@@ -62,14 +62,14 @@ VERIFICATION:
 BRANCH:
 
 从当前本地 `main` 的稳定提交创建并使用：`codex/cm006-cooldown-ownership`。
-任务卡提交后的实际基线以 `git rev-parse --short HEAD` 核对；本任务卡初始派发提交为 `DISPATCH_COMMIT_PENDING`，完成派发提交后主 AI 会回填真实 hash。不要直接修改或合并 `main`。
+任务卡初始派发提交：`9d70c40`。外部 AI 开工前仍必须用 `git rev-parse --short HEAD` 确认当前稳定 HEAD，并从该基线创建任务分支；不要直接修改或合并 `main`。
 
 ## EXECUTION STATUS
 
 ```text
 状态：DISPATCHED — 等待外部 Execution AI 接受并执行
 任务分支：codex/cm006-cooldown-ownership
-任务基线：DISPATCH_COMMIT_PENDING（派发提交后回填）
+任务基线：9d70c40
 当前工作分支：main
 main 与 origin/main：派发前已核对一致，工作区干净，已跟踪文件缺失数 0
 CM-005：PASS，已合并并推送
