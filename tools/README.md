@@ -40,6 +40,7 @@ node tools/input-safety.mjs         # CM-005：97 项断言
 node tools/cooldown.mjs             # CM-006：87 项断言
 node tools/history-language.mjs     # CM-007：107 项断言
 node tools/receipt-lifecycle.mjs    # CM-008：54 项断言（约 2 分钟）
+node tools/password-gate.mjs        # CM-010：60 项断言
 ```
 
 ### 手工反向验证（不进 CI、不进 run-all）
@@ -52,6 +53,7 @@ node tools/negative-input-safety.mjs        # CM-005
 node tools/negative-cooldown.mjs            # CM-006
 node tools/negative-history-language.mjs    # CM-007
 node tools/negative-receipt-lifecycle.mjs   # CM-008（约 4 分钟）
+node tools/negative-password-gate.mjs       # CM-010
 ```
 
 所有脚本都以退出码表达结果：`0` = 通过，非 `0` = 失败。
@@ -107,6 +109,8 @@ npm test            # = node tools/run-all.mjs
 | `negative-history-language.mjs` | CM-007：反向验证（从基线 ref 取原文覆盖 4 个被测文件） |
 | `receipt-lifecycle.mjs` | CM-008：已读回执轮询的可取消与单一所有权，54 项断言 |
 | `negative-receipt-lifecycle.mjs` | CM-008：反向验证（从基线 ref 取原文覆盖 1 个被测源码） |
+| `password-gate.mjs` | CM-010：访问提示触发语义 / 单一来源 / 诚实文案，60 项断言 |
+| `negative-password-gate.mjs` | CM-010：反向验证（从基线 ref 取原文覆盖 2 个被测文件） |
 | `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
 | `worktree-guard.mjs` | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤 |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
@@ -139,6 +143,7 @@ npm test            # = node tools/run-all.mjs
 | CM-006 `cooldown.mjs` | CDP `9446` | ⚠️ **与 CM-004 重复**；两者 HTTP 同为 8899、本就串行，暂无实际冲突，属已知项 |
 | CM-007 `history-language.mjs` | CDP `9448` | |
 | CM-008 `receipt-lifecycle.mjs` | CDP `9449` | |
+| CM-010 `password-gate.mjs` | CDP `9450` | |
 
 **新增套件时**：挑一个未被占用的 CDP 端口（尽量避开 `9440–9500` 这类动态端口范围），
 并更新本表。若运行时报 `CDP 未就绪：Chrome 是否启动？`，**先确认端口是不是被占了**：
@@ -303,6 +308,24 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 > **单次运行约 2 分钟**（含两处约 32s 的超时窗口，用于越过轮询自身的超时点）。
 > `negative-receipt-lifecycle.mjs` 会临时改写 `js/modules/notification.js`，
 > 属**手工反向验证工具，不纳入普通 CI**；全流程约 4 分钟。
+
+### CM-010
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `CM010_PORT` | `8899` | 自带服务器端口 |
+| `CM010_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
+| `CM010_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
+| `CM010_CDP_PORT` | `9450` | Chrome 调试端口 |
+| `CM010_CHROME` | 由 `tools/chrome-path.mjs` 解析 | Chrome 路径（一般不用设，设 `CHROME_PATH` 即可） |
+| `CM010_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 的原文作为"改造前版本" |
+
+> `password-gate.mjs` 通过**预置 LocalStorage + 重新加载**走真实的
+> `main.js → password.init()` 路径，并用页面内 `await import('/js/modules/password.js')`
+> 直接调 `verify` / `setPassword` / `clearPassword`。
+> 它不发任何外部请求（不触网、不碰 webhook）。
+> `negative-password-gate.mjs` 会临时改写 `js/modules/password.js` 与
+> `js/modules/translations.js`，属**手工反向验证工具，不纳入普通 CI**。
 
 ## 覆盖的验收路径
 
@@ -741,6 +764,71 @@ FAIL  轮询的 setTimeout 全部被句柄接住 -> bare=2, handled=0
 
 > **区分力判定同时要求**：已改造版本 `0 failed`、回退版本退出码非 0、
 > 且回退版失败项**同时命中"取消能力"与"并发隔离"两类关键字**。
+
+### CM-010（`password-gate.mjs`）
+
+对应 `docs/SECURITY.md` 的威胁模型：访问提示是 **UI 级提示、不是安全边界**，
+因此代码、文案、文档三者必须表述一致且诚实。
+
+**改动前的问题**：
+
+| 问题 | 位置 |
+|---|---|
+| 密码配置**重复定义** | `config.js` 的 `defaultPassword`/`expiryDays` 与 `password.js` 的 `'666888'`/`7` 各存一份，后者从不读 config |
+| 文案**不诚实** | `password.hint` 声称「密码每周更新，请联系管理员获取最新密码」—— 实际没有任何每周更新机制，密码就是源码里的常量 |
+| 坏数据**反而放行** | `parseInt` 结果是 NaN 时 `(Date.now() - NaN) > expiry` 恒为 `false` → 时间戳损坏时**永远不要求验证** |
+
+**改造后**：`password.js` 从 `CONFIG.password` 读默认密码与有效期（单一来源）；
+四语言 `hint` 改为诚实表述（明确说明"任何能打开本页的人都能绕过它"）；
+损坏时间戳按「已过期」处理。
+
+**断言分组（60 项）**：
+
+| 场景 | 覆盖 |
+|---|---|
+| S0 前置 | 模块可导入、`CONFIG.password` 两个字段存在 |
+| S1 触发语义 | 无 key / 空串 / 3 天前 / 第 6 天 / 超 7 天 → 弹或不弹；5 种损坏时间戳 → 均弹窗 |
+| S2 验证交互 | 错密码 → 报错文案 + 弹窗仍在 + 不写时间戳；默认密码 → 弹窗关闭 + 写时间戳 |
+| S3 模块语义 | `verify` 默认/错误；`setPassword` 覆盖生效；`clearPassword` 回退默认密码 |
+| S4 诚实文案 | 四语言 hint：不含安全性暗示词、**不声称"每周更新/联系管理员"**、**明确说明可被绕过**、与翻译表一致、四语言互不相同 |
+| S5 单一来源 | `password.js` 无默认密码字面量 / 无 `PASSWORD_EXPIRY_DAYS` / 无 `correctPassword` / 从 `CONFIG.password` 读；`js/` 下字面量只命中 `config.js` |
+| S6 页面异常 | 无未捕获异常 / `console.error` |
+
+> **S4 为什么不能只查禁用词**：旧文案「密码每周更新，请联系管理员获取最新密码」
+> **并不含**「保护/安全/加密/授权」，所以只查禁用词会在旧代码上"通过"。
+> 因此额外断言两件事：**不声称不存在的机制**，以及**主动说明可被绕过** ——
+> 这两条才是真正对旧文案有区分力的判据。
+
+**反向验证（`negative-password-gate.mjs`）实测**：
+
+```text
+已改造版本退出码 : 0          断言：60 passed, 0 failed
+回退版本退出码   : 1          断言：43 passed, 17 failed
+源码已还原       : true
+  单一来源类失败 5 条 · 诚实文案类失败 8 条 · 损坏时间戳类失败 4 条
+```
+
+回退版关键证据：
+
+```text
+FAIL  password.js 不含默认密码字面量 -> 666888
+FAIL  password.js 从不读 CONFIG（无 CONFIG.password）
+FAIL  js/ 下默认密码字面量只命中 config.js 一处 -> ["config.js","password.js"]
+FAIL  zh: hint 不声称"每周更新/联系管理员" -> 命中 ["每周","管理员","更新"]
+FAIL  zh: hint 明确说明"能被绕过" -> 缺少 "绕过"
+FAIL  时间戳损坏 "abc" → 弹窗 -> hasModal=false
+```
+
+> **基线漂移提醒**：本改造合并进 `main` 后，默认 `CM010_BASE_REF=main` 会失效
+> （exit 2「没有可回退的改动」）→ 须显式指定改造前 commit。
+
+> **行为收紧（有意）**：损坏时间戳从"不弹窗"变为"弹窗"。任务卡写的是
+> 「按已过期处理」并注「与现状 parseInt 行为对齐」，但现状并不弹窗
+> （`NaN > x` 恒为 false）。已按**显式的行为要求**实现，并在此记录这处偏离。
+
+> **SCOPE 位置说明**：任务卡把文案列在 `js/modules/language.js`，
+> 但四语言文案实际住在 `js/modules/translations.js`（`language.js` 内无文案）。
+> 改动落在实际位置，反向验证覆盖的也是这两个文件。
 
 ### `check-worktree.mjs` / `worktree-guard.mjs`（环境防护，非任务测试）
 
