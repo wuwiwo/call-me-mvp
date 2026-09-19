@@ -49,7 +49,9 @@ export const CONFIG = {
         },
         // 操作反馈音效
         notifications: {
-            success: "sounds/success-notification.wav"
+            success: "sounds/success-notification.wav",
+            // 失败/警告反馈：输入校验失败、初始化失败、冷却限制等（notification.show(msg, false)）
+            error: "sounds/error-notification.wav"
         }
     },
     //按钮
