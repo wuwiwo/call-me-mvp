@@ -225,6 +225,36 @@ node tools/run-all.mjs
 
 ## REVIEW RESULT
 
+**CM-001-TD-08：PASS**（2026-09-19，主 AI 独立验收）。
+
+7 项验收项全过：
+
+| # | 验收项 | 结果 | 证据 |
+|---|---|---|---|
+| 1 | config.js 的 notifications 有 success 和 error 两个键 | ✅ | diff：`error: "sounds/error-notification.wav"` 与 `success` 同级 + 用途注释 |
+| 2 | sounds.js 防御性检查（不传 undefined 给 play） | ✅ | diff：`if (!url) { console.warn(...); return; }` 在 `this.play(url)` 前 |
+| 3 | playNotificationSound(false) 播放 error 音效 | ✅ | 页面级 14 项断言：play() 收到 error 文件 URL + audioCache 含 error 条目 |
+| 4 | playNotificationSound(true) 行为不变 | ✅ | 页面级断言：play() 收到 success 文件 URL + success 未被改动 |
+| 5 | preload() 预加载 error 音效 | ✅ | 页面级断言：audioCache 含 error 条目（Object.values 自动包含） |
+| 6 | lint 0 error / git diff --check 0 / check-worktree 缺失 0 | ✅ | 实测：lint 0 problems（比要求更好）/ diff --check 0 / check-worktree 0 |
+| 7 | run-all 全量 10/10 不回归 | ✅ | 537 项断言 0 失败；既有 8 套件断言数 29/51/52/97/87/107/54/60 不变 |
+
+独立复跑：
+- 页面级验证 14/0（★ playNotificationSound(false) → play() 收到 error 文件 URL；★ 配置缺失时不调用 play()；audioCache 含 error 条目 + 不含 undefined 键）
+- 反向验证：已改造 14/0 vs 回退 7/7；回退版直接复现缺陷本体（`play(undefined)` → `[null]` 静默失败）；源码已还原 true
+- run-all 全量 10/10，537 项断言 0 失败
+
+三处自陈说明裁决：
+1. AC 第 6 项写「lint 0 error」实测「0 problems」—— 比要求更好（GOV-002 同步 eslint 配置后 worktree-guard.mjs warning 也消失），无风险 ✅
+2. 未新增入库测试套件——任务卡 SCOPE 只列 2 源文件，AC 未要求套件，验证项 3 标注"可选"。一次性脚本在 .workbuddy/ 不入库。正确判断，未擅自扩大 SCOPE ✅
+3. 提交信息重做记录——首轮双引号被 shell 转义吃掉，用 reset --soft 重写。已复查无反斜杠残留 ✅
+
+主 AI 不要求固化成正式套件：小修复（2 行 config + 10 行防御性检查），页面级一次性脚本已充分验证，run-all 全量不回归。固化成正式套件的边际价值低。
+
+- 完整记录：`docs/handoff/archive/CM-001-TD-08.md`（合并后归档）。
+
+---
+
 **CM-010：CONDITIONAL PASS**（已完成合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
 
 **GOV-002：PASS**（已完成 cherry-pick 合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
