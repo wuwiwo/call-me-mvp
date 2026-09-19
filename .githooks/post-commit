@@ -1,7 +1,10 @@
 #!/bin/sh
 # 工作区防丢守卫 —— 提交后恢复被级联删除的已跟踪文件。
 # 覆盖 `git rm <深层文件>` 触发的级联（该路径不经过 post-checkout/post-merge）。
-# 背景见 tools/worktree-guard.mjs 头部注释。
+#
+# 守卫本体在 scripts/worktree-guard.mjs（**不在 tools/**），并自安装到 .git/ 内。
+# 三级回退：工作树内权威版本 → .git/ 副本 → 纯 git 应急恢复。
+# 背景与四次事故记录：docs/handoff/archive/WORKTREE-FILE-LOSS.md
 # 用 CALLME_WT_GUARD=0 可临时关闭。
 [ "${CALLME_WT_GUARD:-1}" = "0" ] && exit 0
 
@@ -12,5 +15,24 @@ command -v node >/dev/null 2>&1 || NODE="/c/Program Files/nodejs/node.exe"
 [ -x "$NODE" ] || NODE="/c/Users/dd/.workbuddy/binaries/node/versions/22.22.2-3/node.exe"
 [ -x "$NODE" ] || exit 0
 
-"$NODE" "$TOP/tools/worktree-guard.mjs" post-commit "$@" || exit 0
+CANON="$TOP/scripts/worktree-guard.mjs"
+GITDIR=$(git rev-parse --absolute-git-dir 2>/dev/null)
+COPY=""
+[ -n "$GITDIR" ] && COPY="$GITDIR/worktree-guard.mjs"
+
+if [ -f "$CANON" ]; then
+    CALLME_WT_ROOT="$TOP" "$NODE" "$CANON" post-commit "$@" || exit 0
+    exit 0
+fi
+
+if [ -n "$COPY" ] && [ -f "$COPY" ]; then
+    CALLME_WT_ROOT="$TOP" "$NODE" "$COPY" post-commit "$@" || exit 0
+    exit 0
+fi
+
+# 应急回退：守卫不可用时，用纯 git 恢复「HEAD 里存在、工作区却缺失」的已跟踪文件。
+# 只按 git 自己的判定（--diff-filter=D HEAD）恢复，因此不会「复活」提交里已删除的文件。
+git -C "$TOP" diff --name-only --diff-filter=D HEAD 2>/dev/null \
+    | git -C "$TOP" restore --pathspec-from-file=- --worktree 2>/dev/null
+
 exit 0

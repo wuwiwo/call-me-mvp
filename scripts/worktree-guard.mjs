@@ -17,6 +17,19 @@
 //   $I: docs\sub\extra.md -> docs\sub -> docs
 // 三条记录，即 docs/ 整个目录被搬走。
 //
+// ★ 为什么不放在 tools/（GOV-002）
+// ------------------------------
+// 本文件原来住在 `tools/worktree-guard.mjs` —— 而 `tools/` 正是被级联搬走的目录之一。
+// 结果是**守卫与被保护物同归于尽**：钩子报 MODULE_NOT_FOUND，恢复从未发生
+// （CM-007、CM-008、CM-009、GOV-002 四次事故同一根因）。
+//
+// 现在做两层处理：
+//   1. 权威版本移出 `tools/`，放到 `scripts/` —— 不再和被测工具挤在同一个被搬走的目录里；
+//   2. **每次运行时把自身安装到 `.git/` 内**（`selfInstall()`）。
+//      `.git/` 在工作树之外，级联删除搬不到它，因此即使整个工作树的副本全没了，
+//      钩子仍能运行 `.git/` 里的那份并完成恢复。
+// 钩子侧还有第三级：三级都不可用时用纯 git 做最小应急恢复。
+//
 // 判定规则
 // --------
 // 1. intended = git diff --diff-filter=D <prev> <new>
@@ -28,10 +41,12 @@
 // 用法
 // ----
 // 由 .githooks/{post-checkout,post-merge,post-commit} 调用，一般不需要手动执行。
-//   node tools/worktree-guard.mjs post-checkout <prev> <new> <flag>
-//   node tools/worktree-guard.mjs post-merge <squash>
-//   node tools/worktree-guard.mjs post-commit
-// 环境变量 CALLME_WT_GUARD=0 可临时关闭。
+//   node scripts/worktree-guard.mjs post-checkout <prev> <new> <flag>
+//   node scripts/worktree-guard.mjs post-merge <squash>
+//   node scripts/worktree-guard.mjs post-commit
+// 环境变量：
+//   CALLME_WT_GUARD=0  临时关闭
+//   CALLME_WT_ROOT     显式指定仓库根（钩子会传；从 .git/ 内运行时必需）
 //
 // 依赖：仅 Node 内置模块 + git。
 import { execFileSync } from "node:child_process";
@@ -40,9 +55,52 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..");
 
 if (process.env.CALLME_WT_GUARD === "0") process.exit(0);
+
+/** 解析仓库根：环境变量 → git → 脚本位置兜底。 */
+function resolveRoot() {
+    const fromEnv = process.env.CALLME_WT_ROOT;
+    if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
+    try {
+        const top = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        if (top) return top;
+    } catch {
+        /* 落到兜底 */
+    }
+    return path.resolve(__dirname, "..");
+}
+
+const ROOT = resolveRoot();
+
+/**
+ * 把自身安装到 `.git/` 内（工作树之外）。
+ *
+ * 这是四次事故的根因修复：级联删除只会搬走**工作树里**的东西，
+ * `.git/` 内的副本能幸存。若本脚本正是从那份副本运行的（说明工作树里的
+ * 权威版本已被搬走），跳过即可 —— 不要把自己复制回自己。
+ */
+function selfInstall() {
+    try {
+        const self = fileURLToPath(import.meta.url);
+        const gitDir = execFileSync("git", ["rev-parse", "--absolute-git-dir"], {
+            cwd: ROOT,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        if (!gitDir) return;
+        const dest = path.join(gitDir, "worktree-guard.mjs");
+        if (path.resolve(self) === path.resolve(dest)) return;
+        fs.writeFileSync(dest, fs.readFileSync(self));
+    } catch {
+        /* 自安装失败不影响本次恢复 */
+    }
+}
+
+selfInstall();
 
 const mode = process.argv[2] || "";
 
@@ -114,7 +172,7 @@ for (let i = 0; i < collateral.length; i += 50) {
     try {
         git(["restore", "--", ...chunk]);
         restored.push(...chunk);
-    } catch (e) {
+    } catch {
         // 整批失败时逐个试，避免一个坏路径拖累整批
         for (const p of chunk) {
             try {
