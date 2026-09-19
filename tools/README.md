@@ -112,7 +112,7 @@ npm test            # = node tools/run-all.mjs
 | `password-gate.mjs` | CM-010：访问提示触发语义 / 单一来源 / 诚实文案，60 项断言 |
 | `negative-password-gate.mjs` | CM-010：反向验证（从基线 ref 取原文覆盖 2 个被测文件） |
 | `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
-| `worktree-guard.mjs` | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤 |
+| `worktree-guard.mjs`（已移至 `scripts/`） | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤。**不在 `tools/` 下** —— 见下节 GOV-002 说明 |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
 
 > ### ⚠️ 复现/排查工作区文件丢失前必读
@@ -122,7 +122,7 @@ npm test            # = node tools/run-all.mjs
 > 详见 [`../docs/handoff/archive/WORKTREE-FILE-LOSS.md`](../docs/handoff/archive/WORKTREE-FILE-LOSS.md)
 > 的「根因（修正版）」与报告 `.workbuddy/worktree-file-loss-bugreport.md` §15。
 >
-> `tools/worktree-guard.mjs` 的日志 `.workbuddy/worktree-guard.log`
+> `scripts/worktree-guard.mjs`（已移出 `tools/`）的日志 `.workbuddy/worktree-guard.log`
 > **只在真的恢复过文件时才写** —— 「没有日志」不代表防线失效。
 
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
@@ -830,10 +830,10 @@ FAIL  时间戳损坏 "abc" → 弹窗 -> hasModal=false
 > 但四语言文案实际住在 `js/modules/translations.js`（`language.js` 内无文案）。
 > 改动落在实际位置，反向验证覆盖的也是这两个文件。
 
-### `check-worktree.mjs` / `worktree-guard.mjs`（环境防护，非任务测试）
+### `check-worktree.mjs` / `scripts/worktree-guard.mjs`（环境防护，非任务测试）
 
 本仓库在 Windows 上反复出现**已跟踪文件在工作区被级联删除**的问题
-（2026-09-17 三次，2026-09-18 16:27 丢 17 个、16:53 丢 26 个）。
+（2026-09-17 三次；2026-09-18 两次；2026-09-19 CM-007/008/009 与 GOV-002 四次）。
 根因、证据与完整时间线见
 [`../docs/handoff/archive/WORKTREE-FILE-LOSS.md`](../docs/handoff/archive/WORKTREE-FILE-LOSS.md)。
 
@@ -849,10 +849,28 @@ node tools/check-worktree.mjs
 node tools/check-worktree.mjs --fix
 
 # 自动：由 git 钩子驱动（需先 git config core.hooksPath .githooks）
-node tools/worktree-guard.mjs post-checkout <prev> <new> <flag>
-node tools/worktree-guard.mjs post-merge <squash>
-node tools/worktree-guard.mjs post-commit
+# 守卫本体在 scripts/ 下（**不在 tools/**），一般由钩子调用，无需手动执行
+node scripts/worktree-guard.mjs post-checkout <prev> <new> <flag>
+node scripts/worktree-guard.mjs post-merge <squash>
+node scripts/worktree-guard.mjs post-commit
 ```
+
+#### 为什么守卫不在 `tools/`（GOV-002 根因修复）
+
+守卫原来住在 `tools/worktree-guard.mjs` —— 而 `tools/` 正是会被级联搬走的目录之一，
+于是**守卫与被保护物同归于尽**：钩子报 `MODULE_NOT_FOUND`，恢复从未发生。
+四次事故同一根因。现在的三层设计：
+
+| 层 | 位置 | 作用 |
+|---|---|---|
+| 1 | `scripts/worktree-guard.mjs` | 权威版本（已移出 `tools/`），随仓库分发 |
+| 2 | `<git-dir>/worktree-guard.mjs` | **每次运行时自安装**的副本。`.git/` 在工作树之外，级联搬不到它 |
+| 3 | `.githooks/*` 内联的纯 git 回退 | 前两层都没有时，直接 `git restore` 恢复 `--diff-filter=D HEAD` 的文件 |
+
+钩子按 1 → 2 → 3 依次尝试，任一层可用即可完成恢复。
+
+**实测证据（2026-09-19）**：把 `scripts/worktree-guard.mjs` 从工作树移除后再触发钩子，
+守卫横幅仍出现且受害文件被恢复 → 证明用的是第 2 层的 `.git/` 副本而非常规路径。
 
 `worktree-guard.mjs` 的判定规则：
 
@@ -868,12 +886,16 @@ collateral = missing - intended                       # 级联误伤 → git res
 `collateral` 为空时脚本直接退出，不产生日志。所以「没有日志」≠「防线失效」，
 反之「有日志」才说明发生过误伤。
 
-**用法纪律**：在 git 合并/检出之后、**任何 commit 之前**跑一次。
+**用法纪律**：在 git 合并/检出之后、**任何 commit 之前**跑一次 `node tools/check-worktree.mjs`。
 若看到 ` D` 条目，**先恢复再继续** —— 不要带着缺失状态跑验证（会误判成代码回归），
 更不要 `git add -A`（会把工作区损坏固化进历史）。
 
-> ⚠️ **`.githooks/*` 与 `tools/worktree-guard.mjs` 属于防线本体，必须纳入版本控制。**
+**自助恢复（不需要 AI，3 条命令）**：`git status` 看到一批 ` D` → `git restore -- .`（只写不删）→
+`git status` 应干净。前提是**没有要保留的未暂存改动**；级联事故的场景恰好满足。
+
+> ⚠️ **防线本体（`.githooks/*`、`scripts/worktree-guard.mjs`）必须纳入版本控制。**
 > 若它们被级联 bug 或 `git clean` 清掉，**防线会静默失效且没有任何提示**。
+> 这也是第 2/3 层存在的理由 —— 不再把全部希望押在"工作树里的那个文件还在"上。
 
 ## 环境注意事项
 
