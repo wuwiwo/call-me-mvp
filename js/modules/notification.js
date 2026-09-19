@@ -91,7 +91,11 @@ export const notification = {
         }
 
         state.isRequestPending = true;
-        localStorage.setItem("lastClickTime", Date.now());
+
+        // 不再在这里写 `lastClickTime`（CM-006）。
+        // 冷却的持久化由 countdown（唯一责任者）在点击链路里完成；
+        // 此前本行与 buttonManager 各写一次，两次时间戳相差一个调用间隔，
+        // 属于重复写入。本模块只负责发请求与记录历史。
 
 
         try {

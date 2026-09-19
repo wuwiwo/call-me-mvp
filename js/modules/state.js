@@ -1,5 +1,4 @@
 // /src/modules/state.js
-import { CONFIG } from './config.js';
 
 /**
  * 安全读取并解析 LocalStorage 中的 JSON。
@@ -48,7 +47,11 @@ export function readJsonSafe(key, fallback, isValid) {
 
 export const state = {
     userProfile: null,
+
+    // 点击闸门。**冷却期间由 countdown（cooldown 唯一责任者）写入**，
+    // 其他模块只读，不再自行改写（CM-006）。
     canClick: true,
+
     isRequestPending: false,
     currentLang: 'zh',
     
@@ -71,38 +74,11 @@ export const state = {
             const supportedLangs = ['zh', 'en', 'ja', 'ko'];
             this.currentLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
         }
-        
-        // 检查冷却时间状态
-        this.checkCooldownStatus();
-        
-    },
-    
-    checkCooldownStatus() {
-        const lastClickTime = localStorage.getItem('lastClickTime');
-        if (lastClickTime) {
-            const parsed = parseInt(lastClickTime);
-            // 非数字时间戳视为无冷却，并清理该 key（保留原有清理语义）
-            if (!Number.isFinite(parsed)) {
-                localStorage.removeItem('lastClickTime');
-                this.canClick = true;
-                return;
-            }
 
-            const elapsedTime = Math.floor((Date.now() - parsed) / 1000);
-            const remainingTime = CONFIG.cooldownTime - elapsedTime;
-            
-            if (remainingTime > 0) {
-                this.canClick = false;
-                
-                // 如果需要自动恢复，可以设置定时器
-                setTimeout(() => {
-                    this.canClick = true;
-                }, remainingTime * 1000);
-            } else {
-                this.canClick = true;
-                localStorage.removeItem('lastClickTime');
-            }
-        }
+        // 冷却状态的恢复不再在这里进行：
+        // 它需要倒计时显示元素，而本模块在导入期就会执行，
+        // 早于 DOM 就绪与 countdown.init()。
+        // 现在统一由 countdown.restore() 在 countdown.init() 之后处理（CM-006）。
     }
 };
 

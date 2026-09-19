@@ -38,7 +38,6 @@ class CallMeApp {
 
         this.initElements();
         this.initModules();
-        this.checkCooldown();
         this.addHistoryButton();
     }
 
@@ -110,6 +109,13 @@ class CallMeApp {
             notification.init(this.elements.notificationEl);
             countdown.init(this.elements);
 
+            // 恢复冷却状态。
+            // 这是页面加载/刷新的**唯一**恢复入口：读 lastClickTime、
+            // 决定放行还是启动倒计时，全部由 countdown（唯一责任者）完成。
+            // 放在 countdown.init() 之后、buttonManager.init() 之前 ——
+            // 按钮绑定点击处理时闸门状态已经正确（CM-006）。
+            countdown.restore();
+
             // 初始化按钮管理器（仅此处初始化一次）
             if (this.elements.buttonContainer) {
                 buttonManager.init(this.elements.buttonContainer);
@@ -141,28 +147,6 @@ class CallMeApp {
         }
     }
 
-
-    checkCooldown() {
-        const lastClickTime = localStorage.getItem('lastClickTime');
-        if (lastClickTime) {
-            const elapsedTime = Math.floor((Date.now() - parseInt(lastClickTime)) / 1000);
-            const remainingTime = Math.max(0, CONFIG.cooldownTime - elapsedTime);
-
-
-            if (remainingTime > 0) {
-                // 更新状态
-                state.canClick = false;
-
-                // 启动倒计时显示
-                countdown.start(remainingTime);
-
-                // 设置自动恢复
-                setTimeout(() => {
-                    state.canClick = true;
-                }, remainingTime * 1000);
-            }
-        }
-    }
 
     addHistoryButton() {
         if (!window.location.pathname.includes("history.html")) {

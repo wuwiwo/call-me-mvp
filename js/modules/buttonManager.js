@@ -429,24 +429,22 @@ export const buttonManager = {
         //     return;
         // }
 
+        // 冷却闸门：只读 state.canClick，剩余秒数由责任者提供。
+        // 不再自行 parseInt(lastClickTime) 反推剩余时间（那是第三份重复实现）。
         if (!state.canClick) {
-            const lastClickTime = localStorage.getItem('lastClickTime');
-            if (lastClickTime) {
-                const remaining = CONFIG.cooldownTime - Math.floor((Date.now() - parseInt(lastClickTime)) / 1000);
+            const remaining = countdown.remaining();
+            if (remaining > 0) {
                 notification.show(`请等待 ${remaining} 秒后再试`, false);
             }
             return;
         }
 
         
-        // 立即更新状态并保存时间
-        state.canClick = false;
         state.isRequestPending = true;
-        const clickTime = Date.now();
-        localStorage.setItem('lastClickTime', clickTime.toString());
-        
-        // 启动倒计时
-        countdown.start();
+
+        // 开始冷却：写入 lastClickTime、把 canClick 置为 false、启动倒计时，
+        // 三件事都由 countdown（唯一责任者）完成，本模块不再自己写（CM-006）。
+        countdown.startFromNow();
 
         
         // 现在会调用 notification.sendNotification，其中的用户资料检查会生效
@@ -457,20 +455,16 @@ export const buttonManager = {
         })
         .then(success => {
             if (!success) {
-                countdown.stop();
-                // 失败时恢复点击状态
-                state.canClick = true;
+                // 失败回滚：放行 + 清除冷却（由责任者统一处理）
+                countdown.cancel();
                 state.isRequestPending = false;
-                localStorage.removeItem('lastClickTime');
             }
         })
         .catch(error => {
             console.error("通知发送出错:", error);
-            countdown.stop();
-            // 出错时恢复点击状态
-            state.canClick = true;
+            // 异常回滚：与失败路径同一处理
+            countdown.cancel();
             state.isRequestPending = false;
-            localStorage.removeItem('lastClickTime');
         });
     },
 
