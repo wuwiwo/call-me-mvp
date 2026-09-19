@@ -69,6 +69,7 @@ const BROWSER_SUITES = [
     { id: "cooldown", label: "cooldown（CM-006）", argv: ["tools/cooldown.mjs"] },
     { id: "history-language", label: "history-language（CM-007）", argv: ["tools/history-language.mjs"] },
     { id: "receipt-lifecycle", label: "receipt-lifecycle（CM-008）", argv: ["tools/receipt-lifecycle.mjs"] },
+    { id: "password-gate", label: "password-gate（CM-010）", argv: ["tools/password-gate.mjs"] },
 ];
 
 const WORKTREE_ITEM = {
