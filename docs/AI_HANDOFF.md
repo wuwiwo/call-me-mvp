@@ -4,32 +4,33 @@
 
 ## CURRENT TASK
 
-**无活动任务**。CM-010 + GOV-002 均已验收合并完成，等 Human 明示下个任务方向。
+**无活动任务**。CM-010 + GOV-002 + 文档 666888 清理均已完成并推送，等 Human 明示下个任务方向。
 
 下个任务候选（见 NEXT ACTION）：
 
 - CM-001-TD-08 余项：`soundManager.playNotificationSound(false)` 访问未配置的 `notifications.error`（P2 小坑）。
-- CM-001-TD-09：format 基线未达标（29 文件 Prettier 失败，P3 清理）。
-- 文档残留 666888 字面量清理（README/TESTING/NEW_FEATURES/DATA_FLOW/IMPLEMENTATION_CHECKLIST，CM-010 SCOPE 外遗留）。
+- CM-001-TD-09：format 基线未达标（29 文件 Prettier 失败，P3 清理，需 Human 授权批量 diff）。
 
 ## EXECUTION STATUS
 
 ```text
 状态：IDLE — 无活动任务，等 Human 明示下个任务方向
-当前分支：main（HEAD: cb6611c）
+当前分支：main（HEAD: ee5fa66）
 工作区：干净；check-worktree 缺失 0
-远端：origin/main 落后本地 4 个提交（GOV-002 cherry-pick 2 个 + 主 AI 同步 2 个），待 push
+远端：origin/main 已同步（c52c4e0..ee5fa66）
 
 CM-010 已完成（详见 docs/handoff/archive/CM-010.md）：
   - 任务分支快进合并到 main（c0ad0a9）+ 主 AI 同步（dba7e0c）+ 归档（bc40919）
 
 GOV-002 已完成（详见 docs/handoff/archive/GOV-002.md）：
-  - cherry-pick 2 个提交到 main（2bede31 + 7255fc3，不切分支避免级联）
-  - 主 AI 同步（cb6611c）：eslint 配置 scripts/ Node 环境 + AGENTS.md 守卫路径与套件数
-  - 新守卫第一次实战成功：cherry-pick 时 rename tools/worktree-guard.mjs → scripts/
-    触发 tools/ 级联（22 个文件被搬走），post-commit 钩子走第 1 级 → 全部恢复
+  - cherry-pick 2 个提交到 main（2bede31 + 7255fc3）+ 主 AI 同步（cb6611c）+ 归档（c52c4e0）
+  - 新守卫第一次实战成功：cherry-pick 时 22 个级联误伤全部恢复
   - .git/worktree-guard.mjs 副本已确认存在（selfInstall 成功，8798 bytes）
-  - run-all 全量 10/10、eslint 0 error、check-worktree 缺失 0
+
+文档 666888 清理已完成：
+  - 9 处文档明文密码改为指向 config.js（ee5fa66）
+  - grep 验证：文档 0 命中、js/ 只命中 config.js 单一来源
+  - lint 0 error、check-worktree 缺失 0
 ```
 
 ## EXECUTION REPORT
@@ -40,7 +41,9 @@ GOV-002 已完成（详见 docs/handoff/archive/GOV-002.md）：
 
 **CM-010：CONDITIONAL PASS**（2026-09-19，已完成合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
 
-**GOV-002：PASS**（2026-09-19，主 AI 独立验收，已完成 cherry-pick 合并 + 同步 + 归档）。
+**GOV-002：PASS**（2026-09-19，已完成 cherry-pick 合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
+
+**文档 666888 清理：PASS**（2026-09-19，主 AI 直接执行）。9 处文档明文密码改为指向 `config.js` 的 `CONFIG.password.defaultPassword`；修复过时代码示例（`PASSWORD_EXPIRY_DAYS`/`correctPassword` 已由 CM-010 收敛）；grep 验证文档 0 命中、js/ 只命中 config.js 单一来源；lint 0 error、check-worktree 缺失 0。
 
 8 项验收项全过：
 1. `scripts/worktree-guard.mjs` 权威版本 + ROOT 三级解析 ✅
@@ -58,11 +61,12 @@ GOV-002 已完成（详见 docs/handoff/archive/GOV-002.md）：
 
 ## NEXT ACTION
 
-等 Human 明示下个任务方向。三个候选：
+等 Human 明示下个任务方向。两个候选：
 
 ### 候选 1：CM-001-TD-08 余项（错误音效路径）
 
 - `soundManager.playNotificationSound(false)` 访问未配置的 `notifications.error`（P2 小坑）
+- `sounds.js:50-52`：`type = isSuccess ? 'success' : 'error'` → `CONFIG.soundEffects.notifications.error` 不存在 → `play(undefined)` 静默失败
 - 需要派发外部 AI 或主 AI 自己修（小任务）
 
 ### 候选 2：CM-001-TD-09（format 基线）
@@ -70,12 +74,6 @@ GOV-002 已完成（详见 docs/handoff/archive/GOV-002.md）：
 - 29 个文件 Prettier 失败（P3 清理）
 - 批量格式化会产生大 diff，需 Human 授权
 
-### 候选 3：文档残留 666888 字面量清理
-
-- `README.md`、`TESTING.md`、`NEW_FEATURES.md`、`docs/DATA_FLOW.md`、`docs/IMPLEMENTATION_CHECKLIST.md` 仍提到默认密码字面量
-- CM-010 SCOPE 外遗留（SCOPE 仅限 js/）
-- 需要主 AI 同步清理 + grep 验证
-
 **外部 AI 暂无任务**。等 Human 明示。
 
-**push 授权**：Human 本轮已明确授权推送。GOV-002 cherry-pick + 同步提交待 push。push 后需人工核对 GitHub Actions 页面（CM-009 CI 首次跑真实 Actions，CM-010 + GOV-002 是第二次跑）。
+**网络提示**：本机 push github.com 直连可能间歇性失败（`SSL_ERROR_SYSCALL`），带代理 `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main` 可用。
