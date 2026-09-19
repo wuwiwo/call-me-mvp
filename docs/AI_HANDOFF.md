@@ -4,239 +4,92 @@
 
 ## CURRENT TASK
 
-CM-008 — 已读回执轮询的取消语义与单一所有权
+CM-009 — 统一测试入口、CI（lint + 测试）与测试资产治理
 
-PHASE: Robustness / BugFix
-PRIORITY: P2
+PHASE: Engineering / Tooling
+PRIORITY: P2/P3
 
 OBJECTIVE:
 
-让 `notification.js` 的已读回执轮询可取消、单一所有权：新一次发送开始时旧轮询立即停止且不得再写状态条，`#receiptStatus` 只反映最新一次发送的回执；单次发送的轮询节奏与超时语义保持不变。
+为现有 8 个回归套件提供**单一稳定入口**与 **CI 可运行配置**：一条命令串行跑完全部套件（lint + 测试），GitHub Actions 上可复现；同时把测试资产治理规则固化（跨机器浏览器配置、端口分配、日志/证据规则）。不新增业务行为、不改产品代码。
 
 CONTEXT:
 
-- `js/modules/notification.js:163-191`：`pollReadStatus()` 用递归 `setTimeout(poll, 2000)`，不保存 timer 句柄，无取消机制；一旦启动最长运行 ~30s（15 次 × 2s），期间无法停止。
-- 多次发送时轮询并发互踩：旧轮询读到旧 `msgId` 的 read 或超时，会把新消息的状态条覆盖成「已读」或「超时」。
-- `docs/TECH_DEBT.md` CM-001-TD-07（第 68-74 行）即本任务。
-- `config.js`：`cooldownTime: 60`，冷却窗口（60s）大于轮询窗口（~30s），正常路径不易并发；但请求失败不进冷却、`isRequestPending` 竞态等路径仍可能产生重叠，且 timer 不可取消本身是结构缺陷。
+- 现有套件（全部零依赖、自带静态服务器 + headless Chrome，HTTP 8899 必须串行）：`e2e.mjs`（CM-002）、`storage-resilience.mjs`（CM-003）、`button-ids.mjs`（CM-004）、`input-safety.mjs`（CM-005）、`cooldown.mjs`（CM-006）、`history-language.mjs`（CM-007）、`receipt-lifecycle.mjs`（CM-008），外加 `check-worktree.mjs`。
+- 反向验证脚本（`negative-*.mjs`）会临时改写源码，属手工工具，**不进 CI、不进默认套件入口**。
+- 各套件 Chrome 路径默认值是本机 Windows 路径（如 `C:/Program Files/Google/Chrome/Application/chrome.exe`），部分已有 `<套件>_CHROME` 环境变量；CI（ubuntu）上 Chrome 路径不同，需要统一解析。
+- `ROADMAP.md:150-153`：CM-009 = 最小测试脚本 + CI lint/test + 测试资产治理（稳定命令、CI 入口、跨机器 Chrome 配置、证据删除和日志脱敏规则）。
+- 端口约定：HTTP 一律 8899 串行；CDP 9444/9445/9446/9447/9448/9449 已分配（9446 被 CM-004 与 CM-006 共用，串行下无实际冲突，属已知项）。新套件端口分配规则应写入 `tools/README.md`。
+- 本机 npm shim 不可靠是本机环境问题，**不是**不在 package.json 登记脚本的理由；登记时以 `node <真实入口>` 为准，绕开 `.bin` shim。
 
 SCOPE:
 
-- `js/modules/notification.js`
-- 必要的零依赖回归脚本、`tools/README.md` 和本通信文档
+- `tools/run-all.mjs`（新增）：串行执行 lint（`node node_modules/eslint/bin/eslint.js .`）+ 上述 7 个回归套件 + `check-worktree.mjs`，逐项报告退出码，任一失败则整体非零退出；支持环境变量跳过 Chrome 依赖套件（如 `CM009_SKIP_BROWSER=1` 时只跑 lint + check-worktree）。
+- `package.json`：登记 `test` / `test:all` 等指向真实入口的 scripts。
+- `.github/workflows/ci.yml`（新增）：push/PR 触发，ubuntu-latest，Node 22，`npm ci`、lint、跑 `tools/run-all.mjs`（浏览器套件用 CI 自带 Chrome）。
+- 各套件 Chrome 路径解析统一化：允许 `<套件>_CHROME` 覆盖，默认依次尝试环境变量 `CHROME_PATH`、常见 Linux/macOS/Windows 路径、`which google-chrome`。**只改路径解析逻辑，不改断言**。
+- `tools/README.md`：登记新入口、CI 使用方式、端口分配表、日志不入库/证据删除规则、反向验证属手工工具的说明。
+- 本通信文档与归档。
 
 NON-GOALS:
 
-- 不改 webhook 协议、JSONBin 读取方式与 URL、轮询间隔/次数/超时阈值、`#receiptStatus` 的 DOM 结构与视觉样式。
-- 不改冷却逻辑（CM-006 已收敛，`countdown` 是唯一责任者）。
-- 不引入框架、构建步骤或新的运行时依赖。
-- 不顺手修复回执之外的其他路线图任务（CM-009 测试资产、CM-010 password 等）。
-
-IMPLEMENTATION REQUIREMENTS:
-
-1. 轮询必须可取消：保存 timer 句柄或使用代际标记（可参照 CM-006 `countdown.js` 的 `generation` 模式），同一时刻活跃轮询数 ≤ 1。
-2. `sendNotification` 发起轮询前必须使旧轮询失效：旧轮询不得再调用 `setReceiptStatus`（包括 timeout 分支）。
-3. 单次发送行为不变：2s 间隔、最多 15 次、read/timeout 文案与现状一致。
-4. 顺带修复 `setReceiptStatus` 的参数遮蔽：函数参数 `state` 遮蔽了导入的模块 `state`（`notification.js:146`），重命名为 `statusName` 或等价名（该函数在本次改造的写入路径上，属任务内清理）。
-5. `pollReadStatus` 对 `binUrl` 缺失、`msgId` 为空、fetch 异常的处理保持现有宽容语义。
-6. 不改变 `sendNotification` 的历史记录写入与翻译文案路径。
+- 不改任何业务源码（`js/`、`*.html`、`*.css`）。
+- 不新增测试断言、不改既有套件的测试语义（只允许改 Chrome 路径解析）。
+- 不做 format 基线：Prettier 全仓格式化与 CI format-check 属独立的「format 基线」任务（CM-002 已记录 prettier 既有失败），本任务 CI **不含** format-check。
+- 不把 `negative-*.mjs` 纳入 CI 或默认入口。
+- 不引入任何运行时依赖；CI 只用 `npm ci` 安装既有 devDependencies。
+- 不顺手处理 CM-010（password 威胁模型）或既有 lint warning。
 
 ACCEPTANCE CRITERIA:
 
-- [ ] 模拟第二次发送时第一次轮询仍在进行：第一次轮询停止，不再更新 `#receiptStatus`。
-- [ ] 第二次发送后状态条从 sent 开始，最终 read/timeout 由第二次发送的回执决定。
-- [ ] 单次发送：读到 read → 状态条 read；始终读不到 → 15 次后 timeout（节奏与现状一致）。
-- [ ] 同一时刻活跃轮询 ≤ 1（可量化断言，如包装 setTimeout 计数）。
-- [ ] 既有套件全部不回归：e2e / cooldown / input-safety / button-ids / storage-resilience / history-language。
-- [ ] 新增回执回归脚本可复跑，覆盖并发打断、read、timeout、`binUrl` 缺失场景，含反向验证（回退版必须失败且命中修复点关键字）。
-- [ ] `node tools/check-worktree.mjs`、`node node_modules/eslint/bin/eslint.js .`（0 error）、`git diff --check` 通过，修改范围受控。
+- [ ] `node tools/run-all.mjs` 一条命令串行跑完 lint + 7 套件 + check-worktree，全部通过，退出码 0；任一失败整体非零。
+- [ ] `node tools/run-all.mjs` 总输出包含每个套件的名、断言汇总与退出码，失败时能定位到具体套件。
+- [ ] CI workflow 语法有效（`actionlint` 或人工核对），在本机无法跑 Actions 时给出**可复核的干跑证据**：workflow YAML 静态检查 + 本地模拟 CI 命令序列全部通过。
+- [ ] 各套件在 `CHROME_PATH=<有效 Chrome>` 下能跑通（抽验至少 2 个套件）；路径解析逻辑改动前后断言数不变。
+- [ ] 既有 7 套件逐一单跑不回归（断言数与本任务前一致：29/51/52/97/87/107/54）。
+- [ ] `tools/README.md` 端口分配表、日志/证据规则、CI 说明齐备。
+- [ ] `node tools/check-worktree.mjs`、lint 0 error、`git diff --check` 通过；`js/` 零改动。
 
 VERIFICATION:
 
-1. 运行新增的回执回归脚本（建议 CDP 端口 9449，避开与 CM-004/006 重复的 9446 和动态端口范围的 9445；HTTP 8899 串行）。
-2. 运行既有 `tools/e2e.mjs`、`tools/cooldown.mjs`、`tools/input-safety.mjs`、`tools/button-ids.mjs`、`CM003_CDP_PORT=<空闲端口> node tools/storage-resilience.mjs`、`tools/history-language.mjs`。
-3. 运行 `node tools/check-worktree.mjs`、`node node_modules/eslint/bin/eslint.js .`、`git diff --check`，检查完整 diff 与实际修改范围。
+1. `node tools/run-all.mjs`（全量，串行，预计 6–10 分钟）。
+2. 逐一单跑 7 个既有套件复核断言数。
+3. `CM009_SKIP_BROWSER=1 node tools/run-all.mjs` 验证快速路径。
+4. `CHROME_PATH=<chrome 实际路径> node tools/receipt-lifecycle.mjs` 等抽验路径覆盖。
+5. workflow YAML 静态检查；本地按 CI 命令序列（`npm ci` 可跳过，用既有 node_modules）逐步执行并记录退出码。
+6. `node tools/check-worktree.mjs`、`node node_modules/eslint/bin/eslint.js .`、`git diff --check`，核对 diff 中 `js/` 为零改动。
 
 BRANCH:
 
-从本地 `main` 的**当前最新稳定 HEAD** 创建并使用：`codex/cm008-receipt-lifecycle`。外部 AI 开工前必须用 `git rev-parse --short HEAD` 确认（截至本任务卡定稿为合并 CM-007 后的 main；若其后仅有 docs-only 提交，直接用最新 HEAD）。
+从本地 `main` 的**当前最新稳定 HEAD** 创建并使用：`codex/cm009-test-ci`。外部 AI 开工前必须用 `git rev-parse --short HEAD` 确认（任务卡定稿时的 HEAD 见 EXECUTION STATUS；若其后仅有 docs-only 提交，直接用最新 HEAD）。
 
-注意：本机存在「checkout/merge 触发工作区级联丢失」环境缺陷（详见 `docs/handoff/archive/WORKTREE-FILE-LOSS.md` 与 `CM-007.md` 事故记录）。**创建分支或切换分支后必须立即运行 `node tools/check-worktree.mjs`**；若已跟踪文件缺失，先确认非有意删除，再 `git restore -- <路径>` 恢复，不得把缺失当作删除提交。
+注意：本机存在「checkout/merge 触发工作区级联丢失」环境缺陷（详见 `docs/handoff/archive/WORKTREE-FILE-LOSS.md` 与 `CM-007.md`）。**创建分支或切换分支后必须立即运行 `node tools/check-worktree.mjs`**；若已跟踪文件缺失，先确认非有意删除，再 `git restore -- <路径>` 恢复，不得把缺失当作删除提交。
+
+另注意 CM-008 教训：**验收前不得合并 main**。任务分支上的反向验证若以 `main` 为基线，注意 main 已含哪些改造；必要时显式指定改造前 commit。
 
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — CM-008 已实施完成并通过本地验证，等待主 AI 独立验收
-任务分支：codex/cm008-receipt-lifecycle
-任务基线：2dea212（实测 HEAD；任务卡记「合并 CM-007 后的 main」，
-          26f52fb..2dea212 经 diff 验证仅 docs-only：AI_HANDOFF + CM-007 归档 + INDEX）
-当前工作分支：codex/cm008-receipt-lifecycle
-main：未被修改（本任务全部提交都在任务分支上）
-
-分支安全：创建分支后**立即**运行 check-worktree → 缺失 0；之后各次运行前后亦复核，均正常。
-
-本任务提交：
-  2f01e57  fix: 回执轮询可取消与单一所有权
-  f1786f4  test: 新增回执轮询生命周期回归与反向验证
-  e61e71d  docs: 登记 CM-008 验证工具与回执轮询说明
-  （另有 1 个面板回填提交，见 git log）
+状态：DISPATCHED — 等待外部 Execution AI 认领
+任务分支：codex/cm009-test-ci（待创建）
+任务基线：本面板提交后的实际 HEAD（开工前以 git rev-parse --short HEAD 实测为准）
 ```
 
 ## EXECUTION REPORT
 
-> 报告不等于主 AI 验收通过。以下命令与输出均为本机实跑结果，可直接复跑复核。
-
-### 一、修改文件
-
-| 文件 | 改动 |
-|---|---|
-| `js/modules/notification.js` | 新增 `receiptPollTimer` / `receiptPollGeneration` / `stopReceiptPolling()`；`pollReadStatus()` 改为可取消 + 代际守卫；`setReceiptStatus` 参数改名 |
-| `tools/receipt-lifecycle.mjs` | **新增**：CM-008 回归脚本（54 项断言） |
-| `tools/negative-receipt-lifecycle.mjs` | **新增**：反向验证脚本（全流程约 4 分钟） |
-| `tools/README.md` | 登记两个新工具 + CM-008 环境变量/验收路径 |
-
-### 二、实现摘要
-
-改造前：`pollReadStatus()` 用递归 `setTimeout(poll, 2000)`，**不保存句柄、无取消机制**，
-一旦启动最长跑约 32s。两次发送重叠时，旧轮询读到旧 `msgId` 的 read 或走到 timeout，
-会把新消息的状态条覆盖掉（TECH_DEBT CM-001-TD-07）。
-
-改造后（做法与 CM-006 `countdown.generation` 一致）：
-
-| 关注点 | 实现 |
-|---|---|
-| 状态 | `receiptPollTimer`（句柄，null = 无已排队轮询）+ `receiptPollGeneration`（代际） |
-| 停止 | `stopReceiptPolling()`：自增代际 + `clearTimeout` + 句柄置 null，**不写状态条** |
-| 单一所有权 | `pollReadStatus()` 启动前先 `stopReceiptPolling()` → 同一时刻活跃轮询 ≤ 1 |
-| 旧轮询失效 | **三处**代际校验：回调入口、`await fetch` 之后、`await res.json()` 之后 |
-| 终态 | read 命中 / 15 次超时：先清句柄再写状态条 |
-| 参数遮蔽 | `setReceiptStatus(state)` → `setReceiptStatus(statusName)` |
-
-**两处值得说明的判断**：
-
-1. **刻意不用 AbortController** —— 那会改动既有 JSONBin 读取方式（NON-GOALS）。
-   代际校验已足以保证旧轮询不写状态条：在飞的请求返回后被直接丢弃。
-2. **`await` 之后的两处重复校验是必需的** —— 这两处是异步边界，
-   期间可能有新一次发送接管轮询；只在回调入口校验不足以覆盖。
-
-### 三、测试结果（全部实跑）
-
-**1) CM-008 回归（新增）**
-
-```text
-node tools/receipt-lifecycle.mjs
-→ 断言：54 passed, 0 failed      退出码 0
-  环境：Chrome/153.0.8010.50（headless，CDP 9449，HTTP 8899）
-  S0 前置 · S1 单次→read · S2 单次→timeout · S3 并发打断（核心）
-  S4 宽容语义 · S5 可取消性 · S6 定时器计数 · S7 同源性 · S8 页面异常
-  页面错误 0 条
-```
-
-两个核心观测值：
-
-```text
-S2：共 15 次 bin 请求、耗时 30-36s      ← 单次节奏与阈值不变
-S3：★ 越过后第一次的原超时点，状态条仍为 read
-    ★ 旧轮询已停止发请求 → binCalls=3（改造前为 16）
-```
-
-**★ 量化「旧轮询真的死了」的思路**：不看定时器计数（易受 toast 等干扰），
-而看**旧轮询是否还在发请求** —— 两个轮询并存时，32s 窗口内的 JSONBin 请求数会接近翻倍。
-改造后为 3 次（第一次交接前 2 次 + 第二次命中 1 次），改造前 16 次。
-
-**2) CM-008 反向验证（新增）**
-
-```text
-node tools/negative-receipt-lifecycle.mjs
-→ 已改造版本：54 passed / 0 failed，退出码 0
-  回退版本  ：31 passed / 20 failed，退出码 1
-  源码已还原：true（finally 中比对磁盘与备份，一致）
-  结果：通过 —— 对「轮询不可取消」与「旧轮询覆盖新状态条」均有区分力
-```
-
-回退版关键证据（★ 两条的数值与设计预期吻合）：
-
-```text
-FAIL  ★ 旧轮询的超时分支未覆盖新状态条（仍为 read） -> receipt-status timeout
-FAIL  ★ 旧轮询已停止发请求（bin 请求 ≤ 6）        -> binCalls=16
-FAIL  提供 stopReceiptPolling 接口 -> 旧实现没有该接口
-FAIL  旧轮询已被失效（代际自增） -> null -> null
-FAIL  不再有遮蔽模块 state 的参数名 -> hasShadowParam=true
-FAIL  轮询的 setTimeout 全部被句柄接住 -> bare=2, handled=0
-```
-
-**3) 非回归（既有套件，全部用默认端口）**
-
-| 命令 | 结果 | 退出码 |
-|---|---|---|
-| `node tools/e2e.mjs` | 29 passed / 0 failed | 0 |
-| `node tools/cooldown.mjs` | 87 passed / 0 failed | 0 |
-| `node tools/input-safety.mjs` | 97 passed / 0 failed | 0 |
-| `node tools/button-ids.mjs` | 52 passed / 0 failed | 0 |
-| `node tools/storage-resilience.mjs` | 51 passed / 0 failed | 0 |
-| `node tools/history-language.mjs` | 107 passed / 0 failed | 0 |
-
-> 本次 `storage-resilience` 用**默认 CDP 端口 9445 直接通过**：
-> 运行前用 `netstat` 确认 9445 已空闲（CM-007 那次它被本机另一进程的对外连接
-> 占为源端口）。若下次复跑遇到 `CDP 未就绪`，按 `tools/README.md` 的说明
-> 换 `<套件>_CDP_PORT=<空闲端口>` 并记录实际命令。
-
-**4) 其他检查**
-
-| 命令 | 结果 | 退出码 |
-|---|---|---|
-| `node tools/check-worktree.mjs` | 未发现被删除的已跟踪文件 | 0 |
-| `git diff --check` | 无空白错误 | 0 |
-| `node node_modules/eslint/bin/eslint.js .` | **0 error / 1 warning**（warning 见已知问题） | 0 |
-
-### 四、开发过程中由测试发现并修掉的两处
-
-1. **终态未清句柄**：首轮跑测试时 S1/S2/S3 各有一条 `pollArmed = false` 失败 ——
-   轮询到达终态后 `receiptPollTimer` 仍留着已触发的旧 id，
-   于是「句柄非空」不再等价于「有轮询在等待」。
-   已在 read 命中与 timeout 两个终态先清句柄再写状态条。
-   这不只是让测试变绿：字段失去真值语义本身就是生命周期实现的缺陷。
-2. **lint error**：`tools/receipt-lifecycle.mjs` 有一处无用赋值
-   （`no-useless-assignment`），已删。lint 回到 0 error。
-
-### 五、已知问题与范围外发现（**未擅自修复**）
-
-1. **`tools/worktree-guard.mjs:117` 的 lint warning** 仍在（`catch (e)` 的 `e` 未使用），
-   与 CM-006 / CM-007 报告一致。该文件属 GOV-001 防线，非本任务引入，**未修**。
-
-2. **审计文档的过时描述**（未修改，属主 AI 的审计基线）：
-   - `docs/TECH_DEBT.md:68-74` CM-001-TD-07 —— **已解决**，可考虑标记关闭
-   - `docs/DATA_FLOW.md:62` 「轮询 timer 不保存到模块状态，无法由新请求取消旧轮询；
-     多个请求的回执都写同一个 `#receiptStatus`」—— **已不成立**
-   - `docs/ARCHITECTURE.md:55` 描述每 2 秒轮询、最多 15 次 —— 结论仍有效，
-     但可补一句「轮询句柄化、新发送会取消旧轮询」
-   - `AGENTS.md:239` 「所有已读回执轮询共享 `#receiptStatus`，轮询 timer 当前不可取消」
-     —— **后半句已不成立**
-
-3. **`tools/cooldown.mjs`（CM-006）的 CDP 端口 9446 与 CM-004 重复** —— 已在 CM-007
-   报告中记录，本次仍未修（属 CM-006 范围）。本任务的 9449 是按任务卡建议选的，
-   未新增冲突。
-
-### 六、未执行的验证
-
-- 未在真实 JSONBin 上验证 —— 为避免外部副作用，回归用 fetch 桩离线模拟回执；
-  JSONBin 的真实读取方式未改动。
-- 未验证「多次发送后状态条最终一定收敛到最后一次的回执」在**三次以上**连续发送下的表现 ——
-  本脚本覆盖两次连续发送（S3）。三连发的路径与两次同理（每次都先失效旧轮询），
-  但未单独断言。
+（待外部 AI 填写：修改文件、实现摘要、测试命令与完整结果、退出码、已知问题、commit。）
 
 ## REVIEW RESULT
 
-CM-007：**PASS**（2026-09-19）。
+CM-008：**PASS**（2026-09-19，主 AI 独立验收）。
 
-- Diff 审查：8 文件全部在 SCOPE 内；`language.js` 存在性判断正确，首页行为不变；翻译键四语言齐全；zh `webhookLabel` 保持 `Webhook` 与 CM-005 断言兼容。
-- 独立复跑全部 10 项验证与执行 AI 报告一致（history-language 107/0、negative 65/42 区分力、input-safety 97/0、cooldown 87/0、button-ids 52/0、storage-resilience 51/0、e2e 29/0、lint 0 error/1 既有 warning、diff-check 0、check-worktree 0 缺失）。
-- 已快进合并 `1bedcab..26f52fb` 并完成合并后复验。
-- 事故记录：合并时 `tools/` 14 个文件被沙箱级联搬入回收站（防线脚本同时失效），`git restore -- tools/` 全部恢复，零数据丢失；详见 `docs/handoff/archive/CM-007.md`。
-- 完整验收与事故记录已归档：`docs/handoff/archive/CM-007.md`。
-
-CM-008：尚未验收。
+- Diff 审查：5 文件全部在 SCOPE 内；`notification.js` 句柄 + 代际守卫实现与 CM-006 模式一致，三处异步边界校验完整，终态清句柄正确；`setReceiptStatus` 参数遮蔽已修复；单次节奏（2s × 15）未变。
+- 独立复跑与执行 AI 报告逐项一致：receipt-lifecycle 54/0、e2e 29/0、cooldown 87/0、input-safety 97/0、button-ids 52/0、storage-resilience 51/0、history-language 107/0、lint 0 error/1 既有 warning、diff-check 0、check-worktree 缺失 0。
+- 反向验证：因 main 已含改造，默认基线失效（exit 2），改用 `CM008_BASE_REF=2dea212` 复跑：已改造 54/0、回退 31/20，取消能力 6 条 + 并发隔离 4 条 + 参数遮蔽 4 条全部命中，binCalls=16 与设计预期吻合，源码还原 true。区分力成立。
+- **流程偏差**：reflog 显示 `merge codex/cm008-receipt-lifecycle: Fast-forward` 先于本次验收发生（合并先于验收，顺序违反协议；执行 AI 报告时点 main 未被修改）。验收为 PASS 且合并方式即授权的快进合并，结果与协议终态一致，未回退。已在归档中记录并派生教训（合并后反向验证须显式指定基线 commit）。
+- 主 AI 顺带同步过时审计描述：TECH_DEBT CM-001-TD-07 标记解决、DATA_FLOW 回执段、ARCHITECTURE 网络模型、AGENTS.md 高风险区域三条（CM-006/007/008）。
+- 完整记录：`docs/handoff/archive/CM-008.md`。
 
 ## NEXT ACTION
 
-外部 AI 请读取最新的 `AGENTS.md` 和本文件，用 `git rev-parse --short HEAD` 确认实际 HEAD 后创建 `codex/cm008-receipt-lifecycle`（**创建/切换分支后立即跑 `node tools/check-worktree.mjs`**），按 `CURRENT TASK` 执行。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。不要修改或合并 `main`。
+外部 AI 请读取最新的 `AGENTS.md` 和本文件，用 `git rev-parse --short HEAD` 确认实际 HEAD 后创建 `codex/cm009-test-ci`（**创建/切换分支后立即跑 `node tools/check-worktree.mjs`**），按 `CURRENT TASK` 执行。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。**不要修改或合并 `main`，不要 push。**

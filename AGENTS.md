@@ -234,9 +234,9 @@ LocalStorage key：
 - `buttonManager.js`：保存时默认按钮 ID 会被按位置生成 `default_1` 等，自定义 ID 会按时间生成；不要无迁移地改变旧配置语义。
 - `state.js`、`history.js`、`buttonManager.js`：LocalStorage JSON 解析容错不一致。
 - `buttonManager.js`、`history.js`：动态 HTML 可能承载用户输入。
-- `state.js`、`main.js`、`buttonManager.js`、`notification.js`、`countdown.js`：冷却状态和时间戳由多个模块共同维护。
-- `history.html`：当前只加载 `history.js`，没有初始化首页的 `language.js`。
-- `notification.js`：所有已读回执轮询共享 `#receiptStatus`，轮询 timer 当前不可取消。
+- `state.js`、`main.js`、`buttonManager.js`、`notification.js`：冷却状态只读 `state.canClick`；冷却转换与 `lastClickTime` 写入由 `countdown.js` 独占（CM-006）。
+- `history.html`：只加载 `history.js`，由其自行调用 `language.init()`（CM-007）。
+- `notification.js`：已读回执轮询句柄化、可取消；新发送先 `stopReceiptPolling()` 使旧轮询失效，同一时刻活跃轮询 ≤ 1（CM-008）。
 - `config.js` 与 `password.js`：密码配置存在重复定义；音效配置没有明确的 error 音效资源。
 
 ## 修改流程

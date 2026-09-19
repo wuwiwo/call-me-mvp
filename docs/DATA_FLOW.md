@@ -59,7 +59,7 @@ DOMContentLoaded
 
 - webhook 是 GET，参数经 `URLSearchParams` 编码；HTTP 非 2xx 被视为失败。
 - 成功后每 2 秒读取 JSONBin；读取到同一 `msgId` 且 `status=read` 就更新回执，否则约 30 秒后 timeout。
-- 轮询 timer 不保存到模块状态，无法由新请求取消旧轮询；多个请求的回执都写同一个 `#receiptStatus`。
+- 轮询已句柄化、可取消（CM-008）：新一次发送会先 `stopReceiptPolling()` 使旧轮询失效（代际守卫），同一时刻活跃轮询 ≤ 1；`#receiptStatus` 只反映最新一次发送的回执。
 
 ## Cooldown 流程
 

@@ -52,7 +52,7 @@ history.html
 ## 网络模型
 
 1. webhook：`notification.sendNotification()` 将 message、nickname、emoji、msgId 拼入 GET query string。
-2. 回执：成功后 `pollReadStatus()` 每 2 秒 GET JSONBin 公开 endpoint，匹配 `msgId` 与 `status === "read"`，最多 15 次。
+2. 回执：成功后 `pollReadStatus()` 每 2 秒 GET JSONBin 公开 endpoint，匹配 `msgId` 与 `status === "read"`，最多 15 次。轮询句柄化、可取消：新发送先取消旧轮询（CM-008）。
 3. 音频/CDN：Font Awesome、Google Fonts 和音效资源也依赖网络/静态资源路径。
 
 ## 关键架构观察
