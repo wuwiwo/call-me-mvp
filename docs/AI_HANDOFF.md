@@ -46,16 +46,21 @@ VERIFICATION:
 
 ```text
 状态：MERGED — CM-005 已通过验收，已合并进 main 并推送
-任务分支：codex/cm005-input-safety（已合并，待清理）
+任务分支：codex/cm005-input-safety（已清理，本地与远端均无残留）
 任务基线：ddff168
-合并后 main：745b8d3（= origin/main，已核对一致）
+合并后 main：745b8d3
 当前工作分支：main
 
-2026-09-18 晚（外部 AI）：已完成「工作区文件丢失」独立复核 + 防线入库。
-main 上新增 3 个提交（b35463f / b012893 / aeac088），**均未推送**：
+2026-09-19 10:2x（外部 AI）：已按 Human 授权推送。
+推送范围 141ca5d..ec9a20e，远端 main 现为 ec9a20e。
+经 ls-remote 核对：origin 仅 refs/heads/main，无遗留任务分支。
+
+本次推送的 4 个提交（2026-09-18 晚完成，均无业务代码改动）：
   - b35463f chore: 提交工作区防丢守卫（钩子 + 守卫脚本）
   - b012893 chore: 补行尾策略并登记守卫工具
   - aeac088 docs: 修正工作区文件丢失的根因（旧结论已被推翻）
+  - ec9a20e docs: 面板同步工作区文件丢失的复核结论与待推送提交
+（另有本次推送后更新面板状态的 1 个 docs 提交，见 git log）
 未改动任何业务代码（js/ 下零改动）。
 ```
 
@@ -148,23 +153,30 @@ CM-005：PASS，可进入 Human 明确授权的合并与推送门禁。
 
 ## NEXT ACTION
 
-**待 Human 授权：推送 main 上积压的 3 个提交。**
+**当前无待执行任务。** 推送已于 2026-09-19 按 Human 授权完成
+（`141ca5d..ec9a20e`）；无遗留任务分支。外部 AI 保持待命，
+**不得自行修改代码或 `main`**，等待主 AI 更新 `CURRENT TASK`。
 
 ```text
-b35463f  chore: 提交工作区防丢守卫（钩子 + 守卫脚本）
-b012893  chore: 补行尾策略并登记守卫工具
-aeac088  docs: 修正工作区文件丢失的根因（旧结论已被推翻）
+推送记录
+  命令：git -c http.proxy=http://127.0.0.1:7897 \
+             -c https.proxy=http://127.0.0.1:7897 push origin main
+  结果：141ca5d..ec9a20e  main -> main
+  核对：HEAD == origin/main == ec9a20e
+  远端：ls-remote --heads origin 仅 refs/heads/main
 ```
-
-- 均为 `chore` / `docs`，**零业务代码改动**（`js/` 未动）。
-- 获授权后执行：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=... push origin main`。
-- 推送后建议清理已合并的 `codex/cm005-input-safety` 分支。
 
 **待主 AI 确认**：`EXECUTION REPORT` 中「工作区文件丢失」一节已由外部 AI 改写
 （旧根因「不是 git 删除的」已被推翻）。若主 AI 认为该结论需要更强证据，
 可在**未提权**的命令里复跑 `.workbuddy/verify_committed_guard.py`
 （它内置前置断言：先查 `tsbx.dll` 是否注入，未注入则主动 SKIP 而不给出假阴性）。
+注意该脚本位于 `.workbuddy/`，已被 `.gitignore` 忽略，**不经 Git 共享**。
 
-**未决事项**（不阻塞）：`.githooks/` 依赖 `core.hooksPath` 这条**本地配置**——
-它在 `git config --local` 里，**不会被 clone 的人自动获得**。若希望防线对协作者也生效，
-需要写入文档或 setup 脚本。当前仓库只有 Human 一人在用，可暂不处理。
+**未决事项**（不阻塞，记录备查）：
+
+1. `.githooks/` 依赖 `core.hooksPath` 这条**本地配置**——它在 `git config --local` 里，
+   **不会被 clone 的人自动获得**。若希望防线对协作者也生效，需要写入文档或 setup 脚本。
+   当前仓库只有 Human 一人在用，可暂不处理。
+2. **治本手段仍不可行**：改沙箱 `tsbx_rules.json` 的 `recyclebin_backup` 三组实测零效果
+   （常驻进程只在启动时读一次配置，且会回写覆盖）。唯一未验证的路径是
+   **重启 WorkBuddy 后再试**，且届时配置会不会又被回写仍属未知。
