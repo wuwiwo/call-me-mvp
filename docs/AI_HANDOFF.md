@@ -4,76 +4,94 @@
 
 ## CURRENT TASK
 
-**无活动任务**。CM-010 + GOV-002 + 文档 666888 清理均已完成并推送，等 Human 明示下个任务方向。
+CM-001-TD-08 — 修复 error 通知音效静默失败
 
-下个任务候选（见 NEXT ACTION）：
+PHASE: BugFix
+PRIORITY: P2
 
-- CM-001-TD-08 余项：`soundManager.playNotificationSound(false)` 访问未配置的 `notifications.error`（P2 小坑）。
-- CM-001-TD-09：format 基线未达标（29 文件 Prettier 失败，P3 清理，需 Human 授权批量 diff）。
+OBJECTIVE:
+
+修复 `soundManager.playNotificationSound(false)` 访问未配置的 `CONFIG.soundEffects.notifications.error` 导致的静默失败。
+现状：`sounds.js:50-52` 的 `playNotificationSound(isSuccess)` 里 `type = isSuccess ? 'success' : 'error'`，
+然后 `this.play(CONFIG.soundEffects.notifications[type])`。但 `config.js` 的 `notifications` 只有 `success`，
+**没有 `error`** → `isSuccess=false` 时 `play(undefined)` → `audioCache.get(undefined)` → undefined → 静默不播放。
+调用方 `notification.js:39` 在 5 处错误/警告场景（初始化失败、输入校验失败、冷却限制等）传入 `false`，用户听不到任何反馈。
+
+方案（Human 已拍板 C）：新增 error 音效文件 + config 配置。
+**音效文件已由主 AI 准备并提交到 main**：`sounds/error-notification.wav`（200+150Hz 双频蜂鸣，0.35 秒，16-bit PCM mono，30912 bytes）。
+
+CONTEXT:
+
+- `js/modules/config.js:51-53`：`notifications: { success: "sounds/success-notification.wav" }` —— 缺 `error`
+- `js/modules/sounds.js:50-53`：`playNotificationSound(isSuccess)` → `this.play(CONFIG.soundEffects.notifications[type])` —— 无防御性检查
+- `js/modules/notification.js:39`：`soundManager.playNotificationSound(isSuccess)` —— 唯一调用方
+- 调用 `show(message, false)` 的 5 处：`main.js:146`、`profile.js:116`、`buttonManager.js:260,437,791`
+- 音效资源目录 `sounds/` 现有 8 个文件（含新增 `error-notification.wav`）
+
+SCOPE:
+
+- `js/modules/config.js`：在 `notifications` 对象里加 `error: "sounds/error-notification.wav"`（与 `success` 同级，字段名 `error`）
+- `js/modules/sounds.js`：`playNotificationSound(isSuccess)` 加防御性检查 —— 当 `CONFIG.soundEffects.notifications[type]` 不存在时直接 return（不传 undefined 给 `play()`），避免未来配置缺失时静默失败
+
+NON-GOALS:
+
+- 不改 `notification.js` 的调用方（`show` / `sendNotification` 的 `isSuccess` 语义不变）
+- 不改 avatar 音效（`playAvatarSound` 路径不动）
+- 不改 `play(url)` 的核心逻辑（`audioCache` / `audio.play()` 不动）
+- 不加新音效功能、不改 `preload()` 逻辑（`preload` 已遍历 `Object.values(notifications)`，加 `error` 后会自动预加载）
+- 不改 `soundManager.enabled` / `toggle()` 全局开关
+- 不动 AGENTS.md（主 AI 自己同步）
+
+IMPLEMENTATION REQUIREMENTS:
+
+1. `config.js` 的 `notifications` 对象加 `error: "sounds/error-notification.wav"`，与 `success` 同级，注释标注用途。
+2. `sounds.js` 的 `playNotificationSound(isSuccess)` 在取 `type` 后、调 `this.play()` 前，检查 `CONFIG.soundEffects.notifications[type]` 是否存在；不存在时直接 return（不传 undefined）。
+3. `preload()` 不需要改 —— 它已用 `Object.values(CONFIG.soundEffects.notifications)` 遍历，加 `error` 后自动预加载。
+4. 行为不变：`playNotificationSound(true)` 仍播放 `success-notification.wav`；`playNotificationSound(false)` 从静默失败变为播放 `error-notification.wav`。
+
+ACCEPTANCE CRITERIA:
+
+- [ ] `config.js` 的 `notifications` 有 `success` 和 `error` 两个键，`error` 指向 `sounds/error-notification.wav`。
+- [ ] `sounds.js` 的 `playNotificationSound` 在配置缺失时不传 undefined 给 `play()`（防御性检查）。
+- [ ] `playNotificationSound(false)` 播放 `error-notification.wav`（可通过 `audioCache` 验证有缓存条目）。
+- [ ] `playNotificationSound(true)` 行为不变（播放 `success-notification.wav`）。
+- [ ] `preload()` 预加载 `error-notification.wav`（`Object.values` 自动包含）。
+- [ ] lint 0 error、`git diff --check` 0、check-worktree 缺失 0。
+- [ ] `node tools/run-all.mjs` 全量 10/10 通过（537 项断言 0 失败，既有套件不回归）。
+
+VERIFICATION:
+
+1. `node tools/run-all.mjs` 全量。
+2. `node node_modules/eslint/bin/eslint.js .`、`git diff --check`、`node tools/check-worktree.mjs`。
+3. 手工/页面级验证（可选）：`soundManager.playNotificationSound(false)` 在浏览器控制台调用后 `audioCache` 有 `sounds/error-notification.wav` 条目。
+
+BRANCH:
+
+从本地 `main` 的当前最新稳定 HEAD `e00b086` 创建并使用：`codex/cm011-error-sound`。开工前必须 `git rev-parse --short HEAD` 实测确认。
+
+注意：本机存在「checkout/merge 触发工作区级联丢失」环境缺陷。**创建/切换分支后必须立即运行 `node tools/check-worktree.mjs`**；若已跟踪文件缺失，先确认非有意删除，再 `git restore -- <路径>` 恢复。守卫已移出 `tools/` 到 `scripts/` + `.git/`（GOV-002），cherry-pick 实测能自动恢复级联误伤。**验收前不得合并 main、不得 push**。
 
 ## EXECUTION STATUS
 
 ```text
-状态：IDLE — 无活动任务，等 Human 明示下个任务方向
-当前分支：main（HEAD: ee5fa66）
-工作区：干净；check-worktree 缺失 0
-远端：origin/main 已同步（c52c4e0..ee5fa66）
-
-CM-010 已完成（详见 docs/handoff/archive/CM-010.md）：
-  - 任务分支快进合并到 main（c0ad0a9）+ 主 AI 同步（dba7e0c）+ 归档（bc40919）
-
-GOV-002 已完成（详见 docs/handoff/archive/GOV-002.md）：
-  - cherry-pick 2 个提交到 main（2bede31 + 7255fc3）+ 主 AI 同步（cb6611c）+ 归档（c52c4e0）
-  - 新守卫第一次实战成功：cherry-pick 时 22 个级联误伤全部恢复
-  - .git/worktree-guard.mjs 副本已确认存在（selfInstall 成功，8798 bytes）
-
-文档 666888 清理已完成：
-  - 9 处文档明文密码改为指向 config.js（ee5fa66）
-  - grep 验证：文档 0 命中、js/ 只命中 config.js 单一来源
-  - lint 0 error、check-worktree 缺失 0
+状态：DISPATCHED — 任务卡已写入，等待外部 AI 执行
+任务分支：codex/cm011-error-sound（待外部 AI 创建）
+任务基线：e00b086（main 当前 HEAD）
+主 AI 已准备资源：sounds/error-notification.wav（已提交到 main）
 ```
 
 ## EXECUTION REPORT
 
-无活动任务。CM-010 完整协作记录见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)，GOV-002 完整协作记录见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
+（外部 AI 完成后填写）
 
 ## REVIEW RESULT
 
-**CM-010：CONDITIONAL PASS**（2026-09-19，已完成合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
+**CM-010：CONDITIONAL PASS**（已完成合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
 
-**GOV-002：PASS**（2026-09-19，已完成 cherry-pick 合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
+**GOV-002：PASS**（已完成 cherry-pick 合并 + 同步 + 归档 + push）。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
 
-**文档 666888 清理：PASS**（2026-09-19，主 AI 直接执行）。9 处文档明文密码改为指向 `config.js` 的 `CONFIG.password.defaultPassword`；修复过时代码示例（`PASSWORD_EXPIRY_DAYS`/`correctPassword` 已由 CM-010 收敛）；grep 验证文档 0 命中、js/ 只命中 config.js 单一来源；lint 0 error、check-worktree 缺失 0。
-
-8 项验收项全过：
-1. `scripts/worktree-guard.mjs` 权威版本 + ROOT 三级解析 ✅
-2. `selfInstall()` 写到 `.git/worktree-guard.mjs`（8798 bytes，实测确认）✅
-3. 钩子三级回退链路（①scripts/ → ②.git/ 副本 → ③纯 git 应急）✅
-4. 决定性测试 D（第 2 级独立工作）✅ —— `.git/` 副本独立运行 exit 0 + cherry-pick 时 22 个级联误伤全部恢复（第 1 级实战证据）+ GOV-002 报告的测试 D 证据
-5. `run-all.mjs` 全量 10/10（537 项断言 0 失败）✅
-6. diff 范围受控（守卫 rename + 3 钩子 + README + eslint 配置 + AGENTS.md）✅
-7. lint 0 error / check-worktree 缺失 0 ✅
-8. **合并后即使触发级联，新守卫能存活并恢复** ✅ —— cherry-pick 时 22 个文件被搬走，新守卫（在 `scripts/` + `.git/`，不在被搬走的 `tools/` 里）全部恢复。**根因修复实战有效**。
-
-主 AI 同步修复了 GOV-002 漏改的 eslint 配置（`scripts/**/*.mjs` 未配 Node 环境，导致 13 个 `process is not defined` error）。
-
-完整记录：[`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
+**文档 666888 清理：PASS**（已完成 + push）。9 处文档明文密码改为指向 `config.js` 单一来源；grep 验证文档 0 命中。
 
 ## NEXT ACTION
 
-等 Human 明示下个任务方向。两个候选：
-
-### 候选 1：CM-001-TD-08 余项（错误音效路径）
-
-- `soundManager.playNotificationSound(false)` 访问未配置的 `notifications.error`（P2 小坑）
-- `sounds.js:50-52`：`type = isSuccess ? 'success' : 'error'` → `CONFIG.soundEffects.notifications.error` 不存在 → `play(undefined)` 静默失败
-- 需要派发外部 AI 或主 AI 自己修（小任务）
-
-### 候选 2：CM-001-TD-09（format 基线）
-
-- 29 个文件 Prettier 失败（P3 清理）
-- 批量格式化会产生大 diff，需 Human 授权
-
-**外部 AI 暂无任务**。等 Human 明示。
-
-**网络提示**：本机 push github.com 直连可能间歇性失败（`SSL_ERROR_SYSCALL`），带代理 `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main` 可用。
+外部 AI 请读取最新的 `AGENTS.md` 和本文件，用 `git rev-parse --short HEAD` 确认实际 HEAD（应为 `e00b086`）后创建 `codex/cm011-error-sound`（**创建/切换分支后立即跑 `node tools/check-worktree.mjs`**），按 `CURRENT TASK` 执行。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。**不要修改或合并 `main`，不要 push。**
