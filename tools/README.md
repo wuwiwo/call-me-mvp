@@ -12,12 +12,46 @@
 
 ## 跑法
 
+### 统一入口（推荐，CM-009）
+
+```bash
+npm test                                # = node tools/run-all.mjs
+                                        #   lint + 7 个套件 + check-worktree，串行，约 4 分钟
+npm run test:quick                      # 只跑 lint + check-worktree（几秒）
+node tools/run-all.mjs                  # 等价于 npm test
+node tools/run-all.mjs --skip-browser   # 等价于 npm run test:quick
+```
+
+`run-all.mjs` 逐项报告**套件名 / 断言汇总 / 退出码 / 耗时**，任一失败整体退出码非 `0`，
+并直接列出失败项（或该套件的输出末尾），方便定位。
+
+> **为什么必须串行**：所有套件都用 HTTP `8899`（各自进程内起静态服务器），并行会抢端口。
+> `run-all.mjs` 用 `spawnSync` 逐个跑，天然串行。
+>
+> **为什么 `check-worktree` 放最后**：它兼作"跑完这一轮后工作区仍完好"的收口检查。
+
+### 单个套件
+
 ```bash
 node tools/e2e.mjs                  # CM-002：29 项断言（自带服务器）
 node tools/storage-resilience.mjs   # CM-003：51 项断言（自带服务器）
-node tools/negative-storage.mjs     # CM-003：反向验证
 node tools/button-ids.mjs           # CM-004：52 项断言（自带服务器）
-node tools/negative-button-ids.mjs  # CM-004：反向验证
+node tools/input-safety.mjs         # CM-005：97 项断言
+node tools/cooldown.mjs             # CM-006：87 项断言
+node tools/history-language.mjs     # CM-007：107 项断言
+node tools/receipt-lifecycle.mjs    # CM-008：54 项断言（约 2 分钟）
+```
+
+### 手工反向验证（不进 CI、不进 run-all）
+
+```bash
+node tools/negative.mjs                     # CM-002
+node tools/negative-storage.mjs             # CM-003
+node tools/negative-button-ids.mjs          # CM-004
+node tools/negative-input-safety.mjs        # CM-005
+node tools/negative-cooldown.mjs            # CM-006
+node tools/negative-history-language.mjs    # CM-007
+node tools/negative-receipt-lifecycle.mjs   # CM-008（约 4 分钟）
 ```
 
 所有脚本都以退出码表达结果：`0` = 通过，非 `0` = 失败。
@@ -26,10 +60,38 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 > 原因见下文「服务器必须与浏览器同进程」。
 > CM-002/CM-003 也支持复用外部服务器：`CM002_NO_SERVER=1` / `CM003_NO_SERVER=1`。
 
+## CI（GitHub Actions）
+
+`.github/workflows/ci.yml`：`push`(main) + `pull_request` + 手动触发，`ubuntu-latest` + Node 22。
+
+命令序列（与本地 `npm test` 是同一条入口）：
+
+```bash
+npm ci
+npm run lint        # 单列一步
+npm test            # = node tools/run-all.mjs
+```
+
+- **lint 为什么既单列一步、又在 `run-all.mjs` 里**：单列是为了**快速失败** ——
+  几秒就能报出语法问题，不必等 4 分钟的浏览器套件跑完。
+  `run-all.mjs` 第一步也是 lint，保证"单一入口"单独执行时语义完整。
+- **Chrome**：ubuntu runner 自带 Google Chrome，由 `tools/chrome-path.mjs` 自动解析；
+  需要强制指定时设 `CHROME_PATH`。**不需要 xvfb**（`--headless=new` 不依赖显示器）。
+- **日志**：CI 设 `CM009_VERBOSE=1` + `CM009_LOG=ci-run-all.log`，
+  并以 artifact 上传（`if: always()`，保留 7 天）。`*.log` 已被 `.gitignore` 忽略，不会入库。
+- **反向验证不进 CI**：`negative-*.mjs` 会临时改写业务源码，属手工证据工具
+  （AGENTS.md 明确规定）。workflow 里也不引用它们。
+
+> 本机无法执行 GitHub Actions，因此 CI 有效性的证据是：
+> ① workflow YAML **真实解析**（PyYAML `safe_load`）+ 关键结构断言；
+> ② 本地按上面同一命令序列逐步干跑并记录退出码。见本任务的 EXECUTION REPORT。
+
 ## 文件说明
 
 | 文件 | 用途 |
 |---|---|
+| `run-all.mjs` | **统一入口**（CM-009）：串行跑 lint + 7 个套件 + `check-worktree.mjs`，逐项报套件名/断言汇总/退出码，任一失败整体非零 |
+| `chrome-path.mjs` | 套件共用的 Chrome 可执行文件解析（CM-009）：`<套件>_CHROME` > `CHROME_PATH` > 常见安装路径 > `which` |
 | `server.mjs` | 零依赖静态服务器，服务仓库根目录（可选，供复用外部服务器时使用） |
 | `e2e.mjs` | CM-002：CDP 驱动真实浏览器，29 项断言 |
 | `negative.mjs` | CM-002：回退修复 → 重跑 → 自动还原，验证测试有效性 |
@@ -62,6 +124,77 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
 > 它们是**运行时证据**，脚本自身（含全部断言清单）才是可追溯的复核依据。
 > 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` / `CM006_LOG` / `CM007_LOG` / `CM008_LOG` 可指定落盘路径。
+
+## 测试资产治理
+
+### 端口分配
+
+| 用途 | 端口 | 说明 |
+|---|---|---|
+| HTTP（全部套件） | `8899` | 各自进程内起静态服务器 → **只能串行**；`run-all.mjs` 已串行 |
+| CM-002 `e2e.mjs` | CDP `9444` | |
+| CM-003 `storage-resilience.mjs` | CDP `9445` | ⚠️ 落在 Windows 动态端口范围内，可能被别的进程当"对外连接的源端口"占用 |
+| CM-004 `button-ids.mjs` | CDP `9446` | |
+| CM-005 `input-safety.mjs` | CDP `9447` | |
+| CM-006 `cooldown.mjs` | CDP `9446` | ⚠️ **与 CM-004 重复**；两者 HTTP 同为 8899、本就串行，暂无实际冲突，属已知项 |
+| CM-007 `history-language.mjs` | CDP `9448` | |
+| CM-008 `receipt-lifecycle.mjs` | CDP `9449` | |
+
+**新增套件时**：挑一个未被占用的 CDP 端口（尽量避开 `9440–9500` 这类动态端口范围），
+并更新本表。若运行时报 `CDP 未就绪：Chrome 是否启动？`，**先确认端口是不是被占了**：
+
+```bash
+netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口占了
+<套件>_CDP_PORT=<空闲端口> node tools/<套件>.mjs   # 覆盖运行
+```
+
+报告里要写明**实际执行的命令**（带覆盖变量的形式），不要只写默认命令。
+
+### Chrome 可执行文件解析
+
+所有套件都走 `tools/chrome-path.mjs`，优先级（取第一个真实存在的）：
+
+1. `<套件>_CHROME` —— 最具体，如 `CM002_CHROME`
+2. `CHROME_PATH` —— 通用覆盖（本机 / CI 要强制指定时用这个）
+3. 当前平台常见安装位置（Windows / macOS / Linux）
+4. 其他平台常见位置（跨平台误配时的兜底）
+5. `which google-chrome` / `chromium`（仅非 Windows）
+
+一个候选都不存在时**不抛异常**：打印尝试清单后回退到首个候选，由 `spawn` 报出最终错误 ——
+这样套件仍能先打印自己的环境头（含解析到的 Chrome 路径），失败原因可定位，
+而不是"import 期就崩、什么都没打印"。
+
+### 日志与证据
+
+- **日志不入库**：`tools/*.log` 与仓库根的 `*.log` 都被 `.gitignore` 忽略。
+  可复核性靠**脚本本身入库**（含完整断言清单），日志是运行时证据、不是唯一证据。
+- 各套件用 `CM00x_LOG=<路径>` 把完整输出落盘；`run-all.mjs` 用 `CM009_LOG`。
+- **删除证据或复现脚本前必须先报告**（AGENTS.md §）。可以删报告，
+  但不应未经确认连带删除复现脚本。
+- 日志里可能含**本机绝对路径**（如 Chrome 路径）；对外粘贴前先脱敏。
+- `.workbuddy/`（AI 会话记忆、临时备份、一次性证据脚本）已被
+  `eslint.config.js` 的 `ignores` 排除 —— 它是 gitignore 的本地目录、不随仓库分发，
+  不该影响仓库的 lint 闸门。
+
+### 反向验证属手工工具
+
+`negative-*.mjs` 会**临时改写业务源码**再还原，因此：
+
+- **不进 CI、不进 `run-all.mjs`、不进任何默认入口**；
+- 用 `try/finally` + 文件快照保证异常中断也会还原，结束时逐文件比对磁盘与备份；
+- **不使用 `git stash`** —— 本机 `git stash` 曾损坏 `.git/refs`。
+  用 `git show <ref>:<file>` 取原文覆盖 + `try/finally` 还原；
+- 改造合并进 `main` 之后，默认基线 `main` 会失效（报 exit 2「没有可回退的改动」）
+  → 必须用 `<套件>_BASE_REF=<改造前 commit>` 显式指定基线。
+
+### 新增套件的检查清单
+
+1. 选一个未被占用的 CDP 端口，更新上面的**端口分配表**
+2. Chrome 一律用 `resolveChrome(process.env.CMxxx_CHROME)`，**不要内联路径**
+3. 自带静态服务器，并提供 `<套件>_PORT` / `<套件>_NO_SERVER` 覆盖
+4. 汇总行固定输出成 `断言：N passed, M failed`（`run-all.mjs` 据此提取）
+5. 配套 `negative-*.mjs` 反向验证，并确认回退版失败项**命中修复点关键字**
+6. 加入 `run-all.mjs` 的 `BROWSER_SUITES`，更新本文档与 `tools/ACCEPTANCE.md`
 
 ## 可配置项（环境变量）
 
@@ -688,9 +821,13 @@ CM-005 加固前后对比：回退版本从"(无汇总)"变为 `36 passed, 28 fa
 写回时还原为 `\r\n`；不要用含 `\n` 的固定字符串直接匹配。
 `negative-storage.mjs` 与 `negative-button-ids.mjs` 都已内置 `readNorm` / `writeCRLF`。
 
-**CDP 脚本里的临时诊断文件会被 lint 扫到。** 把调试脚本放 `.workbuddy/` 不够 ——
-ESLint 会遍历仓库，`no-undef`（`process` 未定义）等会直接让 `lint` exit 1。
-**临时脚本用完立刻删**，别留在仓库树里过夜。
+**放在仓库树里的临时 `.mjs` 会被 lint 扫到。** ESLint 遍历整个仓库，
+非 `tools/**` 的脚本会按"浏览器环境"检查（那里没有 `process` 等 Node 全局），
+`no-undef` 会直接让 `lint` exit 1。
+
+> CM-009 起 `.workbuddy/` 已加入 `eslint.config.js` 的 `ignores`，
+> 所以一次性证据脚本放那里是安全的（该目录被 gitignore、不随仓库分发）。
+> 但**仓库树其他地方**的临时脚本用完仍应立刻删。
 
 **测试用例必须自带隔离。** `tools/*.mjs` 用的 Chrome profile 目录跨运行复用，
 若用例只注入部分 key，会继承上一轮残留数据 → 首次全绿、复跑却失败。
@@ -701,14 +838,36 @@ ESLint 会遍历仓库，`no-undef`（`process` 未定义）等会直接让 `lin
 `.git/refs/` 与对象库被清空，仓库一度不可用（靠 reflog + `fetch` 才恢复）。
 改用纯文件备份/还原，并用 `try/finally` 保证异常时也还原。
 
-**`npm run lint` 在本机不可用（exit 1）。** 不是 ESLint 报错 ——
-`node_modules/.bin/eslint` 是 POSIX shim，首行依赖 `dirname` / `sed`，
-而本机 bash 的 PATH 被裁剪，shim 直接 `SyntaxError`。
-验证 lint 请绕开 shim 调用真实入口：
+**本机的 `npm` 命令本身不可用（CM-009 实测）。** 裸 `npm` 会去拉 `wsl.exe`，
+被沙箱安全策略拦截：
+
+```text
+PROGRAM BLOCKED BY SECURITY POLICY ...
+- wsl.exe (C:\Program Files\WSL\wsl.exe)
+```
+
+这不是脚本的问题。换用 npm 的**真实 JS 入口**即可正常执行 npm 脚本：
 
 ```bash
-node node_modules/eslint/bin/eslint.js .
+NODE="C:/Users/dd/.workbuddy/binaries/node/versions/22.22.2-3/node.exe"
+NPM="C:/Users/dd/.workbuddy/binaries/node/versions/22.22.2-3/node_modules/npm/bin/npm-cli.js"
+"$NODE" "$NPM" test          # 等价于 npm test
 ```
+
+`package.json` 的脚本已全部指向**真实入口**（`lint` =
+`node node_modules/eslint/bin/eslint.js .`），所以即使直接执行脚本内容、
+完全绕开 npm，行为也一致：
+
+```bash
+node node_modules/eslint/bin/eslint.js .   # = npm run lint
+node tools/run-all.mjs                     # = npm test
+```
+
+> 历史：本机 `node_modules/.bin/*` 是 POSIX shim、首行依赖 `dirname`，
+> 在本机 bash 下必然失败（`dirname: command not found`），
+> 所以过去 `npm run lint` 报 exit 1 **不是** ESLint 真报错。
+> CM-009 把 npm 脚本改为直接调用真实入口后，这条不再影响 `lint` / `test`；
+> `format` / `format:check` 仍走 prettier 的 `.bin` shim（不在 CM-009 范围内）。
 
 **`node -e "..."` 在本机会被 shell 吃掉引号。** 含引号/正则的复杂内联脚本
 （尤其 `-e` 里带 `'` 或 `|`）会被 MSYS 改写后抛 `SyntaxError`。
