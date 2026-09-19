@@ -5,10 +5,13 @@
   "description": "Notion 风格的通知推送工具",
   "type": "module",
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "node node_modules/eslint/bin/eslint.js .",
+    "lint:fix": "node node_modules/eslint/bin/eslint.js . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "node tools/run-all.mjs",
+    "test:all": "node tools/run-all.mjs",
+    "test:quick": "node tools/run-all.mjs --skip-browser"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
