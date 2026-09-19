@@ -4,42 +4,56 @@
 
 ## CURRENT TASK
 
-**无活动任务**。CM-010 + GOV-002 + 文档 666888 清理 + CM-001-TD-08 均已完成。
+**无活动任务**。所有 P1-P3 技术债已清零（CM-002~010 + GOV-002 + CM-001-TD-08/09 + 文档 666888 清理）。
 
-剩余候选：CM-001-TD-09（format 基线，29 文件 Prettier 失败，P3 清理，需 Human 授权批量 diff）。
+剩余路线图项目见 `docs/ROADMAP.md`（Phase D 功能拓展，原标记 NO-GO，待 Human 决定是否推进新功能）。
 
 ## EXECUTION STATUS
 
 ```text
 状态：IDLE — 无活动任务
-当前分支：main（HEAD: debf202）
+当前分支：main（HEAD: 14ad5ea）
 工作区：干净；check-worktree 缺失 0
-远端：origin/main 落后本地 5 个提交，待 push
+远端：origin/main 落后本地 2 个提交（格式化 + TECH_DEBT 同步），待 push
 
-已完成任务：
-  CM-010（CONDITIONAL PASS）→ docs/handoff/archive/CM-010.md
-  GOV-002（PASS）→ docs/handoff/archive/GOV-002.md
-  文档 666888 清理（PASS）
-  CM-001-TD-08（PASS）→ docs/handoff/archive/CM-001-TD-08.md
+已完成任务清单：
+  CM-002（PASS）— 自定义按钮编辑崩溃修复
+  CM-003（PASS）— LocalStorage JSON 容错
+  CM-004（PASS）— 按钮 ID 兼容规则
+  CM-005（PASS）— XSS 消除
+  CM-006（PASS）— cooldown 单一责任收敛
+  CM-007（PASS）— 历史页语言初始化 + 多语言清除反馈
+  CM-008（PASS）— 回执轮询可取消与单一所有权
+  CM-009（PASS）— 统一测试入口 + CI + Chrome 路径统一
+  CM-010（CONDITIONAL PASS）— 访问提示威胁模型 + 单一来源 + 诚实文案
+  GOV-002（PASS）— 守卫移出 tools/ + selfInstall + 三级回退
+  CM-001-TD-08（PASS）— error 通知音效静默失败修复
+  CM-001-TD-09（PASS）— format 基线达标（56 文件格式化 + .prettierignore）
+  文档 666888 清理（PASS）— 9 处文档明文密码改为指向 config.js
 ```
 
 ## EXECUTION REPORT
 
-无活动任务。完整协作记录见归档目录。
+无活动任务。完整协作记录见归档目录 `docs/handoff/archive/`。
 
 ## REVIEW RESULT
 
-**CM-001-TD-08：PASS**（2026-09-19，已完成合并 + 同步 + 归档）。7 项验收项全过；页面级 14/0 + 反向验证 14/0 vs 7/7 + run-all 10/10 537 项断言 0 失败；lint 0 problems；既有套件不回归。切 main 时**未触发级联**（GOV-002 附带收益：两个分支都有 `scripts/worktree-guard.mjs`，切换不触发 rename）。详见 [`docs/handoff/archive/CM-001-TD-08.md`](handoff/archive/CM-001-TD-08.md)。
+**CM-001-TD-09：PASS**（2026-09-20，主 AI 直接执行）。56 个非归档文件 prettier --write 格式化 + 新增 `.prettierignore`（排除归档/本地/锁文件）。验证：lint 0 + prettier --check 0 + run-all 10/10（537 项断言 0 失败）+ check-worktree 0。归档文件保持原样（历史快照不格式化）。TECH_DEBT.md CM-001-TD-09 标记为已解决。
 
-**CM-010：CONDITIONAL PASS**（已完成）。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
+**CM-001-TD-08：PASS**。详见 [`docs/handoff/archive/CM-001-TD-08.md`](handoff/archive/CM-001-TD-08.md)。
 
-**GOV-002：PASS**（已完成）。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
+**CM-010：CONDITIONAL PASS**。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
+
+**GOV-002：PASS**。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
 
 ## NEXT ACTION
 
-等 Human 明示。剩余候选：
+等 Human 明示。所有 P1-P3 技术债已清零。
 
-- **CM-001-TD-09**：format 基线（29 文件 Prettier 失败，P3 清理，批量 diff 需 Human 授权）
+可选方向：
+- **Phase D 功能拓展**（原 NO-GO，待 Human 决定是否推进新功能）—— 见 `docs/ROADMAP.md`
+- **CI format:check 门禁**：format 基线已达标，可在 `.github/workflows/ci.yml` 加 format:check 步骤（需 Human 授权改 CI）
+- **其他**：由 Human 指定
 
 **外部 AI 暂无任务**。等 Human 明示。
 

@@ -85,14 +85,13 @@
 
 ## P3
 
-### CM-001-TD-09：格式化基线未达标
+### CM-001-TD-09：格式化基线未达标（已解决，2026-09-20）
 
 - 类型：DX / Maintainability
-- 问题：`npm run format:check` 报告 29 个文件格式不符合 Prettier；`npm run lint` 通过。
-- 证据：2026-09-17 本地命令结果。
-- 影响：格式化门禁若加入 CI 将失败；diff 可读性下降。
-- 建议：单独建立纯格式化提交，并先确认是否允许批量修改文档/源码。
-- 风险：批量格式化会产生大 diff，不应与业务修复混合。
+- 问题（历史）：`npm run format:check` 报告 29 个文件格式不符合 Prettier；`npm run lint` 通过。
+- 证据：2026-09-17 本地命令结果（29 文件）；2026-09-20 复测 74 文件（含后续新增）。
+- 解决：2026-09-20 主 AI 执行 prettier --write，格式化 56 个非归档文件（js/mjs/html/css/json/md）。归档文件（`docs/handoff/archive/`）保持原样（历史快照不格式化）。`package-lock.json` 跳过。新增 `.prettierignore` 排除归档/本地/锁文件。验证：lint 0 + prettier --check 0 + run-all 10/10（537 项断言 0 失败）。
+- 提交：`14ad5ea`（`style: prettier 全量格式化`）。
 
 ### CM-001-TD-10：测试入口与 CI 缺口
 
