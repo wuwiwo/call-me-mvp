@@ -3,7 +3,13 @@ import globals from 'globals';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
-    { ignores: ['node_modules/', '.history/'] },
+    // `.workbuddy/` 是 .gitignore 掉的本地目录（AI 会话记忆、临时备份、一次性证据脚本），
+    // **不属于项目源码、不会随仓库分发**。不忽略它会有两个后果：
+    //   1. 任何放进该目录的 `.mjs` 都会被按"浏览器环境"检查（那里没有 process 等 Node 全局），
+    //      于是本地随手放一个脚本就把 `npm run lint` / `npm test` 打红；
+    //   2. 该目录被 gitignore，CI 上根本不存在 → 本地红、CI 绿的不一致。
+    // 参照 AGENTS.md「运行时日志、临时备份和本机路径应脱敏或加入忽略规则」。
+    { ignores: ['node_modules/', '.history/', '.workbuddy/'] },
     js.configs.recommended,
     {
         languageOptions: {
