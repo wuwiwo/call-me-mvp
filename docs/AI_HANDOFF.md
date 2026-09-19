@@ -70,14 +70,189 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — 等待外部 Execution AI 认领
-任务分支：codex/cm009-test-ci（待创建）
-任务基线：本面板提交后的实际 HEAD（开工前以 git rev-parse --short HEAD 实测为准）
+状态：READY_FOR_REVIEW — CM-009 已实施完成并通过本地验证，等待主 AI 独立验收
+任务分支：codex/cm009-test-ci
+任务基线：af83b9d（实测 HEAD，即主 AI 推送后的 main）
+当前工作分支：codex/cm009-test-ci
+main：未被修改（本任务全部提交都在任务分支上）；本任务**未 push**
+工作区：干净；check-worktree 缺失 0（建分支后立即复核，之后各次运行前后亦复核）
+
+本任务提交：
+  6923c32  test: Chrome 路径解析统一到共享模块
+  303a9f2  test: 新增统一测试入口 tools/run-all.mjs
+  8b6ec85  chore: npm 脚本指向真实入口并登记 test 系列
+  0b280cf  ci: 新增 GitHub Actions 工作流（lint + 回归套件）
+  88c9be3  fix: eslint 忽略 .workbuddy/ 本地目录
+  c635814  docs: 登记统一入口、CI 与测试资产治理规则
+  （另有 1 个面板回填提交，见 git log）
+
+改动范围：13 个文件；`js/`、`*.html`、`*.css` **零改动**（已用 git diff --name-only 核对）
 ```
 
 ## EXECUTION REPORT
 
-（待外部 AI 填写：修改文件、实现摘要、测试命令与完整结果、退出码、已知问题、commit。）
+> 报告不等于主 AI 验收通过。以下命令与输出均为本机实跑结果，可直接复跑复核。
+
+### 一、修改文件
+
+| 文件 | 改动 |
+|---|---|
+| `tools/run-all.mjs` | **新增**：统一测试入口（lint + 7 套件 + check-worktree，串行、逐项报退出码） |
+| `tools/chrome-path.mjs` | **新增**：套件共用的 Chrome 可执行文件解析 |
+| `.github/workflows/ci.yml` | **新增**：GitHub Actions（push/PR，ubuntu + Node 22） |
+| `tools/e2e.mjs` 等 **7 个套件** | 内联 Chrome 路径 → `resolveChrome(process.env.CMxxx_CHROME)`（只改路径解析） |
+| `package.json` | `lint`/`lint:fix` 改指真实入口；新增 `test`/`test:all`/`test:quick` |
+| `eslint.config.js` | `ignores` 增加 `.workbuddy/`（修 lint 闸门被本地目录打红） |
+| `tools/README.md` | 新增「CI」「测试资产治理」两章；修正两条被本次改动作废的旧说明 |
+
+### 二、实现摘要
+
+**统一入口**：`node tools/run-all.mjs` = lint → 7 套件 → check-worktree，逐项输出
+套件名 / 断言汇总 / 退出码 / 耗时；任一失败整体非零，并列出该套件的 FAIL 明细
+（无 FAIL 行则打印输出末尾 15 行）。支持 `--skip-browser` 与 `CM009_SKIP_BROWSER=1`
+两种快速路径写法（npm scripts 里 `VAR=1` 在 Windows 不生效，故额外提供 CLI 开关）。
+单项默认 15 分钟超时，避免 Chrome 卡死时永久挂住。
+
+**Chrome 路径统一**：优先级 `<套件>_CHROME` > `CHROME_PATH` > 当前平台常见位置
+> 其他平台常见位置 > `which`（仅非 Windows）。找不到时**不抛异常**：
+打印尝试清单后回退首个候选，由 spawn 报错 —— 套件仍能先打印环境头，失败可定位。
+
+**CI**：`npm ci` → `npm run lint` → `npm test`，`*.log` 以 artifact 上传。
+
+### 三、测试结果（全部实跑）
+
+**1) 统一入口全量**
+
+```text
+npm test   （= node tools/run-all.mjs，经 npm 真实 JS 入口执行）
+→ 项数：9/9 通过；合计 477 项断言，失败 0；总耗时 228.2s；退出码 0
+
+  lint                 exit=0    2.0s   0 errors, 1 warning（既有 worktree-guard）
+  e2e（CM-002）        exit=0    4.3s   断言：29 passed, 0 failed
+  storage-resilience   exit=0   34.2s   断言：51 passed, 0 failed
+  button-ids（CM-004） exit=0   15.5s   断言：52 passed, 0 failed
+  input-safety（CM-005）exit=0  17.7s   断言：97 passed, 0 failed
+  cooldown（CM-006）   exit=0   20.0s   断言：87 passed, 0 failed
+  history-language     exit=0   15.8s   断言：107 passed, 0 failed
+  receipt-lifecycle    exit=0  119.1s   断言：54 passed, 0 failed
+  check-worktree       exit=0    0.7s   未发现被删除的已跟踪文件
+```
+
+**7 个套件的断言数 29/51/52/97/87/107/54 与本任务前完全一致**（路径解析改动未触碰断言）。
+
+**2) 快速路径**
+
+```text
+node tools/run-all.mjs --skip-browser
+→ 模式：快速（仅 lint + check-worktree）；项数 2/2 通过；约 3s；退出码 0
+```
+
+**3) CI 命令序列本地干跑**
+
+| CI 步骤 | 本机执行 | 结果 | 退出码 |
+|---|---|---|---|
+| `npm ci` | `npm ci --dry-run`（AC 允许跳过真实安装） | `up to date in 2s`，lockfile 与 package.json 一致 | 0 |
+| `npm run lint` | `npm run lint` | `0 errors, 1 warning` | 0 |
+| `npm test` | `npm test` | 9/9 通过（见上） | 0 |
+
+> **本机 `npm` 不能直接用**：裸 `npm` 会去拉 `wsl.exe`，被沙箱安全策略拦截
+> （`PROGRAM BLOCKED BY SECURITY POLICY ... wsl.exe`）。
+> 上述命令是经 npm 的**真实 JS 入口**执行的：
+> `node <node 目录>/node_modules/npm/bin/npm-cli.js <script>`。
+> `package.json` 的脚本本身已指向真实入口，因此直接执行脚本内容行为一致
+> （`node node_modules/eslint/bin/eslint.js .` = `npm run lint`；
+> `node tools/run-all.mjs` = `npm test`）。这一点已写入 `tools/README.md`。
+
+**4) workflow 静态校验（本机无 actionlint/yamllint，用真实 YAML 解析器）**
+
+```text
+PyYAML 6.0.3 safe_load 真实解析 .github/workflows/ci.yml → 成功
+关键结构断言：23/23 通过，退出码 0
+  含 name/on/permissions/jobs；触发含 push(main)/pull_request/workflow_dispatch
+  jobs.test: runs-on ubuntu-latest、timeout-minutes 30、6 步
+  actions 均带版本号（checkout@v4 / setup-node@v4 / upload-artifact@v4）
+  setup-node node-version = 22
+  含 npm ci、npm run lint、npm test
+  测试步骤设置 CM009_LOG；**不含任何 negative-* 引用**
+```
+
+证据脚本为一次性工具（`.workbuddy/cm009_ci_yaml_check.py`，不入库）。
+复现方式：`python -m pip install pyyaml`（装入隔离 venv）后运行该脚本。
+
+**5) Chrome 路径解析**
+
+```text
+优先级检查（.workbuddy/cm009_chrome_resolve_check.mjs，一次性工具）
+→ 9/9 通过，退出码 0
+  无环境变量时首选仍是原 Windows 默认路径（行为不变）
+  CHROME_PATH 排在默认路径之前；<套件>_CHROME 又排在 CHROME_PATH 之前
+  非法 CHROME_PATH 不抛异常、仍有真实默认路径兜底
+  空串覆盖被剔除；win32 下不追加 which 探测结果
+
+CHROME_PATH 抽验（AC 要求 ≥2 个套件）
+  CHROME_PATH=<chrome> node tools/e2e.mjs        → 29 passed, 0 failed，exit 0
+  CHROME_PATH=<chrome> node tools/button-ids.mjs → 52 passed, 0 failed，exit 0
+  两套件环境头显示的 Chrome 路径即 CHROME_PATH 指定的值
+```
+
+**6) 其他检查**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node node_modules/eslint/bin/eslint.js .` | **0 error / 1 warning**（既有 warning 见第五节） | 0 |
+| `node tools/check-worktree.mjs` | 未发现被删除的已跟踪文件 | 0 |
+| `git diff --check` | 无空白错误 | 0 |
+| `git diff --name-only main..HEAD -- js/ *.html *.css` | **无输出（js/ 零改动）** | 0 |
+
+### 四、过程中由检查发现并修掉的两处
+
+1. **`.workbuddy/` 会打红 lint 闸门**（真实缺陷，已修）：`eslint.config.js` 的
+   `ignores` 只有 `node_modules/` 与 `.history/`。我把证据脚本放进 `.workbuddy/`
+   后，lint 立刻报 9 个错（该目录不在 `files: ['tools/**/*.mjs']` 的 Node 全局覆盖内，
+   `process` 被判定未定义）。后果不止于我这一次：**任何放进该目录的本地脚本都会
+   打红 `npm run lint` / `npm test`**，而它又被 gitignore、CI 上不存在
+   → 本地红、CI 绿的不一致。已加入 `ignores`（提交 `88c9be3`）。
+2. **统一入口自身的日志收集缺陷**（已修）：`run-all.mjs` 初版把 `out()` 定义在那里
+   却全程用 `console.log` 输出，**`CM009_LOG` 会收到空内容**。这是 lint 的
+   `no-unused-vars` 顺带暴露的：`out` 定义了却没人用。已把全部输出改走 `out()`
+   （31 处），并把 `--verbose` 的原始输出也并入收集缓冲。
+
+### 五、已知问题与范围外发现（**未擅自修复**）
+
+1. **`AGENTS.md:295` 已过时**：原文「**没有 `npm test`、单元测试、集成测试、
+   E2E 测试或 GitHub Actions**。`TESTING.md` 是手工检查清单」——
+   CM-009 之后这三项（`npm test`、E2E 套件、GitHub Actions）都已存在。
+   `AGENTS.md` 不在本任务 SCOPE 内，**未改**，请主 AI 同步。
+   另：`AGENTS.md:286-288` 记录的 `npm run lint` / `format:check` / `format`
+   命令清单也可一并核对。
+
+2. **`format` / `format:check` 仍走 prettier 的 `.bin` shim** —— 在本机必然失败。
+   本任务 NON-GOALS 明确排除格式化基线，**未动**。若要与 `lint` 一致地指向真实入口，
+   属独立任务。
+
+3. **`tools/worktree-guard.mjs:117` 的 lint warning** 仍在（`catch (e)` 的 `e` 未使用），
+   与 CM-006/007/008 报告一致。NON-GOALS 明确规定不顺手处理既有 lint warning，**未修**。
+
+4. **CDP 端口 9446 被 CM-004 与 CM-006 共用** —— 已在 `tools/README.md` 的端口分配表
+   中标注为已知项（两者 HTTP 同为 8899、本就串行）。本任务未改端口，**仅登记**。
+
+5. **`js/` 外的 `TESTING.md`** 是手工检查清单，本任务未涉及；它与新的自动化入口
+   之间的关系可由主 AI 决定是否需要在后续任务中说明。
+
+### 六、未执行的验证
+
+- **未真实执行 GitHub Actions**（本机无法跑 Actions）。替代证据见第三节第 3、4 项：
+  YAML 真实解析 + 关键结构断言 + 本地按同一命令序列干跑。**首次 push 后需人工核对
+  Actions 页面确实跑起来并通过** —— 这是本任务唯一无法在本地闭环的验收点。
+- **未在非 Windows 平台运行套件**：Linux/macOS 的路径解析分支只做了
+  代码级检查（优先级断言 + 候选列表含对应平台的常见路径），
+  未在真实 Linux 上跑过 Chrome。CI 首次运行即是对该分支的真实验证。
+- **未测「所有候选都不存在」的分支**：本机 Windows 默认路径真实存在，
+  无法在不临时改名真实文件的前提下构造该场景。已通过「非法 `CHROME_PATH`
+  不抛异常且能回退」间接覆盖了不崩的语义，但"打印清单并回退首个候选"这条
+  纯路径未实测。
+- **未跑反向验证**（`negative-*.mjs`）：本任务不涉及业务源码改造，
+  且这些脚本会临时改写源码、不进 CI。既有 7 个反向验证脚本本次未复跑。
 
 ## REVIEW RESULT
 
