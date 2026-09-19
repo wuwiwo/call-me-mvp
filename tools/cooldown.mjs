@@ -31,6 +31,7 @@ import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveChrome } from "./chrome-path.mjs";
 
 // 可选：把完整输出落盘，与 CM003_LOG / CM004_LOG / CM005_LOG 的约定一致。
 // 在第一条 console.log 之前安装，确保捕获全部输出。
@@ -52,9 +53,9 @@ const SERVE_PORT = Number(process.env.CM006_PORT || 8899);
 const EXTERNAL = process.env.CM006_NO_SERVER === "1";
 const BASE = process.env.CM006_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM006_CDP_PORT || 9446);
-const CHROME =
-    process.env.CM006_CHROME ||
-    "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// Chrome 路径解析已统一到 tools/chrome-path.mjs（CM-009）：
+// CM006_CHROME > CHROME_PATH > 常见安装位置 > which
+const CHROME = resolveChrome(process.env.CM006_CHROME);
 const PROFILE = path.join(os.tmpdir(), "cm006-cooldown-profile");
 
 const MIME = {

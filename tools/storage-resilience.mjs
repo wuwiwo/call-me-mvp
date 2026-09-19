@@ -24,6 +24,7 @@ import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveChrome } from "./chrome-path.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -32,9 +33,9 @@ const SERVE_PORT = Number(process.env.CM003_PORT || 8899);
 const EXTERNAL = process.env.CM003_NO_SERVER === "1";
 const BASE = process.env.CM003_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM003_CDP_PORT || 9445);
-const CHROME =
-    process.env.CM003_CHROME ||
-    "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// Chrome 路径解析已统一到 tools/chrome-path.mjs（CM-009）：
+// CM003_CHROME > CHROME_PATH > 常见安装位置 > which
+const CHROME = resolveChrome(process.env.CM003_CHROME);
 const PROFILE = path.join(os.tmpdir(), "cm003-storage-profile");
 const LOG_PATH = process.env.CM003_LOG || "";
 

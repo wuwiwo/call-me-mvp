@@ -27,6 +27,7 @@ import { createReadStream, mkdirSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveChrome } from "./chrome-path.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -35,9 +36,9 @@ const SERVE_PORT = Number(process.env.CM004_PORT || 8899);
 const EXTERNAL = process.env.CM004_NO_SERVER === "1";
 const BASE = process.env.CM004_BASE || `http://127.0.0.1:${SERVE_PORT}`;
 const CDP_PORT = Number(process.env.CM004_CDP_PORT || 9446);
-const CHROME =
-    process.env.CM004_CHROME ||
-    "C:/Program Files/Google/Chrome/Application/chrome.exe";
+// Chrome 路径解析已统一到 tools/chrome-path.mjs（CM-009）：
+// CM004_CHROME > CHROME_PATH > 常见安装位置 > which
+const CHROME = resolveChrome(process.env.CM004_CHROME);
 const PROFILE = path.join(os.tmpdir(), "cm004-button-ids-profile");
 const LOG_PATH = process.env.CM004_LOG || "";
 
