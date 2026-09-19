@@ -39,6 +39,8 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-button-ids.mjs` | CM-004：反向验证 |
 | `input-safety.mjs` | CM-005：动态用户输入注入防护 + 严格图标允许列表，97 项断言 |
 | `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
+| `cooldown.mjs` | CM-006：cooldown 单一责任（状态转换 / 持久化 / timer 生命周期），87 项断言 |
+| `negative-cooldown.mjs` | CM-006：反向验证（从基线 ref 取原文覆盖 5 个被测源码） |
 | `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
 | `worktree-guard.mjs` | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤 |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
@@ -55,7 +57,7 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
 > 它们是**运行时证据**，脚本自身（含全部断言清单）才是可追溯的复核依据。
-> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` 可指定落盘路径。
+> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` / `CM006_LOG` 可指定落盘路径。
 
 ## 可配置项（环境变量）
 
@@ -107,6 +109,26 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 > 它只操作被测页面的 LocalStorage，不写仓库文件。
 > `negative-input-safety.mjs` 会临时改写 `js/modules/` 下两个被测文件，
 > 属**手工反向验证工具，不纳入普通 CI**；它用 `try/finally` + 文件快照保证还原。
+
+### CM-006
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `CM006_PORT` | `8899` | 自带服务器端口 |
+| `CM006_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
+| `CM006_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
+| `CM006_CDP_PORT` | `9446` | Chrome 调试端口 |
+| `CM006_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
+| `CM006_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
+| `CM006_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"收敛前版本" |
+
+> `tools/cooldown.mjs` 会启动真实浏览器，但**完全离线**：它用一个 fetch 桩
+> 替换 `window.fetch`，模拟 webhook 成功与失败，**不产生任何真实外部请求**。
+> 它只操作被测页面的 LocalStorage，不写仓库文件。
+> `negative-cooldown.mjs` 会临时改写 **5 个**被测源码（`state.js` / `main.js` /
+> `buttonManager.js` / `notification.js` / `countdown.js`），
+> 属**手工反向验证工具，不纳入普通 CI**；它用 `try/finally` + 文件快照保证还原，
+> 并在结束时校验磁盘内容与备份一致。
 
 ## 覆盖的验收路径
 
@@ -305,6 +327,100 @@ FAIL  选择器 dataset.value 保留原始值（保存回写载体） -> "(missi
 > 端口占用、Chrome 起不来等基础设施抖动误读成"测试有效"。
 > 脚本因此额外断言：修复版汇总为 `0 failed`，且回退版失败项中
 > **同时**包含注入类与允许列表类关键字。
+
+### CM-006（`cooldown.mjs`）
+
+对应 `docs/TECH_DEBT.md` 的 **CM-001-TD-05**：冷却状态由多个模块重复维护。
+
+**收敛后的唯一责任者**：`js/modules/countdown.js`。
+它独占三件事 —— 冷却状态转换（`state.canClick`）、`lastClickTime` 持久化、
+倒计时 timer 生命周期；其他模块只调用它的接口。
+
+> 为什么放在 `countdown.js` 而不是 `state.js`：`state.js` 在模块导入期就执行，
+> 早于 DOM 就绪；若要它承担恢复逻辑，就得反向导入 `countdown` 来驱动显示，
+> 形成 `state ⇄ countdown` 循环依赖。放在 `countdown` 可保持依赖单向。
+
+对外接口：
+
+| 接口 | 用途 |
+|---|---|
+| `restore()` | 页面加载 / 刷新：按 storage 恢复，或清理不可用的值 |
+| `startFromNow()` | 用户点击：以当前时间为起点开始冷却 |
+| `cancel()` | 请求失败回滚：放行 + 清除持久化 + 停 timer |
+| `remaining()` | 只读：剩余秒数（提示文案与断言用） |
+| `init()` / `updateDisplay()` | 显示层初始化与刷新 |
+
+**时间戳的定义行为**（全部有断言覆盖）：
+
+| 存储值 | 行为 |
+|---|---|
+| 缺失 / 空串 | 无冷却，放行；不写 storage |
+| 非数字 / `NaN` / `Infinity` / `0` / 负数 | 视为非法：**清除该 key** 并放行（沿用既有清理语义） |
+| 已过期 | **清除该 key** 并放行 |
+| 未来时间戳 | 视为"刚点击过"，剩余 **clamp 到 `CONFIG.cooldownTime`** |
+| 合法且未过期 | 按其剩余时间进入冷却，**不重写**存储 |
+
+> 「未来时间戳 clamp」是本任务新增的定义：旧实现会算出 `60 + 偏移量` 的剩余时间
+> 并直接启动倒计时 —— 时钟被向前校正一小时后，用户会被锁死 **3660 秒**。
+> 回退版实测的显示文本 `"冷却中，3660秒后可再次发送"` 即为此缺陷的直接证据。
+
+**观测手段（生产代码零测试钩子）**：
+
+1. 页面内用 `await import('/js/modules/state.js')` 取到应用**正在使用的同一模块实例**
+   （ESM 模块记录按 URL 缓存），因此能读到真实的 `state.canClick` / 剩余秒数。
+2. 用 CDP `Page.addScriptToEvaluateOnNewDocument` 在页面脚本之前包装
+   `setInterval` / `clearInterval` / `setTimeout`，得到可量化的
+   「已武装 interval 数」与「长延时 timeout 数」。
+3. 用一个 fetch 桩替换 `window.fetch` 模拟成功/失败，**完全离线**。
+
+**断言分组（87 项）**：
+
+| 场景 | 覆盖 |
+|---|---|
+| S1 首次加载 | 放行、无 timer、无 key、接口齐全 |
+| S2 刷新恢复 | 剩余时间、元素激活、文本、key 保留、**无长延时 timeout** |
+| S3 归零 | 放行、清 key、interval 释放、元素取消激活 |
+| S4/S5 请求成功与重复点击 | 单次写入、冷却期间被阻止、不重复写 key、不叠加 timer |
+| S6 失败回滚 | 立即放行、清 key、释放 timer；重试成功后重新进入冷却 |
+| S7/S8 非法与过期 | 7 种非法值 + 过期值均清理并放行 |
+| S9 未来时间戳 | clamp 到 60 且显示文本不含 3660 |
+| S10/S11 timer 去重 | 重复调用后恒为 1 个 interval；**手工执行旧代回调不得改写新状态** |
+| S12 页面异常 | 无未捕获异常 / 非预期 `console.error` |
+| S13 同源性扫描 | 5 个源码中只有 `countdown.js` 触碰 key 与 `canClick` |
+
+> S12 允许 **1 条预期内的 `console.error`** —— 失败回滚场景故意让 fetch 抛错，
+> 应用自身的 `catch` 会记录 `Fetch error:`。脚本把它单独归类，不计入非预期错误。
+
+**反向验证（`negative-cooldown.mjs`）实测**：
+
+```text
+已收敛版本退出码 : 0          断言：87 passed, 0 failed
+回退版本退出码   : 1          断言：65 passed, 22 failed
+源码已还原       : true
+```
+
+回退版本的关键证据（旧实现的分散程度，由 S13 源码扫描直接量化）：
+
+```text
+state.js          keyRefs=6  canClickAssign=4  setTimeout=1
+main.js           keyRefs=4  canClickAssign=2  setTimeout=1
+buttonManager.js  keyRefs=7  canClickAssign=3  setTimeout=1
+notification.js   keyRefs=1  canClickAssign=0  setTimeout=4
+countdown.js      keyRefs=1  canClickAssign=2  setTimeout=0   ← 收敛后只剩它
+
+FAIL  未创建长延时 timeout（旧实现的恢复定时器） -> longTimeouts=2
+FAIL  显示文本为 60 秒且未出现 3660 -> "冷却中，3660秒后可再次发送"
+FAIL  仅 countdown 触碰 lastClickTime key      ← 旧实现有 4 个模块写同一个 key
+FAIL  责任者提供 restore / startFromNow 接口 -> countdown.restore is not a function
+```
+
+`longTimeouts=2` 是**重复定时器的直接观测**：旧实现每次进入冷却都会额外创建
+两个不可取消的 `setTimeout`（`state.checkCooldownStatus` 与 `main.checkCooldown` 各一个），
+叠加 `countdown` 自己的 `setInterval`，一次冷却共 **3 个计时器**。
+
+> **区分力判定同时要求**：修复版 `0 failed`、回退版退出码非 0、
+> 且回退版失败项**命中"写入点唯一"与"定时器去重"两类关键字** ——
+> 只比较退出码会把基础设施抖动误读成"测试有效"。
 
 ### `check-worktree.mjs` / `worktree-guard.mjs`（环境防护，非任务测试）
 

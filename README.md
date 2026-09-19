@@ -275,12 +275,16 @@ export const TRANSLATIONS = {
 | **CallMeApp**     | 应用主入口 | `initElements()`, `initModules()`          |
 | **buttonManager** | 按钮管理   | `renderButtons()`, `handleButtonClick()`   |
 | **notification**  | 通知系统   | `sendNotification()`, `show()`             |
-| **countdown**     | 倒计时     | `start()`, `stop()`                        |
+| **countdown**     | 冷却责任者 | `restore()`, `startFromNow()`, `cancel()`  |
 | **profile**       | 用户资料   | `save()`, `loadProfile()`                  |
 | **language**      | 多语言     | `switchLanguage()`, `getCurrentLanguage()` |
 | **soundManager**  | 音效       | `playAvatarSound()`, `preload()`           |
 | **history**       | 历史记录   | `addRecord()`, `clearHistory()`            |
-| **state**         | 状态管理   | `init()`, `checkCooldownStatus()`          |
+| **state**         | 状态管理   | `init()`（并导出 `readJsonSafe()`）        |
+
+> `countdown` 是冷却的**唯一责任者**：冷却状态转换、`lastClickTime` 持久化与
+> 倒计时 timer 都由它集中管理，其他模块只调用它的接口。详见
+> [`tools/README.md`](tools/README.md) 的 CM-006 一节。
 
 ---
 
