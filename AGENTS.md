@@ -223,7 +223,7 @@ LocalStorage key：
 
 - 读取 JSON 必须考虑非法或损坏数据；不要假设 LocalStorage 永远有效。
 - 用户昵称、按钮文字、历史字段属于可控输入。通过 DOM 写入时不得未经转义地进入 `innerHTML`。
-- webhook URL 和前端密码对访问页面的用户可见。密码模块只能是 UI 级个人工具访问提示，不是服务端授权。
+- webhook URL 和前端密码对访问页面的用户可见。密码模块（`password.js`）只是 **UI 级访问提示，不是安全边界**：完整威胁模型见 `docs/SECURITY.md`（资产 / 对手 / 结论 / 有效期语义）。文案与文档**不得**声称或暗示「保护 / 安全 / 加密 / 授权」。密码配置（`defaultPassword` / `expiryDays`）的**唯一来源是 `config.js` 的 `CONFIG.password`**，`password.js` 只读取，不再各自硬编码副本（CM-010）。
 - 已读回执读取 JSONBin 公开 endpoint；不要在前端加入 Master Key 或其他秘密凭据。
 
 ## 已知高风险区域
@@ -237,7 +237,7 @@ LocalStorage key：
 - `state.js`、`main.js`、`buttonManager.js`、`notification.js`：冷却状态只读 `state.canClick`；冷却转换与 `lastClickTime` 写入由 `countdown.js` 独占（CM-006）。
 - `history.html`：只加载 `history.js`，由其自行调用 `language.init()`（CM-007）。
 - `notification.js`：已读回执轮询句柄化、可取消；新发送先 `stopReceiptPolling()` 使旧轮询失效，同一时刻活跃轮询 ≤ 1（CM-008）。
-- `config.js` 与 `password.js`：密码配置存在重复定义；音效配置没有明确的 error 音效资源。
+- `config.js` 与 `password.js`：密码配置的重复定义已收敛为单一来源 `CONFIG.password`（CM-010）；`password.js` 不再硬编码默认密码与过期天数，损坏的 `passwordSetTime` 按「已过期」处理（fail-closed）。**剩余**：音效配置没有明确的 `notifications.error` 音效资源，`soundManager.playNotificationSound(false)` 访问未配置路径（CM-001-TD-08 余项，待后续任务）。
 
 ## 修改流程
 

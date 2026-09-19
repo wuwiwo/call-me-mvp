@@ -94,7 +94,7 @@ export const password = {
                     </div>
                     <div class="password-hint">
                         <i class="fas fa-info-circle"></i>
-                        <span>${utils.getTranslation('password.hint') || '提示：密码每周更新，请联系管理员获取最新密码'}</span>
+                        <span>${utils.getTranslation('password.hint') || '提示：这只是防止误触的访问提示，任何能打开本页的人都能绕过它'}</span>
                     </div>
                 </div>
                 <div class="modal-footer">
