@@ -60,17 +60,19 @@ VERIFICATION:
 
 BRANCH:
 
-从当前本地 `main` 的稳定提交 `c9dce0e` 创建并使用：`codex/cm007-history-language`。外部 AI 开工前必须用 `git rev-parse --short HEAD` 确认实际稳定 HEAD；不要直接修改或合并 `main`。
+从当前本地 `main` 的稳定提交 `f268430` 创建并使用：`codex/cm007-history-language`。外部 AI 开工前必须用 `git rev-parse --short HEAD` 确认实际稳定 HEAD；不要直接修改或合并 `main`。
+
+基线说明：任务卡初稿写于 `c9dce0e`，其后 main 仅有两个 docs-only 提交（`d165695` 派发本任务、`f268430` 固化授权规则），无代码差异；为保持快进合并路径畅通，基线以任务卡提交后的实际 HEAD `f268430` 为准。
 
 ## EXECUTION STATUS
 
 ```text
 状态：DISPATCHED — 等待外部 Execution AI 接受并执行
-任务分支：codex/cm007-history-language
-任务基线：c9dce0e（CM-006 已合并并在 main 上独立复验通过）
+任务分支：codex/cm007-history-language（尚未创建）
+任务基线：f268430（CM-006 已合并后 main 实际 HEAD；c9dce0e 之后均为 docs-only 提交）
 当前工作分支：main
-main 与 origin/main：本地包含已验收但尚未推送的文档/任务提交；工作区干净
-已跟踪文件缺失数：0
+main 与 origin/main：本地领先 9 个提交（含 CM-006 与 CM-007 派发），工作区干净
+已跟踪文件缺失数：0（主 AI 于 2026-09-19 用 check-worktree 复核）
 CM-006：PASS，已合并到 main；合并后 cooldown 87/87，既有回归全部通过
 ```
 
