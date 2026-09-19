@@ -66,17 +66,164 @@ BRANCH:
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — 等待外部 Execution AI 接受并执行
-任务分支：codex/cm008-receipt-lifecycle（尚未创建；分支点 = main 当前最新 HEAD，开工前用 git rev-parse 确认）
-当前工作分支：main
-main：已合并 CM-007（1bedcab..26f52fb 快进），合并后复验 history-language 107/0、input-safety 97/0、check-worktree 缺失 0
-main 与 origin/main：本地领先（未推送——无推送授权）
-工作区：干净；已跟踪文件缺失 0
+状态：READY_FOR_REVIEW — CM-008 已实施完成并通过本地验证，等待主 AI 独立验收
+任务分支：codex/cm008-receipt-lifecycle
+任务基线：2dea212（实测 HEAD；任务卡记「合并 CM-007 后的 main」，
+          26f52fb..2dea212 经 diff 验证仅 docs-only：AI_HANDOFF + CM-007 归档 + INDEX）
+当前工作分支：codex/cm008-receipt-lifecycle
+main：未被修改（本任务全部提交都在任务分支上）
+
+分支安全：创建分支后**立即**运行 check-worktree → 缺失 0；之后各次运行前后亦复核，均正常。
+
+本任务提交：
+  2f01e57  fix: 回执轮询可取消与单一所有权
+  f1786f4  test: 新增回执轮询生命周期回归与反向验证
+  e61e71d  docs: 登记 CM-008 验证工具与回执轮询说明
+  （另有 1 个面板回填提交，见 git log）
 ```
 
 ## EXECUTION REPORT
 
-等待外部 AI 按任务卡执行。外部 AI 完成后必须写入修改文件、实现摘要、测试命令、完整结果、退出码、已知问题和 commit；报告不等于主 AI 验收通过。
+> 报告不等于主 AI 验收通过。以下命令与输出均为本机实跑结果，可直接复跑复核。
+
+### 一、修改文件
+
+| 文件 | 改动 |
+|---|---|
+| `js/modules/notification.js` | 新增 `receiptPollTimer` / `receiptPollGeneration` / `stopReceiptPolling()`；`pollReadStatus()` 改为可取消 + 代际守卫；`setReceiptStatus` 参数改名 |
+| `tools/receipt-lifecycle.mjs` | **新增**：CM-008 回归脚本（54 项断言） |
+| `tools/negative-receipt-lifecycle.mjs` | **新增**：反向验证脚本（全流程约 4 分钟） |
+| `tools/README.md` | 登记两个新工具 + CM-008 环境变量/验收路径 |
+
+### 二、实现摘要
+
+改造前：`pollReadStatus()` 用递归 `setTimeout(poll, 2000)`，**不保存句柄、无取消机制**，
+一旦启动最长跑约 32s。两次发送重叠时，旧轮询读到旧 `msgId` 的 read 或走到 timeout，
+会把新消息的状态条覆盖掉（TECH_DEBT CM-001-TD-07）。
+
+改造后（做法与 CM-006 `countdown.generation` 一致）：
+
+| 关注点 | 实现 |
+|---|---|
+| 状态 | `receiptPollTimer`（句柄，null = 无已排队轮询）+ `receiptPollGeneration`（代际） |
+| 停止 | `stopReceiptPolling()`：自增代际 + `clearTimeout` + 句柄置 null，**不写状态条** |
+| 单一所有权 | `pollReadStatus()` 启动前先 `stopReceiptPolling()` → 同一时刻活跃轮询 ≤ 1 |
+| 旧轮询失效 | **三处**代际校验：回调入口、`await fetch` 之后、`await res.json()` 之后 |
+| 终态 | read 命中 / 15 次超时：先清句柄再写状态条 |
+| 参数遮蔽 | `setReceiptStatus(state)` → `setReceiptStatus(statusName)` |
+
+**两处值得说明的判断**：
+
+1. **刻意不用 AbortController** —— 那会改动既有 JSONBin 读取方式（NON-GOALS）。
+   代际校验已足以保证旧轮询不写状态条：在飞的请求返回后被直接丢弃。
+2. **`await` 之后的两处重复校验是必需的** —— 这两处是异步边界，
+   期间可能有新一次发送接管轮询；只在回调入口校验不足以覆盖。
+
+### 三、测试结果（全部实跑）
+
+**1) CM-008 回归（新增）**
+
+```text
+node tools/receipt-lifecycle.mjs
+→ 断言：54 passed, 0 failed      退出码 0
+  环境：Chrome/153.0.8010.50（headless，CDP 9449，HTTP 8899）
+  S0 前置 · S1 单次→read · S2 单次→timeout · S3 并发打断（核心）
+  S4 宽容语义 · S5 可取消性 · S6 定时器计数 · S7 同源性 · S8 页面异常
+  页面错误 0 条
+```
+
+两个核心观测值：
+
+```text
+S2：共 15 次 bin 请求、耗时 30-36s      ← 单次节奏与阈值不变
+S3：★ 越过后第一次的原超时点，状态条仍为 read
+    ★ 旧轮询已停止发请求 → binCalls=3（改造前为 16）
+```
+
+**★ 量化「旧轮询真的死了」的思路**：不看定时器计数（易受 toast 等干扰），
+而看**旧轮询是否还在发请求** —— 两个轮询并存时，32s 窗口内的 JSONBin 请求数会接近翻倍。
+改造后为 3 次（第一次交接前 2 次 + 第二次命中 1 次），改造前 16 次。
+
+**2) CM-008 反向验证（新增）**
+
+```text
+node tools/negative-receipt-lifecycle.mjs
+→ 已改造版本：54 passed / 0 failed，退出码 0
+  回退版本  ：31 passed / 20 failed，退出码 1
+  源码已还原：true（finally 中比对磁盘与备份，一致）
+  结果：通过 —— 对「轮询不可取消」与「旧轮询覆盖新状态条」均有区分力
+```
+
+回退版关键证据（★ 两条的数值与设计预期吻合）：
+
+```text
+FAIL  ★ 旧轮询的超时分支未覆盖新状态条（仍为 read） -> receipt-status timeout
+FAIL  ★ 旧轮询已停止发请求（bin 请求 ≤ 6）        -> binCalls=16
+FAIL  提供 stopReceiptPolling 接口 -> 旧实现没有该接口
+FAIL  旧轮询已被失效（代际自增） -> null -> null
+FAIL  不再有遮蔽模块 state 的参数名 -> hasShadowParam=true
+FAIL  轮询的 setTimeout 全部被句柄接住 -> bare=2, handled=0
+```
+
+**3) 非回归（既有套件，全部用默认端口）**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/e2e.mjs` | 29 passed / 0 failed | 0 |
+| `node tools/cooldown.mjs` | 87 passed / 0 failed | 0 |
+| `node tools/input-safety.mjs` | 97 passed / 0 failed | 0 |
+| `node tools/button-ids.mjs` | 52 passed / 0 failed | 0 |
+| `node tools/storage-resilience.mjs` | 51 passed / 0 failed | 0 |
+| `node tools/history-language.mjs` | 107 passed / 0 failed | 0 |
+
+> 本次 `storage-resilience` 用**默认 CDP 端口 9445 直接通过**：
+> 运行前用 `netstat` 确认 9445 已空闲（CM-007 那次它被本机另一进程的对外连接
+> 占为源端口）。若下次复跑遇到 `CDP 未就绪`，按 `tools/README.md` 的说明
+> 换 `<套件>_CDP_PORT=<空闲端口>` 并记录实际命令。
+
+**4) 其他检查**
+
+| 命令 | 结果 | 退出码 |
+|---|---|---|
+| `node tools/check-worktree.mjs` | 未发现被删除的已跟踪文件 | 0 |
+| `git diff --check` | 无空白错误 | 0 |
+| `node node_modules/eslint/bin/eslint.js .` | **0 error / 1 warning**（warning 见已知问题） | 0 |
+
+### 四、开发过程中由测试发现并修掉的两处
+
+1. **终态未清句柄**：首轮跑测试时 S1/S2/S3 各有一条 `pollArmed = false` 失败 ——
+   轮询到达终态后 `receiptPollTimer` 仍留着已触发的旧 id，
+   于是「句柄非空」不再等价于「有轮询在等待」。
+   已在 read 命中与 timeout 两个终态先清句柄再写状态条。
+   这不只是让测试变绿：字段失去真值语义本身就是生命周期实现的缺陷。
+2. **lint error**：`tools/receipt-lifecycle.mjs` 有一处无用赋值
+   （`no-useless-assignment`），已删。lint 回到 0 error。
+
+### 五、已知问题与范围外发现（**未擅自修复**）
+
+1. **`tools/worktree-guard.mjs:117` 的 lint warning** 仍在（`catch (e)` 的 `e` 未使用），
+   与 CM-006 / CM-007 报告一致。该文件属 GOV-001 防线，非本任务引入，**未修**。
+
+2. **审计文档的过时描述**（未修改，属主 AI 的审计基线）：
+   - `docs/TECH_DEBT.md:68-74` CM-001-TD-07 —— **已解决**，可考虑标记关闭
+   - `docs/DATA_FLOW.md:62` 「轮询 timer 不保存到模块状态，无法由新请求取消旧轮询；
+     多个请求的回执都写同一个 `#receiptStatus`」—— **已不成立**
+   - `docs/ARCHITECTURE.md:55` 描述每 2 秒轮询、最多 15 次 —— 结论仍有效，
+     但可补一句「轮询句柄化、新发送会取消旧轮询」
+   - `AGENTS.md:239` 「所有已读回执轮询共享 `#receiptStatus`，轮询 timer 当前不可取消」
+     —— **后半句已不成立**
+
+3. **`tools/cooldown.mjs`（CM-006）的 CDP 端口 9446 与 CM-004 重复** —— 已在 CM-007
+   报告中记录，本次仍未修（属 CM-006 范围）。本任务的 9449 是按任务卡建议选的，
+   未新增冲突。
+
+### 六、未执行的验证
+
+- 未在真实 JSONBin 上验证 —— 为避免外部副作用，回归用 fetch 桩离线模拟回执；
+  JSONBin 的真实读取方式未改动。
+- 未验证「多次发送后状态条最终一定收敛到最后一次的回执」在**三次以上**连续发送下的表现 ——
+  本脚本覆盖两次连续发送（S3）。三连发的路径与两次同理（每次都先失效旧轮询），
+  但未单独断言。
 
 ## REVIEW RESULT
 
