@@ -59,7 +59,7 @@ export const TRANSLATIONS = {
             title: "🔐 访问验证",
             label: "请输入访问密码",
             placeholder: "输入密码",
-            hint: "提示：密码每周更新，请联系管理员获取最新密码",
+            hint: "提示：这只是防止误触的访问提示，任何能打开本页的人都能绕过它",
             verifyBtn: "验证",
             errorEmpty: "请输入密码",
             errorWrong: "密码错误，请重试"
@@ -149,7 +149,7 @@ export const TRANSLATIONS = {
             title: "🔐 Access Verification",
             label: "Please enter access password",
             placeholder: "Enter password",
-            hint: "Hint: Password updates weekly, contact admin for latest password",
+            hint: "Note: this is only an access prompt to prevent accidental taps; anyone who can open this page can bypass it.",
             verifyBtn: "Verify",
             errorEmpty: "Please enter password",
             errorWrong: "Incorrect password, please try again"
@@ -239,7 +239,7 @@ export const TRANSLATIONS = {
             title: "🔐 アクセス認証",
             label: "アクセスメールワードを入力してください",
             placeholder: "パスワードを入力",
-            hint: "ヒント：パスワードは週ごとに更新されます。最新パスワードは管理者にお問い合わせください",
+            hint: "ヒント：これは誤操作を防ぐための合図にすぎず、このページを開ける人は誰でも回避できます。",
             verifyBtn: "認証",
             errorEmpty: "パスワードを入力してください",
             errorWrong: "パスワードが間違っています。再度お試しください"
@@ -329,7 +329,7 @@ export const TRANSLATIONS = {
             title: "🔐 액세스 인증",
             label: "액세스 비밀번호를 입력하세요",
             placeholder: "비밀번호 입력",
-            hint: "힌트: 비밀번호는 매주 업데이트됩니다. 최신 비밀번호는 관리자에게 문의하세요",
+            hint: "안내: 실수로 누르는 것을 막기 위한 접근 안내일 뿐이며, 이 페이지를 열 수 있는 사람은 누구나 우회할 수 있습니다.",
             verifyBtn: "인증",
             errorEmpty: "비밀번호를 입력하세요",
             errorWrong: "잘못된 비밀번호입니다. 다시 시도하세요"
