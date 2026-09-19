@@ -49,7 +49,17 @@ class SoundManager {
   // 操作反馈音效
   playNotificationSound(isSuccess) {
     const type = isSuccess ? 'success' : 'error';
-    this.play(CONFIG.soundEffects.notifications[type]);
+    const url = CONFIG.soundEffects.notifications[type];
+
+    // 防御性检查：配置缺失时不要往下传 undefined。
+    // audioCache 里不会有 undefined 这个键，play() 会静默什么都不做 ——
+    // 这类"静默失败"极难排查，所以在这里显式拦下并给出一条可定位的提示。
+    if (!url) {
+      console.warn(`音效未配置：soundEffects.notifications.${type}`);
+      return;
+    }
+
+    this.play(url);
   }
 
   // 全局开关
