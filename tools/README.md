@@ -16,7 +16,7 @@
 
 ```bash
 npm test                                # = node tools/run-all.mjs
-                                        #   lint + 7 个套件 + check-worktree，串行，约 4 分钟
+                                        #   lint + 8 个套件 + check-worktree，串行，约 4 分钟
 npm run test:quick                      # 只跑 lint + check-worktree（几秒）
 node tools/run-all.mjs                  # 等价于 npm test
 node tools/run-all.mjs --skip-browser   # 等价于 npm run test:quick
@@ -92,7 +92,7 @@ npm test            # = node tools/run-all.mjs
 
 | 文件 | 用途 |
 |---|---|
-| `run-all.mjs` | **统一入口**（CM-009）：串行跑 lint + 7 个套件 + `check-worktree.mjs`，逐项报套件名/断言汇总/退出码，任一失败整体非零 |
+| `run-all.mjs` | **统一入口**（CM-009）：串行跑 lint + 8 个套件 + `check-worktree.mjs`，逐项报套件名/断言汇总/退出码，任一失败整体非零 |
 | `chrome-path.mjs` | 套件共用的 Chrome 可执行文件解析（CM-009）：`<套件>_CHROME` > `CHROME_PATH` > 常见安装路径 > `which` |
 | `server.mjs` | 零依赖静态服务器，服务仓库根目录（可选，供复用外部服务器时使用） |
 | `e2e.mjs` | CM-002：CDP 驱动真实浏览器，29 项断言 |
