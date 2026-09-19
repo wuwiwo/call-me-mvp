@@ -47,6 +47,11 @@ export const TRANSLATIONS = {
         },
         history: {
             title: "历史记录",
+            pageTitle: "通知历史",
+            backTitle: "返回",
+            clearTitle: "清除记录",
+            cleared: "历史记录已清除",
+            webhookLabel: "Webhook",
             empty: "暂无历史记录",
             timeFormat: "YYYY年MM月DD日 HH:mm:ss"
         },
@@ -132,6 +137,11 @@ export const TRANSLATIONS = {
         },
         history: {
             title: "History",
+            pageTitle: "Notification History",
+            backTitle: "Back",
+            clearTitle: "Clear records",
+            cleared: "History cleared",
+            webhookLabel: "Webhook URL",
             empty: "No history records",
             timeFormat: "MM/DD/YYYY HH:mm:ss"
         },
@@ -217,6 +227,11 @@ export const TRANSLATIONS = {
         },
         history: {
             title: "履歴",
+            pageTitle: "通知履歴",
+            backTitle: "戻る",
+            clearTitle: "記録を消去",
+            cleared: "履歴を消去しました",
+            webhookLabel: "Webhook URL",
             empty: "履歴がありません",
             timeFormat: "YYYY年MM月DD日 HH:mm:ss"
         },
@@ -302,6 +317,11 @@ export const TRANSLATIONS = {
         },
         history: {
             title: "기록",
+            pageTitle: "알림 기록",
+            backTitle: "뒤로",
+            clearTitle: "기록 지우기",
+            cleared: "기록이 지워졌습니다",
+            webhookLabel: "Webhook 주소",
             empty: "기록이 없습니다",
             timeFormat: "YYYY년 MM월 DD일 HH:mm:ss"
         },

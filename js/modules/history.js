@@ -2,6 +2,7 @@
 // /src/modules/history.js
 import { utils } from './utils.js';
 import { readJsonSafe } from './state.js';
+import { language } from './language.js';
 
 // 历史记录只允许两种既有状态。
 // `_status` 来自 LocalStorage，属于可控输入：未知或缺失一律不产生状态 class，
@@ -27,9 +28,41 @@ export const history = {
         }
         
         this.elements = domElements;
+
+        // 复用首页的语言初始化与回退规则：读取 appLanguage → 校验是否受支持
+        // → 落到 state.currentLang。历史页没有语言切换控件，不传元素即可
+        // （language.init 对缺失元素一律跳过，不会访问不存在的 DOM）。
+        language.init();
+        this.applyPageTexts();
+
         this.bindEvents();
         this.render();
         return true;
+    },
+
+    /**
+     * 把当前语言应用到历史页的静态文案。
+     *
+     * 覆盖：文档标题、顶部标题、返回按钮 title、清除按钮 title。
+     * 空状态与错误 Webhook 标签在 render() 内应用，清除反馈在 clear() 内应用。
+     *
+     * 查表统一走 utils.getTranslation（读的就是首页那份 state.currentLang），
+     * 只写本页元素，元素缺失时跳过，不产生第二份语言状态、也不触碰首页文案。
+     */
+    applyPageTexts() {
+        const t = key => utils.getTranslation(key);
+
+        document.title = t('history.pageTitle');
+
+        const topTitleEl = this.elements.topTitleEl;
+        if (topTitleEl) topTitleEl.textContent = t('history.pageTitle');
+
+        if (this.elements.backBtn) {
+            this.elements.backBtn.title = t('history.backTitle');
+        }
+        if (this.elements.clearBtn) {
+            this.elements.clearBtn.title = t('history.clearTitle');
+        }
     },
     
     // 绑定事件
@@ -104,7 +137,9 @@ export const history = {
             if (status === 'error') {
                 const errorEl = document.createElement('div');
                 errorEl.className = 'history-error';
-                errorEl.textContent = `Webhook: ${item.webhook ?? ''}`;
+                // 标签跟随当前语言；URL 本身是用户数据，仍按纯文本写入
+                errorEl.textContent =
+                    `${utils.getTranslation('history.webhookLabel')}: ${item.webhook ?? ''}`;
                 contentEl.appendChild(errorEl);
             }
 
@@ -119,10 +154,10 @@ export const history = {
         localStorage.removeItem('notificationHistory');
         this.render();
         
-        // 显示清除成功的反馈
+        // 显示清除成功的反馈（文案跟随当前语言）
         const toast = document.createElement('div');
         toast.className = 'history-toast';
-        toast.textContent = '历史记录已清除';
+        toast.textContent = utils.getTranslation('history.cleared');
         document.body.appendChild(toast);
         
         setTimeout(() => {

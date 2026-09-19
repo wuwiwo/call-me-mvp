@@ -15,11 +15,18 @@ export const language = {
         ko: { display: 'KO', name: '한국어', flag: '🇰🇷' }
     },
     
-    // 初始化
-    init(domElements) {
-        this.elements = domElements;
-        
-        // 加载保存的语言设置
+    /**
+     * 初始化语言。
+     *
+     * `domElements` 允许只包含当前页面存在的元素（也可以是空对象）：
+     * 首页有语言切换控件，历史页只有静态文案、没有切换控件。
+     * 所有元素访问都做了存在性判断，因此**同一个初始化入口可以跨页面复用**，
+     * 不需要为历史页再写一份语言状态或回退规则。
+     */
+    init(domElements = {}) {
+        this.elements = domElements || {};
+
+        // 读取并校验 appLanguage（缺失/不支持时回退），落到 state.currentLang
         this.loadSavedLanguage();
         this.bindEvents();
         this.updateUI();
@@ -74,8 +81,13 @@ export const language = {
     },
     
     // 切换语言菜单显示/隐藏
+    //
+    // 以下三个方法都对元素做存在性判断：历史页没有语言切换控件，
+    // 但 bindEvents() 会注册一个全局 click 监听去调用 hideLanguageMenu()，
+    // 若不判断，在历史页上任意点击都会抛 TypeError。
     toggleLanguageMenu() {
-        const menu = this.elements.languageMenu;
+        const menu = this.elements?.languageMenu;
+        if (!menu) return;
 
         if (menu.classList.contains('show')) {
             this.hideLanguageMenu();
@@ -86,8 +98,9 @@ export const language = {
     
     // 显示语言菜单
     showLanguageMenu() {
-        const menu = this.elements.languageMenu;
-        const toggle = this.elements.languageToggle;
+        const menu = this.elements?.languageMenu;
+        const toggle = this.elements?.languageToggle;
+        if (!menu || !toggle) return;
         
         menu.classList.add('show');
         toggle.classList.add('active');
@@ -98,11 +111,11 @@ export const language = {
     
     // 隐藏语言菜单
     hideLanguageMenu() {
-        const menu = this.elements.languageMenu;
-        const toggle = this.elements.languageToggle;
+        const menu = this.elements?.languageMenu;
+        const toggle = this.elements?.languageToggle;
         
-        menu.classList.remove('show');
-        toggle.classList.remove('active');
+        menu?.classList.remove('show');
+        toggle?.classList.remove('active');
         
         // 移除背景遮罩
         this.removeBackdrop();
@@ -149,20 +162,21 @@ export const language = {
     // 更新界面元素
     updateUI() {
         const lang = state.currentLang;
-        const t = TRANSLATIONS[lang];
+        // currentLang 非法时回退中文：避免读取 undefined 的属性而中断页面
+        const t = TRANSLATIONS[lang] || TRANSLATIONS.zh;
         const langInfo = this.languageDisplayMap[lang] || this.languageDisplayMap.zh;
         
         // 更新当前语言显示
-        if (this.elements.currentLanguage) {
+        if (this.elements?.currentLanguage) {
             this.elements.currentLanguage.textContent = langInfo.display;
         }
         
         // 更新标题和副标题
-        if (this.elements.titleEl && t.common.title) {
+        if (this.elements?.titleEl && t.common.title) {
             this.elements.titleEl.textContent = t.common.title;
         }
         
-        if (this.elements.subtitleEl && t.mainPage.subtitle) {
+        if (this.elements?.subtitleEl && t.mainPage.subtitle) {
             this.elements.subtitleEl.textContent = t.mainPage.subtitle;
         }
         
@@ -188,14 +202,18 @@ export const language = {
     },
     
     // 更新用户信息
+    //
+    // 历史页没有用户信息元素（userNameEl），整段跳过；
+    // 首页传入该元素时行为与之前完全一致。
     updateUserInfo() {
-        const t = TRANSLATIONS[state.currentLang];
-        
-        if (state.userProfile && state.userProfile.nickname) {
-            this.elements.userNameEl.textContent = state.userProfile.nickname;
-        } else {
-            this.elements.userNameEl.textContent = t.common.unregistered;
-        }
+        const el = this.elements?.userNameEl;
+        if (!el) return;
+
+        const t = TRANSLATIONS[state.currentLang] || TRANSLATIONS.zh;
+        el.textContent =
+            state.userProfile && state.userProfile.nickname
+                ? state.userProfile.nickname
+                : t.common.unregistered;
     },
     
     // 获取气泡按钮图标
