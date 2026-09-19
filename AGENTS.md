@@ -270,6 +270,15 @@ LocalStorage key：
 - 运行与改动风险匹配的检查，并报告未能执行的验证。
 - 若任务要求提交，使用能表达范围的原子提交信息，例如 `fix: ...`、`test: ...`、`docs: ...`；不要使用 `misc`、`update project` 或 `fix everything`。
 
+### 工作区完整性（checkout/merge 后必做）
+
+本机存在「checkout/merge/restore 触发已跟踪文件级联删除」的环境缺陷（沙箱把 rmdir 改写为移入回收站，git 上溯空目录的终止条件失效）。守卫已从 `tools/` 移到 `scripts/worktree-guard.mjs`（GOV-002），并自安装到 `.git/worktree-guard.mjs`，钩子三级回退。但仍需遵守：
+
+- 每次 `git checkout` / `git merge` / `git restore` / `git switch` 后，**提交前必须**跑 `node tools/check-worktree.mjs`。
+- 若发现已跟踪文件缺失（`git status` 显示一批 ` D`），先确认不是有意删除，再 `git restore -- <路径>` 恢复，不得把缺失当作删除提交。
+- 自助恢复（3 条命令）：`git status`（一批 ` D`）→ `git restore -- .`（只写不删）→ `git status` 应干净。前提：没有要保留的未暂存改动。
+- 守卫本体在 `scripts/worktree-guard.mjs`（**不在 `tools/`**），由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，每次运行自安装到 `.git/`。详见 `tools/README.md` 的「环境防护」章。
+
 ### 验证证据保留规则
 
 - “仓库当前没有证据”只能说明当前工作区没有证据，不能推断测试从未存在；报告必须区分“未落盘”“已删除”和“从未执行”。
@@ -284,7 +293,7 @@ LocalStorage key：
 
 ```text
 npm run lint
-npm test            # = node tools/run-all.mjs：lint + 7 个回归套件 + check-worktree（串行）
+npm test            # = node tools/run-all.mjs：lint + 8 个回归套件 + check-worktree（串行）
 npm run test:quick  # 快速路径：仅 lint + check-worktree
 npm run format:check
 npm run format

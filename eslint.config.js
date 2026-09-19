@@ -26,7 +26,8 @@ export default [
     },
     {
         // 验证/工具脚本：Node 环境（不属于前端产物）
-        files: ['tools/**/*.mjs'],
+        // `scripts/`（GOV-002 守卫移出 tools/ 后的新位置）与 `tools/` 同属 Node 脚本
+        files: ['tools/**/*.mjs', 'scripts/**/*.mjs'],
         languageOptions: {
             globals: { ...globals.node }
         }
