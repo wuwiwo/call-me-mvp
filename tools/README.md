@@ -41,6 +41,8 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-input-safety.mjs` | CM-005：反向验证（从基线 ref 取原文覆盖，非手写回退片段） |
 | `cooldown.mjs` | CM-006：cooldown 单一责任（状态转换 / 持久化 / timer 生命周期），87 项断言 |
 | `negative-cooldown.mjs` | CM-006：反向验证（从基线 ref 取原文覆盖 5 个被测源码） |
+| `history-language.mjs` | CM-007：历史页语言初始化与多语言文案，107 项断言 |
+| `negative-history-language.mjs` | CM-007：反向验证（从基线 ref 取原文覆盖 4 个被测文件） |
 | `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
 | `worktree-guard.mjs` | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤 |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
@@ -57,7 +59,7 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
 > 它们是**运行时证据**，脚本自身（含全部断言清单）才是可追溯的复核依据。
-> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` / `CM006_LOG` 可指定落盘路径。
+> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` / `CM006_LOG` / `CM007_LOG` 可指定落盘路径。
 
 ## 可配置项（环境变量）
 
@@ -127,6 +129,25 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 > 它只操作被测页面的 LocalStorage，不写仓库文件。
 > `negative-cooldown.mjs` 会临时改写 **5 个**被测源码（`state.js` / `main.js` /
 > `buttonManager.js` / `notification.js` / `countdown.js`），
+> 属**手工反向验证工具，不纳入普通 CI**；它用 `try/finally` + 文件快照保证还原，
+> 并在结束时校验磁盘内容与备份一致。
+
+### CM-007
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `CM007_PORT` | `8899` | 自带服务器端口 |
+| `CM007_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
+| `CM007_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
+| `CM007_CDP_PORT` | `9448` | Chrome 调试端口 |
+| `CM007_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
+| `CM007_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
+| `CM007_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"改动前版本" |
+
+> `tools/history-language.mjs` 会启动真实浏览器，只读写被测页面的 LocalStorage，
+> 不写仓库文件、不发起外部请求。
+> `negative-history-language.mjs` 会临时改写 **4 个**被测文件（`history.html` /
+> `history.js` / `language.js` / `translations.js`），
 > 属**手工反向验证工具，不纳入普通 CI**；它用 `try/finally` + 文件快照保证还原，
 > 并在结束时校验磁盘内容与备份一致。
 
@@ -421,6 +442,80 @@ FAIL  责任者提供 restore / startFromNow 接口 -> countdown.restore is not 
 > **区分力判定同时要求**：修复版 `0 failed`、回退版退出码非 0、
 > 且回退版失败项**命中"写入点唯一"与"定时器去重"两类关键字** ——
 > 只比较退出码会把基础设施抖动误读成"测试有效"。
+
+### CM-007（`history-language.mjs`）
+
+对应 `docs/TECH_DEBT.md` 的 **CM-001-TD-06**：历史页没有语言初始化，反馈文案硬编码中文。
+
+**做法**：历史页复用首页的语言初始化与回退规则，不新建语言状态。
+
+| 关注点 | 实现 |
+|---|---|
+| 语言来源 | `history.js` 在 `init()` 里调用 `language.init()` —— 读取 `appLanguage`、校验是否受支持、落到 `state.currentLang` |
+| 查找翻译 | 沿用 `utils.getTranslation()`（读的正是首页那份 `state.currentLang`），不建第二张表 |
+| `language.js` 的改动 | **只加元素存在性判断**（`init(domElements = {})` + 各方法守卫）。历史页没有语言切换控件，而 `bindEvents()` 注册的全局 click 监听会调用 `hideLanguageMenu()`，不判断就会在历史页任意点击时抛 `TypeError` |
+| 页面文案 | `history.js` 的 `applyPageTexts()` 覆盖文档标题 / 顶部标题 / 返回按钮 title / 清除按钮 title；空状态与 Webhook 标签在 `render()` 内、清除 toast 在 `clear()` 内 |
+
+**新增翻译键**（`history.*`，四语言齐全）：
+
+| 键 | zh | en | ja | ko |
+|---|---|---|---|---|
+| `pageTitle` | 通知历史 | Notification History | 通知履歴 | 알림 기록 |
+| `backTitle` | 返回 | Back | 戻る | 뒤로 |
+| `clearTitle` | 清除记录 | Clear records | 記録を消去 | 기록 지우기 |
+| `cleared` | 历史记录已清除 | History cleared | 履歴を消去しました | 기록이 지워졌습니다 |
+| `webhookLabel` | Webhook | Webhook URL | Webhook URL | Webhook 주소 |
+
+> ⚠️ **`zh.webhookLabel` 必须保持 `Webhook`** —— 这是一条**跨任务兼容约束**：
+> `tools/input-safety.mjs:1024`（CM-005）把 `Webhook: ` 这个前缀钉进了期望字符串
+> （`f.err === \`Webhook: ${...}\``）。该文件不在 CM-007 的 SCOPE 内、未作修改，
+> 因此 zh 取值不能改。若将来要把它改成「Webhook 地址」一类更具体的说法，
+> 必须同时更新 `input-safety.mjs` 的那条断言。
+> `history-language.mjs` 已把这条约束写成显式断言，避免以后被静默改坏。
+
+**观测手法**：
+1. Node 侧直接 `import { TRANSLATIONS }`（纯数据模块，无 DOM 依赖）做表级检查：
+   四语言键齐全、四个本地化键取值互不相同（防止把英文串复制到其他语言）、少量 golden 值。
+2. 页面侧读 DOM 实际渲染值，与该语言在表里的值逐项比对；
+   回退场景的期望值按既有规则在页面内用 `navigator.language` 现算，不写死。
+3. 历史输入安全单独覆盖：恶意 message/nickname/emoji/webhook 仍只作文本，
+   非法 `_status` 不注入 class，且 `innerHTML` 中不含真实标签。
+
+**断言分组（107 项）**：
+
+| 场景 | 覆盖 |
+|---|---|
+| T1/T2 翻译表 | 四语言六个键齐全非空；四个本地化键取值互不相同；golden 值；`zh.webhookLabel` 兼容约束 |
+| T3 四语言静态文案 | 文档标题 / 顶部标题 / 返回 title / 清除 title / 错误行 Webhook 标签 |
+| T4 空状态 | 四语言空状态文本；`notificationHistory` 缺失时同样走空状态 |
+| T5 记录渲染 | 条数、状态 class、昵称/消息/emoji 文本、success 行不显示 Webhook 标签 |
+| T6 语言回退 | 未设置 / 非法 `fr` / 空串 → 按既有规则回退，且不阻断页面 |
+| T7 清除动作 | 只删 `notificationHistory`（其余 4 个 key 原样）、toast 跟随语言、清除后回到空状态 |
+| T8 输入安全 | `__pwned` 未设置、无注入元素、无 `on*`、非法 class、恶意字段为字面文本 |
+| T9 首页不回归 | 四语言下首页标题/副标题/语言指示器/用户名；语言菜单可开可关 |
+| T10 页面异常 | 无未捕获异常 / `console.error` |
+
+**反向验证（`negative-history-language.mjs`）实测**：
+
+```text
+已支持版本退出码 : 0          断言：107 passed, 0 failed
+回退版本退出码   : 1          断言：65 passed, 42 failed
+源码已还原       : true
+```
+
+回退版本的关键证据（改动前的真实表现）：
+
+```text
+FAIL  en: 文档标题 = undefined -> "通知历史"          ← 英文下标签页标题是中文
+FAIL  en: 返回按钮 title = undefined -> "返回"
+FAIL  en: 清除按钮 title = undefined -> "清除记录"
+FAIL  en: 错误行标签 = undefined -> "Webhook: https://..."   ← 硬编码前缀
+FAIL  zh.history 六个键齐全且非空 -> 缺: pageTitle,backTitle,clearTitle,cleared,webhookLabel
+FAIL  pageTitle 四语言取值互不相同 -> [null,null,null,null]
+```
+
+> **区分力判定同时要求**：已支持版本 `0 failed`、回退版本退出码非 0、
+> 且回退版失败项**同时命中"页面文案本地化"与"翻译表完整性"两类关键字**。
 
 ### `check-worktree.mjs` / `worktree-guard.mjs`（环境防护，非任务测试）
 
