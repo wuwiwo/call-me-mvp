@@ -277,16 +277,71 @@ CM-007 / CM-008 / CM-009 + 本次共四次，同一根因。
 
 ## REVIEW RESULT
 
-CM-009：**PASS**（2026-09-19，主 AI 独立验收）。
+CM-010：**CONDITIONAL PASS**（2026-09-19，主 AI 独立验收）。
 
-- Diff 审查：14 文件全在 SCOPE 内；`js/`、HTML、CSS 零改动；`chrome-path.mjs` 优先级设计正确且不抛异常；`run-all.mjs` 串行、逐项报退出码、失败可定位；CI workflow 6 步合理（lint 前置快速失败）。
-- 独立复跑：`run-all.mjs` 全量 9/9、477 断言、212s；`--skip-browser` 2/2；CM009_LOG 落盘正常；YAML 真实解析 + 24 项结构断言全过；CHROME_PATH 抽验 cooldown 87/0；路径优先级 7 项断言全过；7 套件断言数与任务前一致。
-- 合并：`af83b9d..557d6f8` 快进，合并后 check-worktree 缺失 0、快速路径 2/2。
-- 事故：`git checkout main` 时 tools/ 第三次被级联搬走（11 条 D），按既定程序 `git restore -- .` 零丢失恢复；同一根因（守卫住在 tools/ 里），候选修法仍待授权。
-- 主 AI 顺带同步 `AGENTS.md` 质量命令段（`npm test`/CI 已存在）。
-- ⚠️ CI 未在真实 Actions 跑过：首次 push 后需人工核对 Actions 页面。
-- 完整记录：`docs/handoff/archive/CM-009.md`。
+### 验收项逐条核对
+
+| # | 验收项 | 结果 | 证据 |
+|---|---|---|---|
+| 1 | 威胁模型落 `docs/SECURITY.md`，结论与代码/文案一致 | ✅ | 7 节齐备（速览/资产/对手/结论/有效期语义/不做真校验/文案一致性）；与 `password.js` 注释、`translations.js` 文案对齐 |
+| 2 | `grep 666888 js/` 只命中 `config.js` | ✅ | 实测：`js/modules/config.js:30` 一处；`password.js` 0 命中 |
+| 3 | hint 四语言诚实表述，无「安全/保护/加密/授权」暗示 | ✅ | 禁用词扫描四语言 0 命中；均含「绕过/bypass/回避/우회」；四值互不相同 |
+| 4 | 损坏时间戳按「已过期」弹窗 | ✅ | `isPasswordExpired` 显式 `Number.isFinite` 校验，`NaN/Infinity/abc/12abc` 均 fail-closed；反向验证回退版 4 条损坏时间戳断言失败，区分力充分 |
+| 5 | 新增 `password-gate.mjs`（60 项，CDP 9450）全绿 | ✅ | 独立复跑 60 passed / 0 failed，S0-S6 全覆盖 |
+| 6 | 反向验证有区分力 | ✅ | 已改造 60/0 vs 回退 43/17；命中「单一来源」5 条 + 「诚实文案」8 条 + 「损坏时间戳」4 条；源码已还原 true |
+| 7 | 既有 7 套件断言数不变（29/51/52/97/87/107/54） | ✅ | run-all 实测逐项核对一致 |
+| 8 | `run-all.mjs` 全量 10/10 通过 | ✅ | 独立复跑 219.1s，537 项断言 0 失败 |
+| 9 | lint 0 error / `git diff --check` 0 / check-worktree 缺失 0 / diff 范围受控 | ✅ | eslint 0 error/1 既有 warning（worktree-guard.mjs 未用变量，CM-009 遗留，不在 SCOPE）；check-worktree 缺失 0；diff 9 文件全在 SCOPE（password.js/config.js/translations.js/SECURITY.md/password-gate.mjs/negative-password-gate.mjs/run-all.mjs/README.md/AI_HANDOFF.md） |
+
+### 三处自陈问题的裁决
+
+1. **损坏时间戳行为收紧（偏离括注但符合显式行为要求）→ PASS**。任务卡要求 3 写「非法/损坏按『已过期』处理（弹窗）」是**显式行为**；括注「与现状 `parseInt` 行为对齐」**误述现状**——现状是 `NaN > x` 恒 false → **坏数据反而永远不要求验证**，是 bug。要求 6 的套件断言也要求「非法时间戳→弹」。执行 AI 按显式行为实现并主动披露偏差，判断正确。fail-closed 是闸门的合理默认。
+
+2. **SCOPE 写 `language.js` 实际文案在 `translations.js` → 任务卡笔误，执行 AI 改在实际位置 → PASS**。`language.js` 只管语言状态与切换，无文案；文案数据在 `translations.js`。执行 AI 改在实际位置并在报告里指出笔误，反向验证覆盖 `password.js` + `translations.js` 两个文件。
+
+3. **文档残留 666888 字面量（README/TESTING/NEW_FEATURES/DATA_FLOW/IMPLEMENTATION_CHECKLIST/.history）→ 不在 SCOPE 内（仅限 js/）→ 记录待后续任务处理**。执行 AI 未改文档，符合 SCOPE 边界。
+
+### 唯一漏改（主 AI 合并后立即同步修）
+
+- `js/modules/password.js:97` 的 `password.hint` fallback 字符串仍是旧表述 `'提示：密码每周更新，请联系管理员获取最新密码'`。运行时不触发（四语言翻译键齐全），但与 `docs/SECURITY.md` §6「文案与实现一致性」矛盾；任务卡 SCOPE 写「如确有暗示安全性的措辞一并修正」——主 AI 在合并后作为同步提交修这一处（仅一行字符串），不退回执行 AI（修复成本极低、运行时影响为零、用户本轮明确要求推进合并）。
+
+### 合并后动作
+
+1. 快进合并 `codex/cm010-password-threat-model` → `main`
+2. 合并后跑 `check-worktree` + `password-gate` 复核
+3. 主 AI 同步提交：修 `password.js:97` fallback + 同步 `AGENTS.md` 密码模块段（指向 `CONFIG.password` 单一来源、指向 `docs/SECURITY.md`）
+4. 复跑 `password-gate` 确认 60/0
+5. 归档 `docs/handoff/archive/CM-010.md` + 更新 `INDEX.md`
+6. push（Human 本轮明确授权包含推送）
+7. 派发下个任务（见 NEXT ACTION）
+
+### GOV-002 守卫修复（独立分支，本轮 Human 另行授权，**未合并**）
+
+- 分支 `codex/gov002-guard-outside-worktree`（2 提交：`ef85ff4` + `68616ce`）独立存在，**未合并进 main**
+- 工作记忆「工作区文件丢失防线：已完成并合并」**不准确**，实际状态为「已完成实施 + 自验证，待主 AI 独立验收 + 合并」
+- 本次只处理 CM-010；GOV-002 留待 Human 明示后单独验收
+
+- 完整记录：`docs/handoff/archive/CM-010.md`（合并后归档）。
 
 ## NEXT ACTION
 
-外部 AI 请读取最新的 `AGENTS.md` 和本文件，用 `git rev-parse --short HEAD` 确认实际 HEAD 后创建 `codex/cm010-password-threat-model`（**创建/切换分支后立即跑 `node tools/check-worktree.mjs`**），按 `CURRENT TASK` 执行。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。**不要修改或合并 `main`，不要 push。**
+**主 AI 正在执行 CM-010 合并流程**（CONDITIONAL PASS 已写入上方 REVIEW RESULT）：
+
+1. 提交本次 REVIEW RESULT 更新到 `codex/cm010-password-threat-model`
+2. 切 `main` → `node tools/check-worktree.mjs`
+3. 快进合并 `codex/cm010-password-threat-model` → `main`
+4. 合并后立即 `node tools/check-worktree.mjs` + `node tools/password-gate.mjs` 复核
+5. 主 AI 同步提交：修 `js/modules/password.js:97` 的 `password.hint` fallback 字符串 + 同步 `AGENTS.md` 密码模块段（单一来源 + 指向 `docs/SECURITY.md`）
+6. 复跑 `node tools/password-gate.mjs` 确认 60/0
+7. 归档 `docs/handoff/archive/CM-010.md` + 更新 `INDEX.md`
+8. 更新本通信文档为 CM-010 完成状态
+9. push（Human 本轮明确授权包含推送）
+10. 派发下个任务
+
+### 下个任务候选（等 Human 明示）
+
+- **GOV-002 守卫修复**（推荐）：分支 `codex/gov002-guard-outside-worktree` 已实施完，待主 AI 独立验收 + 合并。工作区文件丢失 bug 已复发 4 次（CM-007/008/009 + GOV-002 实施时现场复发 1 次），根因修复（守卫移出 `tools/` + 自安装到 `.git/` + 钩子三级回退）应尽先进 main。验收重点：① `scripts/worktree-guard.mjs` 权威版本 + `selfInstall()` 到 `.git/worktree-guard.mjs` ② 钩子三级回退链路 ③ 移除 `scripts/` 权威版本后真实钩子仍走 `.git/` 副本（决定性测试 D）④ `run-all.mjs` 全量复核 ⑤ 同步 `AGENTS.md` 守卫路径段
+- CM-001-TD-08 余项：`soundManager.playNotificationSound(false)` 访问未配置的 `notifications.error`（P2，小坑）
+- CM-001-TD-09：format 基线未达标（29 文件 Prettier 失败，P3 清理）
+
+**外部 AI 暂无任务**。等 Human 明示下个任务方向后再派发。若 Human 选择 GOV-002，则该分支已存在，主 AI 直接独立验收即可，无需派发外部 AI。
