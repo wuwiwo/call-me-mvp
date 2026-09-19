@@ -43,6 +43,8 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 | `negative-cooldown.mjs` | CM-006：反向验证（从基线 ref 取原文覆盖 5 个被测源码） |
 | `history-language.mjs` | CM-007：历史页语言初始化与多语言文案，107 项断言 |
 | `negative-history-language.mjs` | CM-007：反向验证（从基线 ref 取原文覆盖 4 个被测文件） |
+| `receipt-lifecycle.mjs` | CM-008：已读回执轮询的可取消与单一所有权，54 项断言 |
+| `negative-receipt-lifecycle.mjs` | CM-008：反向验证（从基线 ref 取原文覆盖 1 个被测源码） |
 | `check-worktree.mjs` | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复 |
 | `worktree-guard.mjs` | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤 |
 | `ACCEPTANCE.md` | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告 |
@@ -59,7 +61,7 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 
 > **日志文件不入库。** `tools/*.log` 被 `.gitignore:20`（`*.log`）忽略 ——
 > 它们是**运行时证据**，脚本自身（含全部断言清单）才是可追溯的复核依据。
-> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` / `CM006_LOG` / `CM007_LOG` 可指定落盘路径。
+> 重跑即可复现，用 `CM003_LOG` / `CM004_LOG` / `CM005_LOG` / `CM006_LOG` / `CM007_LOG` / `CM008_LOG` 可指定落盘路径。
 
 ## 可配置项（环境变量）
 
@@ -150,6 +152,24 @@ node tools/negative-button-ids.mjs  # CM-004：反向验证
 > `history.js` / `language.js` / `translations.js`），
 > 属**手工反向验证工具，不纳入普通 CI**；它用 `try/finally` + 文件快照保证还原，
 > 并在结束时校验磁盘内容与备份一致。
+
+### CM-008
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `CM008_PORT` | `8899` | 自带服务器端口 |
+| `CM008_BASE` | `http://127.0.0.1:8899` | 测试站点地址 |
+| `CM008_NO_SERVER` | 未设置 | 设为 `1` 则复用外部服务器 |
+| `CM008_CDP_PORT` | `9449` | Chrome 调试端口（避开与 CM-004/006 重复的 9446、以及落在动态端口范围的 9445） |
+| `CM008_CHROME` | `C:/Program Files/Google/Chrome/Application/chrome.exe` | Chrome 路径 |
+| `CM008_LOG` | 未设置 | 设置后把实跑输出落盘到该路径 |
+| `CM008_BASE_REF` | `main` | **仅反向验证使用**：取此 ref 中的原文作为"改造前版本" |
+
+> `tools/receipt-lifecycle.mjs` 会启动真实浏览器，用 fetch 桩**完全离线**模拟
+> webhook 与 JSONBin 回执，不产生任何真实外部请求；只读写被测页面的 LocalStorage。
+> **单次运行约 2 分钟**（含两处约 32s 的超时窗口，用于越过轮询自身的超时点）。
+> `negative-receipt-lifecycle.mjs` 会临时改写 `js/modules/notification.js`，
+> 属**手工反向验证工具，不纳入普通 CI**；全流程约 4 分钟。
 
 ## 覆盖的验收路径
 
@@ -516,6 +536,78 @@ FAIL  pageTitle 四语言取值互不相同 -> [null,null,null,null]
 
 > **区分力判定同时要求**：已支持版本 `0 failed`、回退版本退出码非 0、
 > 且回退版失败项**同时命中"页面文案本地化"与"翻译表完整性"两类关键字**。
+
+### CM-008（`receipt-lifecycle.mjs`）
+
+对应 `docs/TECH_DEBT.md` 的 **CM-001-TD-07**：所有回执轮询更新同一 `#receiptStatus`，
+timer 不保存在状态中，新请求无法取消旧请求。
+
+**改造前**：`pollReadStatus()` 用递归 `setTimeout(poll, 2000)`，**不保存句柄、无取消机制**；
+一旦启动最长跑 ~32s。两次发送重叠时，旧轮询读到旧 `msgId` 的 read 或走到 timeout，
+会把新消息的状态条覆盖掉。
+
+**改造后**（做法与 CM-006 `countdown.generation` 一致）：
+
+| 关注点 | 实现 |
+|---|---|
+| 状态 | `notification.receiptPollTimer`（句柄，null = 无已排队轮询）+ `receiptPollGeneration`（代际） |
+| 停止 | `stopReceiptPolling()`：自增代际 + `clearTimeout` + 句柄置 null。**不写状态条** |
+| 单一所有权 | `pollReadStatus()` 启动前先 `stopReceiptPolling()` → 同一时刻活跃轮询 ≤ 1 |
+| 旧轮询失效 | 回调入口、`await fetch` 之后、`await res.json()` 之后**三处**校验代际；不等则直接返回，不写状态条（含 timeout 分支） |
+| 终态 | read 命中 / 15 次超时：先清句柄再写状态条，使「句柄非空」⇔「有轮询在等待」 |
+| 参数遮蔽 | `setReceiptStatus(state)` → `setReceiptStatus(statusName)`（原参数名遮蔽了导入的 `state` 模块） |
+
+> 刻意**不用 AbortController**：那会改动既有 JSONBin 读取方式（NON-GOALS）。
+> 代际校验已足以保证旧轮询不写状态条；旧轮询在飞的请求返回后被直接丢弃。
+
+**单次行为不变**：每 2s 一次、最多 15 次（约 32s），read/timeout 语义与文案不变；
+`binUrl` 缺失或 `msgId` 为空时直接返回（保持原有宽容语义）。
+
+**★ 如何量化「旧轮询真的死了」**：不看定时器计数（易受 toast 等干扰），
+而看**旧轮询是否还在发请求** —— 若两个轮询并存，32s 窗口内的 JSONBin 请求数会接近翻倍。
+
+**断言分组（54 项）**：
+
+| 场景 | 覆盖 |
+|---|---|
+| S0 前置 | 模块可导入、配置里有 `jsonBin.binUrl` |
+| S1 单次发送 → read | sent 起步、轮询在等、2s 内 1 次请求即命中、命中后句柄清空 |
+| S2 单次发送 → timeout | 共 **15 次** bin 请求、耗时落在 30–36s、超时后句柄清空 |
+| S3 并发打断（核心） | 第二次发送时第一次仍在跑：代际自增、状态条重新从 sent 开始、第二次读到 read；**越过后第一次的原超时点，状态条仍为 read** |
+| S4 宽容语义 | `msgId` 空/缺失、`binUrl` 缺失：不抛异常、不启动轮询、不发请求 |
+| S5 可取消性 | `stopReceiptPolling()` 后越过原超时点：状态条不被改写、不再发请求、无活跃轮询 |
+| S6 定时器计数 | 待触发的 2000ms 定时器数量作为**辅助**证据（容忍 toast，`notificationDuration = 4000`） |
+| S7 同源性 | 参数名已改、轮询的 `setTimeout` 全部被句柄接住、终态清句柄（Node 侧扫源码） |
+| S8 页面异常 | 无未捕获异常 / `console.error` |
+
+> **并发场景用直接调用被测模块而不是点两次按钮**：CM-006 之后点击链路会启动 60s 冷却，
+> 第二次点击会被闸门拦掉，根本进不到 `sendNotification`。
+> 点击链路本身由 S1/S2/S5 覆盖。
+
+**反向验证（`negative-receipt-lifecycle.mjs`）实测**：
+
+```text
+已改造版本退出码 : 0          断言：54 passed, 0 failed
+回退版本退出码   : 1          断言：31 passed, 20 failed
+源码已还原       : true
+```
+
+回退版本的关键证据（★ 两条是本任务的核心缺陷，且数值与设计预期吻合）：
+
+```text
+FAIL  ★ 旧轮询的超时分支未覆盖新状态条（仍为 read） -> receipt-status timeout
+FAIL  ★ 旧轮询已停止发请求（bin 请求 ≤ 6）        -> binCalls=16
+FAIL  提供 stopReceiptPolling 接口 -> 旧实现没有该接口
+FAIL  旧轮询已被失效（代际自增） -> null -> null
+FAIL  不再有遮蔽模块 state 的参数名 -> hasShadowParam=true
+FAIL  轮询的 setTimeout 全部被句柄接住 -> bare=2, handled=0
+```
+
+> `binCalls=16` 与设计预期一致：第一次轮询在交接前已跑 2 次、之后继续跑到第 15 次
+> （共 15 次请求），第二次轮询再发 1 次 → 16。改造后只需 **3 次**（2 + 1）。
+
+> **区分力判定同时要求**：已改造版本 `0 failed`、回退版本退出码非 0、
+> 且回退版失败项**同时命中"取消能力"与"并发隔离"两类关键字**。
 
 ### `check-worktree.mjs` / `worktree-guard.mjs`（环境防护，非任务测试）
 
