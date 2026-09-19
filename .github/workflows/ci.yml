@@ -1,0 +1,62 @@
+name: CI
+
+# CM-009：lint + 全部回归套件。
+#
+# 为什么 lint 单独一步、又出现在 run-all.mjs 里：
+#   lint 只要几秒，单独放前面可以**快速失败** —— 不必等 8 分钟的浏览器套件跑完
+#   才发现一个缩进错误。run-all.mjs 第一步也是 lint，保证"单一入口"单独执行时
+#   语义完整（任务卡的验收项之一）。
+#
+# 为什么不跑反向验证（tools/negative-*.mjs）：
+#   它们会**临时改写业务源码**再还原，属手工证据工具。
+#   AGENTS.md 明确规定这类工具不纳入普通 CI；详见 tools/README.md。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: lint + 回归套件（串行）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 用真实入口而非 .bin shim（npm 脚本已指向 node_modules/eslint/bin/eslint.js）
+      - name: Lint
+        run: npm run lint
+
+      # 走 npm 脚本而不是 `node tools/run-all.mjs`，确保 CI 验证的就是
+      # 开发者本机跑的同一条命令入口
+      - name: Regression suites
+        run: npm test
+        env:
+          # ubuntu runner 自带 Google Chrome，由 tools/chrome-path.mjs 自动解析；
+          # 如需强制指定，设置 CHROME_PATH 即可。
+          CM009_VERBOSE: "1"
+          CM009_LOG: ci-run-all.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-all-log
+          path: ci-run-all.log
+          if-no-files-found: ignore
+          retention-days: 7
