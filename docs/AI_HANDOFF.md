@@ -1,182 +1,91 @@
 # AI 协作通信文档
 
-本文件是主 AI 与外部 Execution AI 的当前通信面板。只保留当前任务、当前状态、当前报告、当前验收和下一步；已完成任务的完整过程见 [`docs/handoff/archive/INDEX.md`](handoff/archive/INDEX.md)。
+本文件是主 AI 与外部 Execution AI 的当前通信面板。只保留当前任务、当前状态、当前报告、当前验收和下一步；历史记录见 [`docs/handoff/archive/INDEX.md`](handoff/archive/INDEX.md)。
 
 ## CURRENT TASK
 
-CM-005 — 消除动态用户输入 HTML 注入
+CM-006 — 收敛 cooldown 单一责任并补回归验证
 
-PHASE: BugFix / Security
+PHASE: Engineering / BugFix
 PRIORITY: P1
 
 OBJECTIVE:
 
-确保昵称、按钮文字、历史字段等用户可控数据以文本安全渲染，不被当作 HTML 或脚本执行，同时保持现有页面结构和产品行为。
+收敛冷却状态的读写、倒计时和恢复逻辑，消除 `state`、`main`、`buttonManager`、`notification`、`countdown` 之间的重复写入、重复恢复和重复定时器风险；保持现有 60 秒冷却产品行为。
+
+CONTEXT:
+
+当前 `lastClickTime`、`state.canClick` 和倒计时分别由多个模块参与维护：`state.init/checkCooldownStatus()`、`main.checkCooldown()`、`buttonManager.handleButtonClick()`、`notification.sendNotification()` 和 `countdown.start/stop()`。审计已确认存在重复写入和重复定时器风险，详见 `docs/TECH_DEBT.md`、`docs/ARCHITECTURE.md`、`docs/DATA_FLOW.md`。
 
 SCOPE:
 
+- `js/modules/state.js`
+- `js/main.js`
 - `js/modules/buttonManager.js`
-- `js/modules/history.js`
-- `tools/input-safety.mjs`、`tools/negative-input-safety.mjs` 及相关说明
-- 本通信文档
+- `js/modules/notification.js`
+- `js/modules/countdown.js`
+- 必要的零依赖 cooldown 回归脚本、测试说明和本通信文档
 
 NON-GOALS:
 
-- 不引入框架、构建步骤、后端、CSP 或新的运行时依赖。
-- 不改变 LocalStorage key、按钮/历史数据格式、按钮上限或页面视觉结构。
-- 不处理按钮 ID、LocalStorage 容错、冷却、回执、语言或格式化基线问题。
+- 不改变 `lastClickTime` LocalStorage key、`CONFIG.cooldownTime` 配置或页面视觉结构。
+- 不重做通知、历史、回执、按钮 ID、LocalStorage JSON 容错或用户输入安全。
+- 不引入框架、构建步骤、新运行时依赖或大型状态管理抽象。
+- 不顺手修复格式化基线、其他定时器或范围外模块问题。
+
+IMPLEMENTATION REQUIREMENTS:
+
+1. 先定义并记录唯一 cooldown 责任者：只有一个模块负责冷却状态转换、`lastClickTime` 持久化和倒计时生命周期；其他模块只能调用明确接口，不能重复写同一状态。
+2. 页面初次加载、已有冷却刷新恢复、冷却归零、正常发送失败回滚和重复点击都必须经过同一套状态转换。
+3. 同一时刻最多存在一个 cooldown timer；重复初始化或重复 start 不得叠加 interval/timeout，也不得让旧 timer 在新状态之后改写 `state.canClick`。
+4. 保持现有行为：默认冷却 60 秒；冷却期间点击被阻止；刷新可恢复剩余时间；通知请求失败仍按当前产品行为解除冷却；合法旧时间戳可继续工作；非法时间戳不会阻断页面。
+5. 只保留必要的兼容逻辑；若选择新增接口或模块，必须说明为什么现有模块无法承载，以及如何避免产生第二份状态。
 
 ACCEPTANCE CRITERIA:
 
-- [ ] 恶意昵称、按钮文字、历史字段只作为文本显示，不执行 HTML、script、事件属性或结构注入。
-- [ ] 编辑表单的文本 value、图标预览和回显不破坏 DOM。
-- [ ] icon 严格受 `CONFIG.buttons.availableIcons` 与 `random` 允许列表约束；未知历史值安全显示且不被无意丢失。
-- [ ] 历史状态、字段缺失和未知字段不会突破 DOM；既有 success/error 行为不回归。
-- [ ] 新增、编辑、删除、保存、刷新、历史渲染和按钮点击行为保持正常。
-- [ ] 恶意输入回归脚本可复跑并记录准确断言数、结果和退出码。
+- [ ] 代码中 `lastClickTime` 的写入、删除和 `state.canClick` 的冷却转换均由唯一责任者集中管理，其他模块不再重复实现。
+- [ ] 页面初始化、刷新恢复、倒计时归零、请求成功、请求失败和重复点击路径行为保持正确。
+- [ ] 重复初始化/重复启动不会产生多个 timer；旧 timer 不会覆盖新状态。
+- [ ] 冷却期间不会重复发送通知或重复写入冷却起始时间。
+- [ ] 缺失、非法、过期和未来时间戳均有明确安全行为并经过测试。
+- [ ] 既有 CM-002/003/004/005 行为不回归。
+- [ ] 新增 cooldown 回归脚本可复跑，记录准确断言数、环境、退出码和失败项。
 - [ ] `npm run lint`、`git diff --check` 通过，且修改范围受控。
 
 VERIFICATION:
 
-1. 外部 AI 完成返工后更新本文件的 `EXECUTION STATUS` 与 `EXECUTION REPORT`。
-2. 主 AI 独立检查 CM-005 分支 diff 和关键源码。
-3. 主 AI 独立运行 `tools/input-safety.mjs`、`tools/negative-input-safety.mjs`、`tools/button-ids.mjs`、`tools/storage-resilience.mjs`、`tools/e2e.mjs`、`npm run lint` 和 `git diff --check`。
+1. 运行 `node tools/cooldown.mjs`（或任务中提供的等价脚本），覆盖首次加载、刷新恢复、归零、重复点击、失败回滚、非法时间戳和 timer 去重。
+2. 运行 `node tools/check-worktree.mjs`，确认没有已跟踪文件缺失；必要时先恢复再继续，不得把删除固化进提交。
+3. 运行已有 `tools/input-safety.mjs`、`tools/button-ids.mjs`、`tools/storage-resilience.mjs`、`tools/e2e.mjs` 和 `npm run lint`。
+4. 查看完整 diff，运行 `git diff --check`，报告范围外发现但不擅自修复。
+
+BRANCH:
+
+从当前本地 `main` 的稳定提交创建并使用：`codex/cm006-cooldown-ownership`。
+任务卡提交后的实际基线以 `git rev-parse --short HEAD` 核对；本任务卡初始派发提交为 `DISPATCH_COMMIT_PENDING`，完成派发提交后主 AI 会回填真实 hash。不要直接修改或合并 `main`。
 
 ## EXECUTION STATUS
 
 ```text
-状态：MERGED — CM-005 已通过验收，已合并进 main 并推送
-任务分支：codex/cm005-input-safety（已清理，本地与远端均无残留）
-任务基线：ddff168
-合并后 main：745b8d3
+状态：DISPATCHED — 等待外部 Execution AI 接受并执行
+任务分支：codex/cm006-cooldown-ownership
+任务基线：DISPATCH_COMMIT_PENDING（派发提交后回填）
 当前工作分支：main
-
-2026-09-19 10:2x（外部 AI）：已按 Human 授权推送。
-推送范围 141ca5d..ec9a20e，远端 main 现为 ec9a20e。
-经 ls-remote 核对：origin 仅 refs/heads/main，无遗留任务分支。
-
-本次推送的 4 个提交（2026-09-18 晚完成，均无业务代码改动）：
-  - b35463f chore: 提交工作区防丢守卫（钩子 + 守卫脚本）
-  - b012893 chore: 补行尾策略并登记守卫工具
-  - aeac088 docs: 修正工作区文件丢失的根因（旧结论已被推翻）
-  - ec9a20e docs: 面板同步工作区文件丢失的复核结论与待推送提交
-（另有本次推送后更新面板状态的 1 个 docs 提交，见 git log）
-未改动任何业务代码（js/ 下零改动）。
+main 与 origin/main：派发前已核对一致，工作区干净，已跟踪文件缺失数 0
+CM-005：PASS，已合并并推送
+GOV-001 与工作区完整性防线：已合并并推送
 ```
 
 ## EXECUTION REPORT
 
-### CM-005（第二轮返工，已完成）
-
-- `js/modules/buttonManager.js` 改为严格 icon 允许列表；未知历史 icon 显示回退图标，但保存时保留原始值。
-- 回归断言 97 项；反向验证能同时命中注入类和允许列表类缺陷。
-- `input-safety` 97/97、`negative-input-safety` 修复版 0 / 回退版 1、
-  `button-ids` 52/52、`storage-resilience` 51/51、`e2e` 29/29、ESLint 0/0 全部通过。
-- 合并执行：`git merge --ff-only`，`ddff168 → 745b8d3`；推送 `55d2e77..745b8d3`。
-
-本轮同时完成 GOV-001 文档拆分，原 1181 行交接文档完整保存在
-`docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-18.md`，未删除历史证据。
-
-### 工作区文件丢失（2026-09-18 晚，外部 AI 独立复核后定稿）
-
-**⚠️ 本节纠正此前 `EXECUTION REPORT` 中的旧结论。**
-
-旧结论（已推翻）：「**不是 git 删除的**，是外部安全删除工具在合并前后把文件移入回收站」。
-该说法**因果说反了** —— 父目录不是被谁顺带搬走的，**是 git 自己主动删的**。
-
-**修正后的根因**：
-
-1. 沙箱以 **DLL 注入**（`tsbx.dll` ← `cli\vendor\sandbox\5.5.5\`）进入 WorkBuddy 派生的
-   每个子进程，hook 其文件删除 API —— 这就是「为什么不经 shim 也能拦到 `os.remove` 和 `git.exe`」。
-2. 配置 `recyclebin_backup: true` 使删除被改写为「移入回收站」。
-3. git 删除工作区文件后，沿路径**逐级 `rmdir` 祖先目录**（`entry.c` 的
-   `remove_empty_directories()`），靠「目录非空 → rmdir 失败」终止循环。
-   沙箱对 `rmdir` **不校验目录是否为空** → 每级都"成功" → 终止条件失效。
-4. git 一路删到**工作树顶层目录**为止；同目录内**未被 git 重写**的已跟踪文件静默消失。
-
-**★ 头号判读陷阱（复现/排查前必读）**：
-
-| 进程状态 | `tsbx.dll` 注入 | `CODEBUDDY_SAFE_DELETE_*` | 删除行为 |
-|---|---|---|---|
-| 未提权（正常） | **是** | 齐全 | 改写为移入回收站 → **可能级联** |
-| 带 `⚠️ Sandbox bypassed (escalation-approved)` | **否** | **被剥离** | 原生语义 → **级联不可能发生** |
-
-带该标记的命令复现本 bug **一律得到假阴性**。这不是偶发噪音：配置 `default_action: "deny_write"`
-使所有写操作都要过授权闸门，通过后即无沙箱 —— 属**常态**。且**豁免向下继承**，
-会让脚本里的对照组一起失效。
-
-**治本手段已排除**：改 `tsbx_rules.json` 三组实测全部零效果 —— 常驻 `sandbox-center.exe`
-只在启动时读一次，之后不再读，且落盘时会把外部改动**覆盖回去**。配置现已还原原状
-（sha256 `1c88499c…`）。
-
-**防线（已入库并验证）**：
-
-| 文件 | 作用 |
-|---|---|
-| `tools/check-worktree.mjs` | 手动：检出缺失，`--fix` 从 HEAD 恢复 |
-| `tools/worktree-guard.mjs` | 自动：判定 `intended` vs `collateral` 并恢复 |
-| `.githooks/{post-checkout,post-merge,post-commit}` | 三个触发点 |
-| `.gitattributes` | 固定 `.githooks/*` 与 `tools/*.mjs` 为 LF |
-
-启用：`git config core.hooksPath .githooks`；关闭：`CALLME_WT_GUARD=0`。
-日志 `.workbuddy/worktree-guard.log` —— **只在真的恢复过文件时才写**，
-故「没有日志」≠「防线失效」。
-
-**独立验证结果**（scratch 仓库，手工模拟误伤后触发 post-commit）：
-`intended=0 missing=3 restored=3 failed=0`，3 个误伤全部恢复，无残留 ` D`。
-钩子连线、恢复路径、不误伤三项均通过。
-
-完整推导见 `.workbuddy/worktree-file-loss-bugreport.md` §13（根因）/ §14（配置层实测）/
-**§15（第三方独立复核）**；归档版 `docs/handoff/archive/WORKTREE-FILE-LOSS.md` 已同步修正。
+等待外部 AI 按任务卡执行。外部 AI 完成后必须在本节写入修改文件、实现摘要、测试命令、完整结果、退出码、已知问题和 commit；报告不等于主 AI 验收通过。
 
 ## REVIEW RESULT
 
-GOV-001 文档治理：PASS。
+CM-005：PASS。GOV-001 和工作区文件完整性防线：已完成并验证。
 
-- `AI_HANDOFF.md` 现在只有一组固定 H2 区块。
-- CM-002、CM-003、CM-004 及既有治理记录已迁入归档索引；完整原文快照保留。
-- `AGENTS.md` 已明确当前面板、归档目录和读取规则。
-
-CM-005：PASS，可进入 Human 明确授权的合并与推送门禁。
-
-主 AI 独立验收记录（2026-09-18）：
-
-- `node tools/input-safety.mjs`：97 passed / 0 failed，退出码 0。
-- `node tools/negative-input-safety.mjs`：修复版退出码 0；回退版退出码 1，命中 17 条注入类和 4 条允许列表类失败，源码已还原。
-- `node tools/button-ids.mjs`：52 passed / 0 failed，退出码 0。
-- `node tools/storage-resilience.mjs`：51 passed / 0 failed，退出码 0。
-- `node tools/e2e.mjs`：29 passed / 0 failed，退出码 0。
-- `npm run lint`：0 error / 0 warning，退出码 0。
-- `git diff --check`：通过。
-- 源码复核确认：用户输入未进入动态 HTML；icon 仅允许配置闭集和 `random`；未知历史 icon 安全回退且原值保留；历史 `_status` 仅允许 `success`/`error`。
-- CM-005 任务分支相对 `ddff168` 的业务改动范围为 `buttonManager.js`、`history.js` 和对应验证资产；无业务范围外修改。
+CM-006：尚未验收。
 
 ## NEXT ACTION
 
-**当前无待执行任务。** 推送已于 2026-09-19 按 Human 授权完成
-（`141ca5d..ec9a20e`）；无遗留任务分支。外部 AI 保持待命，
-**不得自行修改代码或 `main`**，等待主 AI 更新 `CURRENT TASK`。
-
-```text
-推送记录
-  命令：git -c http.proxy=http://127.0.0.1:7897 \
-             -c https.proxy=http://127.0.0.1:7897 push origin main
-  结果：141ca5d..ec9a20e  main -> main
-  核对：HEAD == origin/main == ec9a20e
-  远端：ls-remote --heads origin 仅 refs/heads/main
-```
-
-**待主 AI 确认**：`EXECUTION REPORT` 中「工作区文件丢失」一节已由外部 AI 改写
-（旧根因「不是 git 删除的」已被推翻）。若主 AI 认为该结论需要更强证据，
-可在**未提权**的命令里复跑 `.workbuddy/verify_committed_guard.py`
-（它内置前置断言：先查 `tsbx.dll` 是否注入，未注入则主动 SKIP 而不给出假阴性）。
-注意该脚本位于 `.workbuddy/`，已被 `.gitignore` 忽略，**不经 Git 共享**。
-
-**未决事项**（不阻塞，记录备查）：
-
-1. `.githooks/` 依赖 `core.hooksPath` 这条**本地配置**——它在 `git config --local` 里，
-   **不会被 clone 的人自动获得**。若希望防线对协作者也生效，需要写入文档或 setup 脚本。
-   当前仓库只有 Human 一人在用，可暂不处理。
-2. **治本手段仍不可行**：改沙箱 `tsbx_rules.json` 的 `recyclebin_backup` 三组实测零效果
-   （常驻进程只在启动时读一次配置，且会回写覆盖）。唯一未验证的路径是
-   **重启 WorkBuddy 后再试**，且届时配置会不会又被回写仍属未知。
+外部 AI 请读取最新的 `AGENTS.md` 和本文件，确认实际 `HEAD` 后创建 `codex/cm006-cooldown-ownership`，按 `CURRENT TASK` 执行。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。不要修改或合并 `main`。
