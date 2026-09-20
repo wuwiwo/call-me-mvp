@@ -4,113 +4,116 @@
 
 ## CURRENT TASK
 
-**无活动任务**。所有 P1-P3 技术债已清零（CM-002~010 + GOV-002 + CM-001-TD-08/09 + 文档 666888 清理）。
+S1 — CSS 令牌化（视觉零变化）
 
-剩余路线图项目见 `docs/ROADMAP.md`（Phase D 功能拓展，原标记 NO-GO，待 Human 决定是否推进新功能）。
+PHASE: UI / Refactor
+PRIORITY: P2
+
+OBJECTIVE:
+
+把 `index.css` `:root` 之外的约 61 行 + `history.css` 约 21 行硬编码色（`#hex` / `rgba()`）收敛为 `:root` 语义令牌（CSS 自定义属性），**视觉零变化**。
+
+这是主题切换功能（`docs/DESIGN_THEME_SWITCH.md`）的第一步：Human 定调「先做令牌化，消灭硬编码色」。令牌化后 S2 才能通过 `data-theme` 覆盖令牌实现主题切换。
+
+CONTEXT:
+
+- `index.css` `:root` 段（第 2-23 行）已有 15 个令牌定义（`--primary` / `--accent` / `--glass-bg` / `--shadow-*` 等）。
+- `:root` 之外的硬编码色主要类别：
+  - `rgba(55, 53, 47, X)` — 暖黑透明度变体（分隔线/背景/hover/遮罩），约 20+ 处，透明度从 0.025 到 0.82
+  - `rgba(51, 126, 169, X)` — 蓝色透明度变体（accent 背景/hover/glow），约 15+ 处，透明度从 0.05 到 0.13
+  - `rgba(229, 80, 80, X)` / `#e55050` — 红色（错误状态），约 5 处
+  - `#4caf50` / `#6cd47e` — 绿色（成功状态），约 2 处
+  - `#2a2a2a` / `#d4af37` — 标题金属渐变，1 处（`index.css:171`）
+  - `#b8932f` / `#9a7d1f` — 金色文字，约 3 处
+  - `rgba(0, 0, 0, X)` — 黑色遮罩，约 2 处
+  - `rgba(255, 255, 255, X)` — 白色透明，约 2 处
+  - `#2a6a8f` — 深蓝按钮，1 处
+- `history.css` 零本地令牌，用 `#eee` / `#666` / `#f8f9fa` / `#ff6b81` / `#ff4757` 等（与首页不同源）。但 `history.html:15` 已加载 `index.css` → `:root` 令牌两页通用。
+- 设计文档 `docs/DESIGN_THEME_SWITCH.md` §4（布局令牌轴）+ §5（硬约束）+ §5.3（已知风险）是必读上下文。
+
+SCOPE:
+
+- `index.css`：`:root` 之外的所有硬编码色替换为 `var(--token)` 引用；在 `:root` 新增语义令牌（不重命名现有令牌，只新增）
+- `history.css`：所有硬编码色替换为 `:root` 令牌引用（复用 `index.css` 的 `:root`，因为 `history.html` 已加载 `index.css`）
+
+NON-GOALS:
+
+- **视觉零变化**：替换前后渲染结果像素级一致（只改写法，不改值）
+- 不改 DOM 结构、不改 JS 逻辑
+- 不改 `:root` 已有令牌名（只新增语义令牌）
+- 不改 `password.js:172` 内联样式（不是色值，是 `display` 属性）
+- 不改标题渐变动画（`titleShine`）
+- 不改背景 radial 光晕（只令牌化，不参数化 —— 参数化是 S2 的事）
+- 不动 AGENTS.md（主 AI 自己同步）
+- 不新增测试套件（令牌化不改行为，既有 537 项断言已覆盖）
+- 不改 prettier 格式（已在 CM-001-TD-09 达标）
+
+IMPLEMENTATION REQUIREMENTS:
+
+1. 梳理 `index.css` `:root` 之外的所有硬编码色，按语义归类（分隔线/文本层级/accent 背景/状态色/遮罩/标题渐变等）。
+2. 在 `:root` 新增语义令牌，令牌值与原硬编码值**完全一致**。命名用语义（如 `--divider` / `--text-secondary` / `--accent-bg` / `--error-color` / `--success-color` / `--overlay` 等），不用色值名。
+3. 同一透明度的同一基色如果用于不同语义（如 `rgba(55,53,47,0.08)` 既做分隔线又做 hover 背景），可以分拆为不同语义令牌（如 `--divider` 和 `--hover-bg`），也可以合并（如 `--surface-overlay-08`）—— 由执行 AI 判断，但**值必须一致**。
+4. `history.css` 的硬编码色同样替换为 `:root` 令牌引用。如果 `:root` 没有对应语义令牌，在 `:root` 新增。
+5. `:root` 令牌定义段保持整洁：已有令牌不动，新增令牌追加在末尾，按语义分组加注释。
+6. 视觉零变化：同一个色值替换前后必须渲染出完全相同的像素。
+
+ACCEPTANCE CRITERIA:
+
+- [ ] `index.css` `:root` 之外 0 硬编码色（`#hex` / `rgba()` 在 `:root` 段之外不出现）
+- [ ] `history.css` 0 硬编码色
+- [ ] `:root` 新增的语义令牌值与原硬编码值完全一致
+- [ ] `node tools/run-all.mjs` 全量 10/10 通过（537 项断言 0 失败，既有套件不回归）
+- [ ] `node node_modules/eslint/bin/eslint.js .` 0 error
+- [ ] `node node_modules/prettier/bin/prettier.cjs --check "**/*.{js,mjs,html,css,json,md}" --ignore-path .prettierignore` 0
+- [ ] `node tools/check-worktree.mjs` 缺失 0
+- [ ] `git diff --check` 0
+
+VERIFICATION:
+
+1. `grep -n '#[0-9a-fA-F]\{3,8\}[;,)\s]' index.css` 在 `:root` 段（第 2-23 行）之外 0 命中；`grep -n 'rgba\?(' index.css` 同理
+2. `grep -n '#[0-9a-fA-F]\{3,8\}[;,)\s]\|rgba\?(' history.css` 0 命中
+3. `node tools/run-all.mjs` 全量
+4. `node node_modules/eslint/bin/eslint.js .` + `prettier --check` + `check-worktree` + `git diff --check`
+
+BRANCH:
+
+从本地 `main` 的当前最新稳定 HEAD `44ec8d9` 创建并使用：`codex/s1-tokenization`。开工前必须 `git rev-parse --short HEAD` 实测确认。
+
+注意：本机存在「checkout/merge 触发工作区级联丢失」环境缺陷。**创建/切换分支后必须立即运行 `node tools/check-worktree.mjs`**；若已跟踪文件缺失，先确认非有意删除，再 `git restore -- <路径>` 恢复。守卫已移出 `tools/` 到 `scripts/` + `.git/`（GOV-002），实测切分支时若两个分支都有 `scripts/worktree-guard.mjs` 则不触发级联。**验收前不得合并 main、不得 push**。
 
 ## EXECUTION STATUS
 
 ```text
-状态：IDLE — 无活动任务（代码侧）
-设计侧已交付「主题切换」设计定稿，等待主 AI 规划与派发任务卡（代码未动）
-当前分支：main（HEAD: 14ad5ea）
-工作区：干净；check-worktree 缺失 0
-远端：origin/main 落后本地 2 个提交（格式化 + TECH_DEBT 同步），待 push
-
-已完成任务清单：
-  CM-002（PASS）— 自定义按钮编辑崩溃修复
-  CM-003（PASS）— LocalStorage JSON 容错
-  CM-004（PASS）— 按钮 ID 兼容规则
-  CM-005（PASS）— XSS 消除
-  CM-006（PASS）— cooldown 单一责任收敛
-  CM-007（PASS）— 历史页语言初始化 + 多语言清除反馈
-  CM-008（PASS）— 回执轮询可取消与单一所有权
-  CM-009（PASS）— 统一测试入口 + CI + Chrome 路径统一
-  CM-010（CONDITIONAL PASS）— 访问提示威胁模型 + 单一来源 + 诚实文案
-  GOV-002（PASS）— 守卫移出 tools/ + selfInstall + 三级回退
-  CM-001-TD-08（PASS）— error 通知音效静默失败修复
-  CM-001-TD-09（PASS）— format 基线达标（56 文件格式化 + .prettierignore）
-  文档 666888 清理（PASS）— 9 处文档明文密码改为指向 config.js
-
-设计侧交付（2026-09-20）：主题切换设计定稿 → docs/DESIGN_THEME_SWITCH.md
-  内容：Human 四条定调 / 7 项设计定稿 / 画布资产索引 / 6 条布局令牌轴 /
-        DOM 契约硬约束 / S1-S3 实施路径 / 5 项待决策
-  状态：Human 已逐条拍板，代码零改动，仅新增 1 个文档
+状态：DISPATCHED — S1 任务卡已写入，等待外部 AI 执行
+任务分支：codex/s1-tokenization（待外部 AI 创建）
+任务基线：44ec8d9（main 当前 HEAD）
+设计文档：docs/DESIGN_THEME_SWITCH.md（Human 已逐条拍板，代码零改动）
 ```
 
 ## EXECUTION REPORT
 
-**代码侧：无活动任务。** 完整协作记录见归档目录 `docs/handoff/archive/`。
-
-**设计侧交付（2026-09-20）**：主题切换的对照稿与定稿，已由 Human 逐条确认。
-详情见 [`docs/DESIGN_THEME_SWITCH.md`](DESIGN_THEME_SWITCH.md)。
-
-| 交付项 | 内容 |
-|---|---|
-| 修改文件 | 仅新增 `docs/DESIGN_THEME_SWITCH.md`；`docs/AI_HANDOFF.md` 的 EXECUTION STATUS / REPORT 两区块（外部 AI 可写范围） |
-| 画布资产 | Ardot `727742261679190`：新增/改版 `18:1`(06 按钮列表主题)、`18:67`(07 对照)、`18:141`(08 更多菜单·顶部展开)。导出 PNG 在 `.workbuddy/design-exports/` |
-| 设计定稿 | 单列全宽按钮列表 / 底部独立呼叫卡 / ⋯ 菜单从顶栏下方展开（56px 大行）/ 顶栏白色实底 + 8% 分隔线 / 薄荷渐变标题左对齐 |
-| 被否方案 | 磁贴网格（对自定义内容不鲁棒）、底部动作面板（拇指行程远）、窄下拉菜单（触控目标 36px） |
-| 硬约束 | DOM 契约被 `tools/*.mjs` 钉死 20 处（`#editButtons` / `.bubble-btn` / `#languageToggle`），主题只能改 CSS 排布，不能删改结构与 id |
-| 已知问题 | ① `index.css` 61 行 + `history.css` 21 行硬编码色；② 薄荷标题对比度 2.9:1 / 1.6:1 低于 WCAG 3:1，未处理；③ 「查看通知历史」是设计提案，待确认 |
-| 退出码 | 不适用（设计任务，未跑测试；代码零改动，`npm test` 无需重跑） |
-
-建议主 AI 下一步：读 `docs/DESIGN_THEME_SWITCH.md` 第 4/5/6 节（令牌轴 / 硬约束 / S1-S3），
-据此拆任务卡。推荐 S1 令牌化单独成卡（视觉零变化，最易验收）。
+（外部 AI 完成后填写）
 
 ## REVIEW RESULT
 
-**设计侧交付：收到**（2026-09-20）。主题切换设计定稿 `docs/DESIGN_THEME_SWITCH.md` 已审阅：
+**5 项决策已拍板**（2026-09-20，Human 确认）：
 
-- 7 项设计定稿清晰，画布资产索引完整（Ardot 727742261679190，06/07/08 三屏）
-- 6 条布局令牌轴定义准确（排列/顶栏形态/主卡包裹/标题尺度/进行中位置/顶栏材质）
-- DOM 契约硬约束（tools/\*.mjs 钉死 20 处）已确认 —— 主题只能改 CSS 排布，不能删改结构与 id
-- 已知风险（硬编码色 61+21 行、标题对比度不足 2.9:1/1.6:1）记录在案
-- 建议实施路径 S1→S2→S3 合理，S1 令牌化视觉零变化最易验收
+| # | 决策 | 结果 |
+|---|---|---|
+| 1 | 历史入口 | 纳入（首页内切换视图，不跳转） |
+| 2 | 薄荷标题对比度 | 暂不修 |
+| 3 | 首发主题数量 | 2 个（现状 + 新） |
+| 4 | prefers-color-scheme | 否 |
+| 5 | S1 独立任务卡 | 是 |
 
-**主 AI 对 5 项待决策的建议**（等 Human 确认）：
+**Human 新增要求**：页面不跳转 / 保持轻量 / 工程化组件化 / 准备接入 PWA。
 
-| # | 待决策 | 主 AI 建议 | 理由 |
-|---|---|---|---|
-| 1 | 历史入口「查看通知历史」是否纳入 | **纳入** | history.html 已存在；但按新增要求，不跳转而是首页内切换视图 |
-| 2 | 薄荷标题对比度怎么修 | **暂不修** | 记录为已知风险，后续处理 |
-| 3 | 首发主题数量 | **2 个** | 现状气泡列表 + 新按钮列表 |
-| 4 | 是否跟随 prefers-color-scheme | **否** | Human 已排除深色模式 |
-| 5 | S1 是否独立任务卡 | **是** | 主 AI 决定：独立任务卡，视觉零变化最易验收 |
-
-**Human 新增要求（2026-09-20）**：
-
-1. **页面不跳转**：尽量保持 SPA 风格，历史入口不是 `<a href="history.html">` 跳转，而是首页内动态切换视图。
-2. **保持轻量**：不引入大型框架/依赖（保持原生 JS ES Modules）。
-3. **工程化/组件化**：可以进一步组件化现有模块。
-4. **准备接入 PWA**：manifest.json + service worker + 可离线。
-
-**影响范围**：S1 令牌化不受影响（纯 CSS），可以先行。S3 切换入口需考虑不跳转原则。PWA + 组件化是 S3 之后的新阶段（S4+）。
+**路线图**：S1 令牌化 → S2 主题层 → S3 切换入口（含历史入口不跳转）→ S4 组件化 → S5 PWA。
 
 ---
 
-**CM-001-TD-09：PASS**（2026-09-20）。56 文件格式化 + .prettierignore。
-
-**CM-001-TD-08：PASS**。详见 [`docs/handoff/archive/CM-001-TD-08.md`](handoff/archive/CM-001-TD-08.md)。
-
-**CM-010：CONDITIONAL PASS**。详见 [`docs/handoff/archive/CM-010.md`](handoff/archive/CM-010.md)。
-
-**GOV-002：PASS**。详见 [`docs/handoff/archive/GOV-002.md`](handoff/archive/GOV-002.md)。
+历史验收记录见归档目录 `docs/handoff/archive/`。
 
 ## NEXT ACTION
 
-5 项决策已拍板 + 新增要求已记录。主 AI 正在写 S1 任务卡。
-
-**实施路线图（更新）**：
-
-| 阶段 | 内容 | 备注 |
-|---|---|---|
-| **S1 令牌化** | index.css 61 行 + history.css 21 行硬编码色收敛为语义令牌，视觉零变化 | 不受新增要求影响，先行 |
-| **S2 主题层** | data-theme 属性 + 防闪内联脚本 + appTheme 持久化 + history 页补 init | 不受影响 |
-| **S3 切换入口** | 甲顶栏重构 + 新主题布局类 + 4 语言文案 + 480/360 断点 | 历史入口改为首页内切换视图（不跳转） |
-| **S4 组件化** | 现有模块进一步组件化 | 新增要求 |
-| **S5 PWA** | manifest.json + service worker + 可离线 | 新增要求 |
-
-**外部 AI 暂无任务**。主 AI 写完 S1 任务卡后派发。
-
-**网络提示**：github.com 直连 push 间歇性失败（`SSL_ERROR_SYSCALL`），带代理 `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main` 可用。
+外部 AI 请读取最新的 `AGENTS.md` 和本文件，用 `git rev-parse --short HEAD` 确认实际 HEAD（应为 `44ec8d9`）后创建 `codex/s1-tokenization`（**创建/切换分支后立即跑 `node tools/check-worktree.mjs`**），按 `CURRENT TASK` 执行。**先读 `docs/DESIGN_THEME_SWITCH.md` 第 4/5 节**（令牌轴 / 硬约束）。完成后更新本文件的 `EXECUTION STATUS` 和 `EXECUTION REPORT`，等待主 AI 独立验收。**不要修改或合并 `main`，不要 push。**
