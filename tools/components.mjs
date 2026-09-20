@@ -834,9 +834,175 @@ check('点确认 → 对话框销毁', afterOk.gone === true);
 check('点确认 → 恢复默认按钮数', afterOk.count === defaultCount, String(afterOk.count));
 
 // ══════════════════════════════════════════════════════════════
-// 8. 页面无异常
+// 8. 真实命中测试：⋯ 菜单"看得见"还不够，必须"点得到"
 // ══════════════════════════════════════════════════════════════
-console.log('\n[8] 页面无异常');
+//
+// 为什么要这一组：本文件其余断言一律用 `el.click()`，它是**程序化派发**，
+// 不走浏览器的命中测试 —— 就算遮罩整块盖在面板上、真机上完全点不动，
+// 这些断言照样全绿。线上"⋯ 子菜单均无法点击"正是从这个盲区漏过去的
+// （根因见 index.css `.more-backdrop` 的注释：遮罩 z-index 曾为 800，
+// 高于顶栏的 100，而面板在顶栏的层叠上下文内）。
+//
+// 因此这里改用 CDP `Input.dispatchMouseEvent` 发真实坐标鼠标事件，
+// 并用 `document.elementFromPoint` 直接问浏览器"这一点最上层是谁"。
+console.log('\n[8] 真实命中测试：⋯ 菜单项必须能被真实鼠标点中');
+
+async function setViewport(w, h) {
+    await cdp.send(
+        'Emulation.setDeviceMetricsOverride',
+        { width: w, height: h, deviceScaleFactor: 1, mobile: false },
+        S
+    );
+}
+
+/** 真实鼠标点击（走命中测试），返回被点元素的中心坐标。 */
+async function realClickSel(sel) {
+    const rect = await evalJs(`(() => {
+        const e = document.querySelector(${JSON.stringify(sel)});
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    })()`);
+    if (!rect) throw new Error('找不到元素: ' + sel);
+    for (const type of ['mousePressed', 'mouseReleased']) {
+        await cdp.send(
+            'Input.dispatchMouseEvent',
+            { type, x: rect.x, y: rect.y, button: 'left', clickCount: 1, buttons: 1 },
+            S
+        );
+    }
+    return rect;
+}
+
+// 源码级护栏：把"遮罩必须低于顶栏"这条约束钉死在测试里
+const cssSrc = read('index.css');
+const zOf = (selector) => {
+    const block = cssSrc.match(new RegExp('\\' + selector + '\\s*\\{([\\s\\S]*?)\\}'));
+    return Number((block?.[1] || '').match(/z-index:\s*(\d+)/)?.[1] ?? NaN);
+};
+const backdropZ = zOf('.more-backdrop');
+const topbarZ = zOf('.top-bar');
+check(
+    '遮罩层级严格低于顶栏（否则面板看得见却点不到）',
+    Number.isFinite(backdropZ) && Number.isFinite(topbarZ) && backdropZ < topbarZ,
+    `${backdropZ} < ${topbarZ}`
+);
+
+const HIT_SELECTORS = [
+    '#editProfile',
+    '#editButtons',
+    '[data-theme-name="bubble"]',
+    '[data-theme-name="list"]'
+];
+
+for (const vp of [
+    { w: 1280, h: 800, wide: true, label: '宽屏 1280' },
+    { w: 390, h: 844, wide: false, label: '窄屏 390' }
+]) {
+    await setViewport(vp.w, vp.h);
+    await seed('/index.html');
+    await sleep(300);
+    await realClickSel('#moreToggle');
+    await sleep(400);
+
+    const menuOpen = await evalJs(
+        `document.getElementById('morePanel').classList.contains('show')`
+    );
+    check(`${vp.label}：真实鼠标点 ⋯ → 面板展开`, menuOpen === true);
+
+    const hits = await evalJs(`(() => {
+        const sels = ${JSON.stringify(HIT_SELECTORS)};
+        return sels.map((s) => {
+            const e = document.querySelector(s);
+            const r = e.getBoundingClientRect();
+            const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+            return { sel: s, hitSelf: !!(top && (top === e || e.contains(top))), topEl: top ? (top.id || top.className) : null };
+        });
+    })()`);
+    for (const h of hits) {
+        check(`${vp.label}：命中测试 → ${h.sel}`, h.hitSelf === true, '被 ' + h.topEl + ' 拦截');
+    }
+
+    const geo = await evalJs(`(() => {
+        const tb = document.querySelector('.top-bar').getBoundingClientRect();
+        const p = document.getElementById('morePanel').getBoundingClientRect();
+        const bd = document.getElementById('moreBackdrop');
+        const cs = getComputedStyle(bd);
+        return {
+            topbarW: Math.round(tb.width),
+            topbarBottom: Math.round(tb.bottom),
+            panelW: Math.round(p.width),
+            panelTop: Math.round(p.y),
+            panelRight: Math.round(p.right),
+            backdropBg: cs.backgroundColor,
+            backdropZ: Number(cs.zIndex)
+        };
+    })()`);
+
+    if (vp.wide) {
+        check('宽屏：面板是传统下拉（240 宽，非全宽浮空卡）', geo.panelW === 240, String(geo.panelW));
+        check(
+            '宽屏：面板右边缘与顶栏右内边距对齐',
+            Math.abs(vp.w - geo.panelRight - 24) <= 1,
+            String(vp.w - geo.panelRight)
+        );
+        check(
+            '宽屏：面板在 ⋯ 按钮下方（顶栏下沿之下）',
+            geo.panelTop >= geo.topbarBottom,
+            `${geo.panelTop} >= ${geo.topbarBottom}`
+        );
+    } else {
+        check('窄屏：面板宽度 = 顶栏宽度', geo.panelW === geo.topbarW, `${geo.panelW} vs ${geo.topbarW}`);
+        check(
+            '窄屏：面板紧贴顶栏下沿（缝隙 ≤1px）',
+            Math.abs(geo.panelTop - geo.topbarBottom) <= 1,
+            `${geo.panelTop} vs ${geo.topbarBottom}`
+        );
+    }
+    check(`${vp.label}：遮罩可见（非透明）`, geo.backdropBg !== 'rgba(0, 0, 0, 0)', geo.backdropBg);
+    check(`${vp.label}：遮罩层级 < 顶栏 100`, geo.backdropZ < 100, String(geo.backdropZ));
+
+    // 最关键的一条：真机路径下点「编辑资料」必须真的打开资料模态框。
+    // bug 复现时点击被遮罩吃掉 → 只关菜单、模态框始终不开。
+    await realClickSel('#editProfile');
+    await sleep(600);
+    const profileOpened = await evalJs(
+        `document.getElementById('profileModal').classList.contains('show')`
+    );
+    check(`${vp.label}：真实鼠标点「编辑资料」→ 资料模态框打开`, profileOpened === true);
+}
+
+// 窄屏遮罩点击关闭（真实鼠标），确认遮罩仍在工作
+await setViewport(390, 844);
+await seed('/index.html');
+await sleep(300);
+await realClickSel('#moreToggle');
+await sleep(400);
+const beforeScrim = await evalJs(`document.getElementById('morePanel').classList.contains('show')`);
+await cdp.send(
+    'Input.dispatchMouseEvent',
+    { type: 'mousePressed', x: 195, y: 700, button: 'left', clickCount: 1, buttons: 1 },
+    S
+);
+await cdp.send(
+    'Input.dispatchMouseEvent',
+    { type: 'mouseReleased', x: 195, y: 700, button: 'left', clickCount: 1, buttons: 1 },
+    S
+);
+await sleep(400);
+const afterScrim = await evalJs(`document.getElementById('morePanel').classList.contains('show')`);
+check(
+    '窄屏：真实鼠标点遮罩 → 菜单关闭',
+    beforeScrim === true && afterScrim === false,
+    `${beforeScrim} → ${afterScrim}`
+);
+
+await setViewport(1280, 800);
+
+// ══════════════════════════════════════════════════════════════
+// 9. 页面无异常
+// ══════════════════════════════════════════════════════════════
+console.log('\n[9] 页面无异常');
 check('运行期间无 console.error / 未捕获异常', pageErrors.length === 0, pageErrors.join(' | '));
 
 // ══════════════════════════════════════════════════════════════
