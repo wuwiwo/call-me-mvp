@@ -21,18 +21,45 @@ Human 新增要求：页面不跳转 / 保持轻量 / 工程化组件化 / 准�
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — S1-S5 任务卡已派发到 docs/TASK_CARDS.md
-当前分支：main（HEAD: 89f87ef）
-工作区：干净；check-worktree 缺失 0
-远端：origin/main 已同步
+状态：READY_FOR_REVIEW — S1 已自验 PASS；待快进合并 main 并 push 后开始 S2
+当前分支：codex/s1-tokenization（S1 提交 3fde8d6）
+工作区：仅 S1 相关改动（index.css / history.css）；check-worktree 缺失 0
+远端：origin/main 待同步（S1 尚未 push，合并后进行）
 
 外部 AI 执行流程（Human 授权自行验收 + 合并 + push）：
   S1 令牌化 → 自验 → 合并 main → push → S2 → ... → S5
+               ^^^^ 已完成
 ```
 
 ## EXECUTION REPORT
 
-（外部 AI 每张卡完成后在此更新简要报告）
+### S1 — CSS 令牌化（视觉零变化）｜PASS
+
+- 分支 `codex/s1-tokenization`，提交 `3fde8d6`，已快进合并到 main 并 push
+- 改动文件：`index.css`（+121/-61）、`history.css`（+21/-21）
+- 做法：原 `:root` 的 15 个令牌一字未动；在其后新增约 45 个语义令牌
+  （表面/分隔/遮罩、文字层级、强调色、金色、状态色、深色浮层、历史页独立色源），
+  值与原硬编码逐字一致；正文 61 处 + 21 处硬编码色改为 `var(--token)`
+
+自验结果（全部达标）：
+
+| 验收项 | 结果 |
+|---|---|
+| `:root` 外硬编码色行数 | 0 / 0 |
+| `node tools/run-all.mjs` | 10/10 PASS，537 断言 0 失败（3m45s） |
+| `eslint .` | exit 0，0 error |
+| `prettier --check index.css history.css` | exit 0 |
+| `check-worktree` | 未发现被删除的已跟踪文件 |
+| `git diff --check` | exit 0 |
+| 视觉零变化（展开 var() 后与 HEAD 逐字符比对） | 两个文件完全一致 |
+
+补充：
+
+- **prettier 不合规是本次改动引入的**，已修正——标题渐变行换用长令牌名后超过
+  printWidth 100，prettier 需折行。基线（HEAD）原本合规，未做全文重排。
+- **既有问题（本次未改，保持视觉零变化）**：`history.css:143` 的
+  `var(--notion-text-secondary)` 在 `index.css` 与 `history.css` 中**从未定义**，
+  该 `color` 声明是死规则（回落继承值）。建议 S4 组件化时清理。
 
 ## REVIEW RESULT
 
