@@ -996,6 +996,9 @@ p.subtitle {
     background: var(--surface-faint);
     display: flex;
     justify-content: flex-end;
+    /* C1：「保存设置」与「恢复默认」之间的间距。
+       原先只有 .confirm-modal 单独加了 gap，按钮编辑框的底栏是紧贴的。 */
+    gap: 12px;
 }
 
 /* 按钮编辑模态框：内容区纯白（表单密集，保证可读与简洁） */
@@ -1024,6 +1027,36 @@ p.subtitle {
 }
 .confirm-modal .modal-footer {
     gap: 12px;
+}
+
+/* ── 通用按钮基类（C1） ──
+ *
+ * 历史问题：`#resetButtons` 一直写着 `class="btn"`，但 CSS 里**从未定义过 `.btn`**
+ * —— 它渲染成浏览器默认按钮，这才是「恢复默认按钮样式不统一」的真正根因。
+ *
+ * ⚠️ 定义位置必须在此处（`.save-btn` 之前）：
+ * `.saveProfile` 同时带 `class="btn save-btn"`，两条规则特异度相同（都是单类），
+ * 靠**源码顺序**决定胜负 —— `.save-btn` 在后则覆盖 `.btn` 的 background/padding。
+ * 若把 `.btn` 挪到文件末尾，保存按钮会立刻变成灰底次级样式。 */
+.btn {
+    font-family: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-premium);
+}
+
+/* 次级按钮（对齐设计稿 11:485） */
+.btn-secondary {
+    background: rgba(55, 53, 47, 0.06);
+    border: 1px solid rgba(55, 53, 47, 0.16);
+    color: #37352f;
+}
+
+.btn-secondary:hover {
+    background: rgba(55, 53, 47, 0.1);
 }
 
 .save-btn {
@@ -1171,7 +1204,11 @@ p.subtitle {
     right: 0;
     background: var(--light);
     border: none;
-    border-radius: 0;
+    /* G1：顶/左/右三边继续贴顶栏所以保持直角，只给**底部两角** 16px。
+       设计稿 24:111 的 FRAME 无显式 cornerRadius，但 padding-bottom(16) > top(8)
+       → 视觉上"底部更空"，配合底圆角成一张从顶栏垂下来的卡片。
+       与 docs/DESIGN_THEME_SWITCH.md 的「⋯ 更多菜单」行同步（已裁决）。 */
+    border-radius: 0 0 16px 16px;
     box-shadow: 0 12px 32px rgba(55, 53, 47, 0.14);
     padding: 8px 12px 16px;
     z-index: 900;
@@ -1231,11 +1268,23 @@ p.subtitle {
     transition: background 0.2s ease;
 }
 
-.more-item:hover {
-    background: var(--surface-quiet);
+/* G1：hover 态对齐设计稿 24:127 —— 淡绿底 + 薄荷字 */
+.more-item:hover,
+.more-item:focus-visible {
+    background: rgba(15, 163, 128, 0.1);
+    color: #0ba380;
 }
 
-.more-item > i:first-child {
+.more-item:hover > i:first-child,
+.more-item:hover > .theme-swatch:first-child,
+.more-item:focus-visible > i:first-child,
+.more-item:focus-visible > .theme-swatch:first-child {
+    color: #0ba380;
+}
+
+/* 宽屏的圆角由上面的 min-width:769 覆盖（240 宽传统下拉，四角 14） */
+.more-item > i:first-child,
+.more-item > .theme-swatch:first-child {
     width: 20px;
     text-align: center;
     color: var(--text-secondary);
@@ -1366,7 +1415,8 @@ p.subtitle {
     --container-bg: transparent;
     --container-border: transparent;
     --container-shadow: none;
-    --container-padding: 20px 16px 24px;
+    /* B3：主卡消失后 20px 上边距显得空 → 收到 12px，整体内容上移 */
+    --container-padding: 12px 16px 24px;
     /* ① 按钮排列：全宽列表卡，圆角 14、左图标底 36 */
     --btn-radius: 14px;
     --btn-justify: flex-start;
@@ -1379,8 +1429,13 @@ p.subtitle {
     -webkit-backdrop-filter: none;
 }
 
+/* B3：内容整体上移。
+ *
+ * ⚠️ 顶栏高度随断点浮动（实测 72 / 61 / 57），**不要写死单一数值推导** ——
+ * 这里只把上边距收小（76 → 56），移动端再收一档。
+ * 原值 76 是按「主卡有 padding」时算的，主卡在 list 主题里已去掉，于是显得空。 */
 [data-theme='list'] .container {
-    margin-top: 76px;
+    margin-top: 56px;
     transform: none;
 }
 
@@ -1390,7 +1445,13 @@ p.subtitle {
 }
 
 [data-theme='list'] .header {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 480px) {
+    [data-theme='list'] .container {
+        margin-top: 48px;
+    }
 }
 
 [data-theme='list'] .bubble-container {
