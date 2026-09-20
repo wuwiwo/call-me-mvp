@@ -21,15 +21,23 @@ Human 新增要求：页面不跳转 / 保持轻量 / 工程化组件化 / 准�
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — S1–S5 全部完成；S5 已自验 PASS，待快进合并 main 并 push
-当前分支：codex/s5-pwa（基线 abf8d29 = S4 合并后的 main HEAD）
-工作区：仅 S5 相关改动；check-worktree 缺失 0
-远端：origin/main = abf8d29（S4 已推送）
+状态：READY_FOR_REVIEW — S1–S5 全部完成并已合并 main、push；S5 待主 AI 验收
+当前分支：main（= origin/main = 30dc328）
+工作区：干净；check-worktree 缺失 0
+远端：origin/main = 30dc328（S5 已推送）
 
 外部 AI 执行流程（Human 授权自行验收 + 合并 + push）：
   S1 → S2 → S3 → S4 → S5
-  ✓    ✓    ✓    ✓    ✓ 代码完成（S5 待合并推送）
+  ✓    ✓    ✓    ✓    ✓ 全部完成
 ```
+
+S5 合并与推送实录：
+
+- `git merge --ff-only codex/s5-pwa` → Fast-forward `abf8d29..30dc328`
+- **合并后复跑全量回归：14/14 PASS，787 断言 0 失败，284.2s**
+- push：`-c http.version=HTTP/1.1` + 代理 → `abf8d29..30dc328 main -> main`；
+  `ls-remote` 核对远端 = 本地 = `30dc328`
+- checkout main 时级联触发（43 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
 
 S4 合并与推送实录：
 
