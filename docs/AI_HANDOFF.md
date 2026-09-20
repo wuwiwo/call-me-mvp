@@ -21,18 +21,28 @@ Human 新增要求：页面不跳转 / 保持轻量 / 工程化组件化 / 准�
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — S3 已自验 PASS；待快进合并 main 并 push 后开始 S4
-当前分支：codex/s3-theme-entry（基线 9b53128 = S2 合并 + prettier endOfLine 根治）
-工作区：仅 S3 相关改动；check-worktree 缺失 0
-远端：origin/main 已同步到 9b53128；S3 合并后 push
+状态：READY_FOR_REVIEW — S4 已自验 PASS；待快进合并 main 并 push 后开始 S5
+当前分支：codex/s4-componentize（基线 8f97e32 = S3 合并 + 测试/文档提交）
+工作区：仅 S4 相关改动；check-worktree 缺失 0
+远端：origin/main 已同步到 8f97e32；S4 合并后 push
 
 外部 AI 执行流程（Human 授权自行验收 + 合并 + push）：
   S1 → S2 → S3 → S4 → S5
-  ✓    ✓    ^^^ 已完成（本次）
+  ✓    ✓    ✓    ^^^ 已完成（本次）
 ```
 
+S3 合并与推送实录：
+
+- `git merge --ff-only codex/s3-theme-entry` → Fast-forward `9b53128..8f97e32`
+- **合并后复跑全量回归：12/12 PASS，654 断言 0 失败，247.6s**（与合并前一致）
+- push 实录：直连 `SSL_ERROR_SYSCALL`；带 `-c http.proxy=127.0.0.1:7897` 仍失败；
+  **加 `-c http.version=HTTP/1.1` 后成功** → `9b53128..8f97e32 main -> main`
+  （HTTP/2 over proxy 被掐，是本机 push 的已知坑，见 `docs/handoff/archive/WORKTREE-FILE-LOSS.md`
+  之外的本机笔记）
+- checkout main 时再次触发级联（tools/ 下 29 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
+
 > 注：CURRENT TASK 区块仍写着「S1 ← 当前」，已过期 —— 按协议该区块由主 AI 维护，
-> 请主 AI 在验收时同步为「S3 已完成 / S4 待派发」。
+> 请主 AI 在验收时同步为「S3 已完成 / S4 进行中」。
 
 ## EXECUTION REPORT
 
@@ -158,6 +168,76 @@ AC 逐条对照：`#editButtons` 仍在 DOM ✓ / ⋯ 菜单从顶栏下方展�
    后者是因为 `#editProfile` / `#editButtons` 收进 ⋯ 菜单后，
    引导步骤的高亮目标会指向隐藏元素（高亮不可见）+ 文案失效 —— 属本次改动的
    直接后果，已一并修正（3 个步骤：高亮改指 `#moreToggle` / `#historyEntry`，四语文案同步）。
+
+### S4 — 组件化｜PASS
+
+- 分支 `codex/s4-componentize`（基线 `8f97e32`），提交 `123f7f1`（实现）+ `83dd7db`（测试/文档）
+
+**评估过的候选（任务卡要求"列出可组件化的区块，至少 3 个候选"）**：
+
+| 区块                     | 现状                                                 | 复用处数 | 结论                                                      |
+| ------------------------ | ---------------------------------------------------- | -------- | --------------------------------------------------------- |
+| 弹出菜单（toggle+panel） | `language.js` 与 `theme.js` **各写一份**开合逻辑     | 2        | ✅ 抽 `popupMenu.js`                                      |
+| 模态框开关               | `profile` / `buttonEdit` / `password` / confirm 四份 | 4        | ✅ 抽 `modal.js`（password 暂不接入，见下）               |
+| 图标选择器               | 整段嵌在 `buttonManager` 里（约 200 行）             | 1        | ✅ 抽 `iconPicker.js`（代码量大 + 与按钮业务无关的纯 UI） |
+| Toast 提示条             | `notification.show()` 约 10 行                       | 1        | ❌ 太薄，抽了只是搬家                                     |
+| 回执状态条               | `notification.setReceiptStatus()` 约 15 行           | 1        | ❌ 同上                                                   |
+| 按钮列表                 | `buttonManager.renderButtons()`                      | 1        | ❌ 抽它 = 重写 buttonManager 一半，收益 < 风险            |
+| 冷却卡                   | `countdown.js`                                       | 1        | ❌ CM-006 定稿的单职责责任者，不动                        |
+| 首页历史视图             | `homeHistory.js`                                     | 1        | ❌ 已是独立模块，无需再抽                                 |
+
+改动文件：
+
+- **新增** `js/components/component.js`（基座）、`popupMenu.js`、`modal.js`、`iconPicker.js`
+- `js/modules/theme.js`：删 `openMenu/closeMenu/toggleMenu`，改为持有 popupMenu 实例
+- `js/modules/language.js`：删 5 个菜单方法，改为持有 popupMenu 实例
+- `js/modules/profile.js`：资料模态框交给 modal 组件
+- `js/modules/buttonManager.js`：编辑模态框交给 modal 组件；图标选择器改用组件
+  （删 `createIconOption` / `createIconPicker` / `pickerGlyph`）；`showConfirmDialog` 改用 `modal.confirm()`
+- `tools/components.mjs`（**新增**，CDP 9453，87 断言）+ `tools/run-all.mjs` + `tools/README.md`
+    - `tools/theme-entry.mjs`（一条断言随职责迁移更新）
+
+关键设计决策（三条，请主 AI 重点复核）：
+
+1. **差异用配置项表达，不统一 DOM 形态。** 语言下拉的遮罩是运行时 create/remove，
+   ⋯ 菜单的遮罩是预埋节点加 `show` class。组件用 `backdrop` / `createBackdrop`
+   二选一来承载这两种既有形态 —— 强行统一就要改 html 与 CSS，等于改产品行为。
+2. **组件只管开合与事件，不持有业务状态。** "选中某项意味着什么"由 `onSelect` 决定，
+   "哪一项是当前项"由 `onSync` 决定。因此 theme.js 仍是 `appTheme` 的**唯一写入者**，
+   language.js 仍是 `currentLang` 的唯一写入者 —— 组件化没有稀释既有单职责边界。
+3. **图标白名单仍是单一来源。** 允许列表 `ALLOWED_ICON_NAMES` 留在 buttonManager，
+   只有闭集判定 `resolveIconName()` 抽到组件里，由首页渲染与编辑表单共用 ——
+   避免"按钮显示某图标、打开编辑却预选另一项"。
+
+自验结果：
+
+| 验收项                         | 结果                                                   |
+| ------------------------------ | ------------------------------------------------------ |
+| `node tools/run-all.mjs`       | **13/13 PASS，741 断言 0 失败**（S4 新增套件 87 断言） |
+| `eslint .`                     | exit 0，0 error                                        |
+| `prettier --check`（改动文件） | exit 0                                                 |
+| `check-worktree`               | 未发现被删除的已跟踪文件                               |
+| `git diff --check`             | exit 0                                                 |
+
+AC 逐条对照：≥3 个区块抽成组件（4 个文件 / 3 个可实例化组件）✓ /
+接口标准化（render·mount·unmount·update，`components.mjs` 逐实例断言）✓ /
+产品行为不变（语言下拉、⋯ 菜单、两个模态框、图标选择器、确认对话框五条路径共 40+ 断言）✓ /
+eslint·prettier·check-worktree 全 0 ✓。
+另：组件可独立 import 并 render（在页面里 import 后挂到**游离容器**验证，不依赖全局状态）。
+
+**偏离任务卡 1 处（请主 AI 裁决）**：AC 写「run-all 10/10（537 断言）」，
+实际 **13/13（741 断言）** —— S2/S3/S4 各新增一个回归套件并注册进 run-all，
+套件数 8 → 12，总项数 10 → 13。
+
+**已知未接入项（请主 AI 决定是否跟进）**：
+
+1. **访问提示模态框（password.js）没有接入 modal 组件。** 它是运行时 create +
+   "强制不可关闭"（点遮罩不关），语义与标准模态框不同；接入它等于重写
+   `password-gate.mjs` 60 断言钉住的那条路径，收益低于风险。
+   组件的 `dismissible: false` 选项就是为它预留的。
+2. **`history.css:143` 的死规则** `var(--notion-text-secondary)` 仍未清理
+   （该变量在 index.css / history.css 中从未定义，声明恒回落继承值）。
+   S1 报告里提过、本次仍不在 SCOPE，未动 —— 建议并入后续卡片。
 
 ## REVIEW RESULT
 
