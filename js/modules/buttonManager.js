@@ -406,17 +406,51 @@ export const buttonManager = {
             this.updateModeDisplay();
         }, 100);
 
-        // UI-14 D2：首次打开时自动亮一次气泡提示，然后撤掉。
-        // 用「只在第一次」而不是每次打开都亮：这是引导性提示，
-        // 反复出现会变成噪音。2.5s 后移除，之后只剩 hover/focus 触发。
-        if (!this._layoutTipShown) {
-            this._layoutTipShown = true;
-            const btn = document.getElementById('toggleMode');
-            if (btn) {
-                btn.classList.add('tip-once');
-                setTimeout(() => btn.classList.remove('tip-once'), 2500);
-            }
+        // UI-15 D2 改版：打开编辑框就常显「布局提示」气泡，
+        // 直到用户点击页面任意区域为止（见 showLayoutTip 的说明）。
+        this.showLayoutTip();
+    },
+
+    /**
+     * 显示「点击可切换首页按钮布局」的常驻气泡。
+     *
+     * UI-15：这条提示原来是「hover 或首次打开 2.5s 后自动消失」——
+     *   ① **触屏没有 hover**：手指按下去立刻完成点击，气泡永远出不来；
+     *   ② 就算出来，2.5s 常常还没读完就撤了。
+     * 因此改为常驻：显示条件只有"模态框打开"，消失条件只有"用户点了任意处
+     * （或按下任意键）"。既有行为里 `updateModeDisplay()` 已把文案写进
+     * `data-tip`，这里只负责加/摘 `.tip-show`，文案来源仍然只有一处。
+     *
+     * ⚠️ 监听用**捕获阶段**且挂在 window 上：`#toggleMode` 自己的 click 处理里
+     * 有 `stopPropagation()`，冒泡阶段挂的话点它不生效（表现为"点它关不掉"）。
+     */
+    showLayoutTip() {
+        const btn = document.getElementById('toggleMode');
+        if (!btn) return;
+
+        // 显式保存同一个函数引用：add/removeEventListener 靠引用配对，
+        // 每次 new 一个箭头函数会导致监听器摘不掉（重开一次就多留一个）。
+        if (!this.__dismissTipRef) {
+            this.__dismissTipRef = () => this.hideLayoutTip();
         }
+
+        // 先清干净上一次的状态（含监听器），再重新挂
+        this.hideLayoutTip();
+
+        btn.classList.add('tip-show');
+        window.addEventListener('pointerdown', this.__dismissTipRef, true);
+        window.addEventListener('keydown', this.__dismissTipRef, true);
+    },
+
+    /**
+     * 关掉常驻气泡并解绑全局监听。多次调用无副作用。
+     */
+    hideLayoutTip() {
+        if (this.__dismissTipRef) {
+            window.removeEventListener('pointerdown', this.__dismissTipRef, true);
+            window.removeEventListener('keydown', this.__dismissTipRef, true);
+        }
+        document.getElementById('toggleMode')?.classList.remove('tip-show');
     },
 
     /**

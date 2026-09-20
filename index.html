@@ -37,7 +37,12 @@
         <script type="module" src="js/sw-register.js"></script>
     </head>
 
-    <body>
+    <!-- UI-15：body 上的页面标识。两张页面共用 index.css，
+         顶栏是 fixed（高 72 / 61 / 57 随断点浮动），顶部留白只能由页面级作用域区分：
+         .home-page      = 顶部对齐 + 距顶栏 48px（本文件）
+         .history-page   = history.html 的同名
+         详见 index.css 末尾「UI-15：首页内容顶部对齐」块。 -->
+    <body class="home-page">
         <!-- 顶部操作栏（甲方案：左 头像+昵称 / 右 语言胶囊 + ⋯ 更多） -->
         <div class="top-bar">
             <div class="user-info" id="userInfo">

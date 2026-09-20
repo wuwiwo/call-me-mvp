@@ -422,6 +422,35 @@ body.history-page .container {
     color: var(--danger-solid);
 }
 
+/* UI-15：宽屏让 tag 回到文档流，不再压住右上角的日期。
+ *
+ * 上面的 `.history-tag` 是 `position:absolute`（top/right 12px），它的位置落在
+ * `.history-header` 右侧那一列 —— 而日期 `.history-time` 也在那一列。
+ * 只要日期够长（例如 "2026年09月20日 22:46"），两者就叠在一起，
+ * 实测 800px / 1000px 宽下 rect 相交 = true。
+ * 手机端看不出来，是因为 ≤600px 时卡片改成纵向流、tag 改成了静态定位。
+ *
+ * 修法：≥601px 时把卡片改成三列网格 —— emoji | 内容 | tag。
+ * tag 必须是**静态定位**（position: static）才会真正占住第三列的格子，
+ * 绝对定位元素是脱离文档流的，第三列会被算成 0 宽，等于没预留空间。
+ * 用网格而不是给 header 写死 padding-right 的理由：tag 宽度随语言变化
+ * （未回执 / Unread / 送信失敗 …），写死字节必然在某个语言下又叠回去，
+ * 而 `auto` 列宽由内容自己撑开，天然适配四语言。
+ *
+ * ≤600px 维持 UI-14 F2 的纵向流 + 静态 tag，行为完全不变。 */
+@media (min-width: 601px) {
+    .history-item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        column-gap: 12px;
+        align-items: start;
+    }
+
+    .history-tag {
+        position: static;
+    }
+}
+
 /* 窄屏：卡片在 600px 以下改成纵向 flex，tag 贴右上角会压到昵称。
    改为静态定位、跟随内容流排在最后，宽度自适应。 */
 @media (max-width: 600px) {

@@ -326,6 +326,12 @@ p.subtitle {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+    /* UI-15：同一行的两张卡必须等高。
+       基础规则是 align-items:center（给纵向堆叠用的居中），进入网格后它变成
+       "每张卡在自己的格子里垂直居中" —— 只要有一张卡的文案换行、高度变大，
+       两张卡的顶边就错开（实测相差 5px），看着像"对齐没生效"。
+       stretch 让它们撑满整行高度，与 list 主题的行为一致。 */
+    align-items: stretch;
 }
 
 /* 简约模式下的按钮样式 */
@@ -723,11 +729,15 @@ p.subtitle {
     font-size: 1rem;
 }
 
-/* UI-14 D2：「布局调整」按钮的气泡提示。
+/* UI-14 D2 / UI-15：「布局调整」按钮的气泡提示。
    正文由 buttonManager.updateModeDisplay() 写进 data-tip（跟随语言），
    CSS 只负责显隐 —— 不让样式里出现第二种文案来源。
-   触发条件：hover / 键盘聚焦 / 首次打开模态框时自动显示一次的 .tip-once。
-   pointer-events:none：提示不能挡住按钮自身的点击。 */
+   pointer-events:none：提示不能挡住按钮自身的点击。
+
+   ⚠️ UI-15 起**触发方式从 hover 改为常驻**：由 buttonManager 在打开编辑框时
+   加 .tip-show 常显，用户点页面任意区域（或按任意键）才由 JS 摘掉。
+   原来的 `:hover` 在触屏设备上等于不存在 —— 手指按上去直接完成点击，
+   提示还没来得及"hover"出来就没了。 */
 .mode-toggle {
     position: relative;
 }
@@ -758,9 +768,9 @@ p.subtitle {
     content: attr(data-tip);
 }
 
-.mode-toggle:hover::after,
+/* 键盘可达性保留；鼠标悬浮不再参与显隐（见上方 UI-15 说明）。 */
 .mode-toggle:focus-visible::after,
-.mode-toggle.tip-once::after {
+.mode-toggle.tip-show::after {
     opacity: 1;
     visibility: visible;
     transform: none;
@@ -1635,11 +1645,36 @@ p.subtitle {
     gap: 10px;
 }
 
-/* 列表主题恒为单列：用户的「简约模式」网格不再生效 */
-[data-theme='list'] .bubble-container.minimal-mode {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+/* ===== UI-15：list 主题同样尊重「简约模式」的两列网格 =====
+ *
+ * 这里原本有一条 `[data-theme='list'] .bubble-container.minimal-mode`
+ * 把它压回 `flex-direction: column`（注释写着"列表主题恒为单列"）——
+ * 结果用户在 ⋯ 里选了「简约模式 - 首页每行2个按钮」，切到青笺行后
+ * 选择被静默吞掉，依旧一行一个。
+ *
+ * 「每行几个按钮」是**显示模式**的语义，不该由主题决定：
+ * 主题负责长相（圆角/配色/对齐），模式负责排布（一行几个）。
+ * 因此直接删掉那条覆盖，让基础规则 `.bubble-container.minimal-mode`
+ * 的 2 列网格在两种主题下都生效。 */
+[data-theme='list'] .bubble-container.minimal-mode .bubble-btn {
+    /* 网格里每张卡只有半宽，按半宽重新收紧内边距与行高 */
+    padding: 0 14px;
+    font-size: 0.9rem;
+    min-height: 56px;
+}
+
+/* 半宽卡片装不下长文案时显式省略号 —— .bubble-btn 自带 overflow:hidden，
+   不加这三行文字会被硬裁断（看不到省略号，也不知道还有字没显示）。
+   min-width:0 是 flex/grid 子项能收缩的前提，缺了 ellipsis 不生效。 */
+[data-theme='list'] .bubble-container.minimal-mode .bubble-content,
+[data-theme='list'] .bubble-container.minimal-mode .bubble-content span {
+    min-width: 0;
+}
+
+[data-theme='list'] .bubble-container.minimal-mode .bubble-content span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 [data-theme='list'] .bubble-btn {
@@ -2079,5 +2114,58 @@ p.subtitle {
     .bubble-btn:hover,
     .bubble-container.minimal-mode .bubble-btn:hover {
         transform: none;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UI-15：首页内容顶部对齐（核心内容距顶栏 48px）
+   ══════════════════════════════════════════════════════════════
+
+   问题：`body` 是 `display:flex; align-items:center`，内容块在视口里**垂直居中**。
+   实测（475px 宽、4 个按钮）：bubble 主题容器顶距顶栏 **144px**、list 主题 **176px**，
+   而且这个数字随按钮数量与视口高度漂移 —— 按钮删到 2 个又变成另一个位置，
+   用户看到的是"内容一直往下掉、位置每天都不一样"。
+
+   修法（对齐设计稿 475px 宽画板：核心内容距顶栏 48px）：
+     1. 首页改为顶部对齐（`align-items: flex-start`）；
+     2. 顶部留白**只由一处**决定 —— body 的 padding-top = 顶栏高度 + 48px；
+     3.    容器各自的 margin-top（bubble 60px / list 56·48px）在首页抵消为 0，
+        否则两处留白会叠加（这正是原来两个主题的实测值互不相同的原因）。
+
+   ⚠️ 顶栏高度随断点浮动（实测 **72 / 61 / 57**，取决于头像尺寸与内边距），
+   所以高度本身也是一个令牌 `--topbar-h`，三档断点各给一个值 ——
+   正文里不出现任何写死的像素推导。
+
+   ⚠️ 作用域：history.html 的 <body> 带 `.history-page`，不受本块影响，
+   历史页的顶部留白继续由 history.css 自己管（UI-14 F1 那一套）。 */
+
+body.home-page {
+    align-items: flex-start;
+    padding-top: calc(var(--topbar-h) + var(--content-top-gap));
+}
+
+/* 顶部留白统一由 body 决定；容器不再各自叠加一层 margin-top。
+   特异度 (0,2,1) > `[data-theme='list'] .container` (0,2,0)，
+   所以 list 主题那两条 56px / 48px 的覆盖会被这里稳稳压住。 */
+body.home-page .container {
+    margin-top: 0;
+}
+
+/* 顶栏高度令牌：随头像 / 内边距断点浮动的三档实测值。
+   新增断点（或改顶栏尺寸）时**必须同步这里**，否则顶部留白会错位。 */
+:root {
+    --topbar-h: 72px;
+    --content-top-gap: 48px;
+}
+
+@media (max-width: 480px) {
+    :root {
+        --topbar-h: 61px;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --topbar-h: 57px;
     }
 }
