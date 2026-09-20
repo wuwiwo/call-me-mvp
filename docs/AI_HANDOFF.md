@@ -27,6 +27,9 @@
 `git checkout main && git merge --ff-only codex/ui-14` → push origin main。
 **这是 Human 明确给出的授权，不属越权**（区别于既往"merge-only 不含 push"的默认约束）。
 
+> **执行结果：已完成。** 见 `## EXECUTION STATUS`（`main = 47f594f`，已 push）
+> 与 `## EXECUTION REPORT` 的「UI-14」小节（14 条逐条对照 + 反向验证 + 未验证声明）。
+
 ### SCOPE
 
 `docs/HANDOFF_14_ITEMS_2026-09-20.md` §2 的 A/B/C/D/E/F/G 共 **14 条**：
@@ -92,28 +95,30 @@
 ## EXECUTION STATUS
 
 ```text
-状态：IN_PROGRESS — UI-14 施工中（5/6 组已完成，剩 D2 + E1 + E2）
-当前分支：codex/ui-14（基线 main = 8d23ce2）
-当前提交：89d3472（F 组）
+状态：DONE — UI-14 全部 14 条已实现、已验证、已合并 main、已 push
+当前分支：main（codex/ui-14 与 design/design-tokens 已删除）
+当前提交：47f594f（HEAD = main = origin/main）
 工作区：干净（check-worktree 缺失 0；lint exit 0）
 基线：run-all 14 项 / 811 断言 / 0 失败
-当前：run-all 14 项 / 850 断言 / 0 失败（+39，F 组新增）
+当前：run-all 14 项 / 850 断言 / 0 失败（+39）
 
 已完成分组（每组 = 1 个原子提交，均通过专项断言 + 反向验证 + 全量回归）：
 
-| 提交      | 分组              | 专项断言    | 反向验证     | 全量            |
-|-----------|-------------------|-------------|--------------|-----------------|
-| `26c5c08` | C1 + B3 + G1      | 37/37       | —            | 14/14 · 811     |
-| `0683ef5` | B1 + B2           | 34/34       | 11 FAIL ✅   | 14/14 · 811     |
-| `b002d00` | B4 + C2 + C3      | 43/43       | 33 FAIL ✅   | 14/14 · 811     |
-| `daf70d8` | A1 + A2 + A3 + A4 | 44/44       | 24 FAIL ✅   | 14/14 · 811     |
-| `89d3472` | F1 + F2 + F3      | 82/82       | 59 FAIL ✅   | 14/14 · 850     |
+| 提交      | 分组              | 专项断言    | 反向验证       | 全量            |
+|-----------|-------------------|-------------|----------------|-----------------|
+| `26c5c08` | C1 + B3 + G1      | 37/37       | —（纯 CSS）    | 14/14 · 811     |
+| `0683ef5` | B1 + B2           | 34/34       | 11 FAIL ✅     | 14/14 · 811     |
+| `b002d00` | B4 + C2 + C3      | 43/43       | 33 FAIL ✅     | 14/14 · 811     |
+| `daf70d8` | A1 + A2 + A3 + A4 | 44/44       | 24 FAIL ✅     | 14/14 · 811     |
+| `89d3472` | F1 + F2 + F3      | 82/82       | 59 FAIL ✅     | 14/14 · 850     |
+| `47f594f` | D2 + E1 + E2      | 56/56       | 59 FAIL ✅（4 文件各自变红 17/26/11/5） | 14/14 · 850 |
 
-未完成：D2（布局提示气泡）、E1（回执卡改版，动 DOM 风险最高）、E2（文案左对齐）
-
-外部 AI 执行流程（Human 2026-09-20 21:44 授权：自行验收 + 合并 + push）：
-  建 codex/ui-14 → 实现 14 条 → 反向验证 → run-all 全量 → 自验收
-  → merge --ff-only main → push origin main → 回填 EXECUTION REPORT
+合并与推送实录（Human 2026-09-20 授权：自行验收 + 合并 + push）：
+  git checkout main → merge --ff-only codex/ui-14 → Fast-forward 8d23ce2..47f594f
+  （切 main 时沙箱级联触发：应删 1 / 级联误伤 12，post-checkout 守卫全量恢复，零丢失）
+  合并后 check-worktree 缺失 0；专项 DE 组在 main 上复跑 56/56 全绿
+  push：Bash 工具 + -c http.version=HTTP/1.1 + 代理 → 8d23ce2..47f594f main -> main
+  分支清理：codex/ui-14、design/design-tokens 已删，仅剩 main
 ```
 
 ### UI-14 施工中抓到的真问题（执行 AI 记录）
@@ -154,6 +159,93 @@ S4 合并与推送实录：
 > 注：以上 S1–S5 实录为历史记录，保留供追溯。CURRENT TASK 已更新为 UI-14。
 
 ## EXECUTION REPORT
+
+### UI-14（14 项改动）— **全部完成 | 已合并 main | 已 push**
+
+分支 `codex/ui-14`（基线 `8d23ce2`）→ 6 个原子提交 → `merge --ff-only` → `main = 47f594f`。
+
+#### 14 条逐条对照（不是笼统"已完成"）
+
+| 条目 | 内容 | 落点 | 验证方式 | 结论 |
+| --- | --- | --- | --- | --- |
+| **A1** | iOS 音效不生效 | `sounds.js` 解锁处理器 + 持久化 + 失败重试 | 断言验「解锁处理器已装 / 持久化读写 / 重试路径存在」 | ⚠️ **需真机确认**（见下） |
+| **A2** | 全局点击音效 | `sounds.js` 委托监听 + `[data-no-click-sound]` 白名单 | 44/44 专项断言 | ✅ |
+| **A3** | 保存成功 toast + 成功音 | `profile.js` → `notification.show(..., true)` + 成功音 | 断言验 toast class 与音效触发 | ✅ |
+| **A4** | 音效开关 | `soundToggle.js`（新增）+ ⋯ 菜单项 + 持久化 | 断言验开关状态持久化与互不干扰 | ✅ |
+| **B1** | 改名 浮光絮语 / 青笺行 | `translations.js` + `theme-entry.mjs:617-618` **同提交** | 34/34；反向验证 11 FAIL | ✅ |
+| **B2** | 四色方块图标 | `index.html` span + `index.css` 内联 SVG（`resolveIconName` 闭集） | 同上 | ✅ |
+| **B3** | list 内容上移 | `index.css` 容器上边距 76→12 / 头部 20→16 | 37/37 | ✅ |
+| **B4** | 模态框适配 list | `index.css` `[data-theme='list']` 覆盖块（只覆盖色/圆角/描边） | 43/43；反向验证 33 FAIL | ✅ |
+| **C1** | 恢复默认次级按钮 | **根因：`.btn` 无 CSS 定义** → 新增 `.btn` 并重声明 `.add-btn` | 37/37 | ✅ |
+| **C2** | 六色循环 | `index.css` 原两组色整段替换为 6 组 | 43/43 | ✅ |
+| **C3** | 历史入口吸底 | `index.html` + `index.css` | 43/43 | ✅ |
+| **D2** | 布局提示气泡 | `translations.js` 四语言 `profile.layoutTip` + `buttonManager` 写 `data-tip` + `index.css` `::after` | 56/56；反向验证 5 文件变红 | ✅ |
+| **E1** | 回执卡改版（**动 DOM**） | `index.html` 拆 `.countdown-head` / `.countdown-bar`；4 个契约 id 全保留 | 56/56 + `receipt-lifecycle.mjs` 54 项全绿 | ✅ |
+| **E2** | list 主题文案左对齐 | `index.css` `[data-theme='list']` 卡内三选择器 | 56/56；反向验证 26 FAIL | ✅ |
+| **F1** | 历史页垂直居中 + 上移 | `history.html` 补 `body.history-page` + `history.css` padding-top | 82/82 | ✅ |
+| **F2** | 右上角三态 tag | `notification.js` 新增 `receipt` 字段 + `markReceipt()`；`history.js` 闭合枚举渲染 | 82/82；反向验证 59 FAIL | ✅ |
+| **F3** | 清除 toast 统一 | 删 `history.js` 自建 `.history-toast`，改用 `notification.show()` | 82/82 | ✅ |
+| **G1** | 面板底部圆角 + hover 淡绿 | `index.css` `.more-panel { border-radius: 0 0 16px 16px }` | 37/37 | ✅ |
+
+#### 全量测试（合并后在 main 上）
+
+```text
+node tools/run-all.mjs → 14/14 PASS，850 断言 0 失败，292.2s，退出码 0
+eslint . → exit 0，0 error
+node tools/check-worktree.mjs → 未发现被删除的已跟踪文件
+```
+
+#### 反向验证（把 bug 放回去，确认断言真的 FAIL）
+
+| 驱动 | 回退对象 | 变红断言数 | 还原后 |
+| --- | --- | --- | --- |
+| `ui14-reverse-b1.mjs` | `translations.js` / `theme-entry.mjs` | 11 | 全绿 ✅ |
+| `ui14-reverse-c2.mjs` | `index.css` | 33 | 全绿 ✅ |
+| `ui14-reverse-a.mjs` | `sounds.js` / `soundToggle.js` | 24 | 全绿 ✅ |
+| `ui14-reverse-f.mjs` | `history.js` / `notification.js` / `history.css` | 28 / 14 / 17 | 全绿 ✅ |
+| `ui14-reverse-de.mjs` | `index.html` / `index.css` / `buttonManager.js` / `translations.js` | 17 / 26 / 11 / 5 | 全绿 ✅ |
+
+#### ⚠️ 未验证 / 有偏离的条目（诚实声明）
+
+1. **A1（iOS 音频解锁）headless 无法验证** —— 只能证明「解锁处理器已安装 / 持久化读写正确 /
+   失败重试路径存在」，**真实手势解锁语义必须在 iOS 真机上确认**。不声称已验证。
+2. **D2 的 `.tip-once` 2.5s 自动消失只验了加类/摘类**，未验真实计时结束的视觉消失
+   （时序断言易碎，留给真机肉眼确认）。
+3. **偏离**：新增 3 个测试套件外的手工工具（`ui14-verify.mjs` 及其 5 个反向驱动）放在
+   `.workbuddy/` 而非 `tools/`，且**不进 CI**（`tools/run-all.mjs` 未注册它们）。
+   理由：它们是 UI-14 一次性施工的专项断言载体，与项目既有的 `negative-*.mjs` 手工工具同类。
+
+#### UI-14 施工中抓到的真问题（执行 AI 记录）
+
+1. **`.btn` 引入后暴露既有隐患**：`#addCustomButton` 是 `"btn add-btn"`，
+   `.add-btn`(784) 定义在 `.btn`(1074) **之前** → 特异度相同靠源码顺序决胜 →
+   `.btn` 的 radius/padding 反压 `.add-btn`，满宽虚线按钮被压小。
+   修法：`.btn` 之后按原值重新声明 `.add-btn`（4 条断言钉住）。
+2. **`buttonConfig` 形状是 `{buttons:[...], activeGroup}` 不是裸数组** ——
+   `loadButtonConfig` 的 isValid 是「非 null 对象且非数组」，喂数组会静默回退默认按钮。
+3. **Edit 工具在"同构重复结构"上会隐式 no-op**：`more: '更多'` vs `more: '更多',`
+   是不同 old_string；改四语言块必须带足够区分性上下文（否则报 success 但没改）。
+4. **`goto()` 就绪判据曾写死 `.bubble-btn`**（index.html 专属）→ 历史页永远等不到，
+   真正的就绪从未被判定，表现为 `SecurityError: localStorage Access is denied`。
+   已修为按 URL 给判据 + 整轮重试，并加静态服务器可达性前置检查（不可达 exit 3）。
+5. **反向验证必须容错**：断言段若因"被检对象缺失"而抛异常，套件会崩溃、
+   只能拿到 `null passed`，无法区分"断言检出 bug"与"套件坏了"。
+   已在页面内 try/catch 并把异常当观测结果返回。
+6. **`countdown` 的公开 API 没有 `start()`**，只有 `startFromNow()` / `restore()` /
+   `cancel()` / `remaining()` / `updateDisplay()` / `init()`。写页面级断言前先读源码，别猜。
+7. **flex item 的 `margin-left:auto`，`getComputedStyle` 返回的是解算后的 used value
+   （`0px`），不是字面量 `auto`。** 断言 `=== 'auto'` 必然误报。
+   要验「靠右」应验 **CSSOM 规则文本含 auto** + **元素右缘贴合容器右缘**。
+8. **`getComputedStyle(el,'::after')` 返回活对象**，属性在读取时才求值。
+   必须先取普通字符串快照再加/摘类，否则会把"隐藏"读成 `1`。
+9. **`align-items:center` 对齐的是垂直中线，不是 top。** 头像 36px / 徽章 16px 高度不同，
+   比 `top` 天然差 10px，应比 `(top + height/2)`。
+10. **E2 的作用域要克制**：`.container { text-align: center }` 是气泡主题的既有默认，
+    list 主题**有意不动它**（按钮网格仍需居中）；错误地断言"容器左对齐"会把正确实现判成失败。
+
+> 第 7/8/9 条是同一类错误：**断言写法比被测行为更容易出错**。
+> 这 5 条 FAIL 全部排查后确认是断言侧问题、产品 CSS 一直是对的 ——
+> 教训是「先证明被测行为真的错了，再改产品代码」。
 
 ### S1 — CSS 令牌化（视觉零变化）｜PASS
 
@@ -474,26 +566,28 @@ JSONBin 不写缓存（实时数据）；SW 更新策略 skipWaiting + clients.c
 
 ## NEXT ACTION
 
-外部 AI 请按以下流程执行 **UI-14**（14 项改动）：
+**UI-14 已完成并上线（`main = 47f594f`，已 push origin）。无待办施工项。**
 
-1. 读 `docs/HANDOFF_14_ITEMS_2026-09-20.md`（施工图，含设计稿精确取数 —— 不需要开 Ardis 画布）
-2. 读本文件 `## CURRENT TASK` 的 SCOPE / NON-GOALS / ACCEPTANCE CRITERIA
-3. 从 main 创建 `codex/ui-14`（`git rev-parse --short HEAD` 确认基线；
-   建分支后**立即** `node tools/check-worktree.mjs`）
-4. 按建议顺序施工：**C1/B3/G1（纯 CSS） → B1+golden 断言 → B2/C2/B4 → A 组 → F 组 → E1（最后）**
-5. 每个 bug 修复做**反向验证**（把 bug 放回去确认断言 FAIL）
-6. `node tools/run-all.mjs` 全量（基线 14 项 / 811 断言，**0 失败**）
-7. `eslint .` + `prettier --check` 改动文件 + `git diff --check` + `check-worktree`
-8. **Human 已授权自行验收**：通过后 `git checkout main && git merge --ff-only codex/ui-14`
-   （切 main 若触发级联，守卫会自动恢复；合并后立即跑 `check-worktree.mjs`）
-9. push：`git -c http.version=HTTP/1.1 -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main`
-   （**必须在 Bash 工具里跑** —— PowerShell 下会 `cannot spawn sh`）
-10. 回填本文件的 `EXECUTION STATUS` / `EXECUTION REPORT`（14 条逐条给证据 +
-    明确列出未验证 / 有偏离的条目）
+### 建议 Human 跟进的事项
 
-**基线与已知项**：
+1. **真机确认 A1**：iOS Safari 上首次点击是否真的能出声（headless 无法验证）。
+2. **真机确认 D2**：首次打开编辑模态框时，气泡是否显示约 2.5s 后自动消失。
+3. **视觉复核 G1 / B2 / E1**：窄屏更多面板底部圆角、四色方块图标、回执卡新版布局
+   是否与设计稿 18:38 / 24:111 一致（自动化只能验结构，观感需人眼）。
+4. **3 个 0 字节乱码文件**：本轮已按 Human 指示删除（`本地仓库` / `来源：直接抓取线上` /
+   `（非文本提取，含真实`），确认仓库根已清净。
+5. **`docs/HANDOFF_14_ITEMS_2026-09-20.md`**：该施工图此前未入库，本轮随 UI-14 一并提交。
 
-- `main = 9c00488`；lint exit 0；check-worktree 缺失 0
-- `A1`（iOS 音频解锁）**headless 无法验证** → 必须显式声明"需真机确认"
-- 施工图 B3 两处行号偏 1（内容无误），**按内容定位**
-- `docs/DESIGN_THEME_SWITCH.md:32` 已改（G1 裁决落地），施工时勿再回改
+### 已知遗留（非本次引入，来自既往报告）
+
+- `history.css:143` 的死规则 `var(--notion-text-secondary)`（该变量从未定义，声明恒回落继承值）。
+  S1 报告已记、S4 报告再次提及，**至今未清**。建议并入下一张卡片。
+- **`el.click()` 盲区**：本仓套件默认用程序化 `click()`，不走浏览器命中测试；
+  凡涉及浮层/遮罩/层叠的功能，必须用 CDP 真实坐标事件 + `elementFromPoint` 验证。
+  本轮 G1（遮罩 z-index 90 < 顶栏 100）属此类，已按此纪律验。
+
+### 流程提示（供下一轮沿用）
+
+- 反向验证驱动模式已成熟：`git show <base-ref>:<file>` 覆盖 → 断言必须 FAIL → 还原 → 必须全绿。
+  **改造合并进 main 后 `BASE_REF=main` 会失效**，须显式指定改造前的 commit SHA。
+- push 必须在 **Bash 工具**里跑（PowerShell 下 `credential.helper=manager` 会 spawn `sh` 失败）。
