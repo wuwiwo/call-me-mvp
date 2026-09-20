@@ -85,6 +85,15 @@
     --c5: #8a6bb1; /* 紫 */
     --c6: #e55050; /* 红 */
 
+    /* UI-14 E1/E2：薄荷族令牌（对齐设计稿 18:38 回执卡）。
+       之前散在规则里的 rgba(15,163,128,·) 与 #0BA380 硬编码集中到这里，
+       回执徽章 / 冷却条 / list 主题强调色共用同一套值。 */
+    --mint: #0fa480;
+    --mint-deep: #0ba380;
+    --mint-wash: rgba(15, 163, 128, 0.13);
+    --mint-chip: rgba(15, 163, 128, 0.12);
+    --mint-bg: rgba(224, 243, 239, 0.25);
+
     /* 深色浮层 */
     --overlay-scrim: rgba(0, 0, 0, 0.6);
     --overlay-shadow: rgba(0, 0, 0, 0.3);
@@ -437,7 +446,13 @@ p.subtitle {
     height: auto;
 }
 
-.countdown-info {
+/* UI-14 E1：回执卡改版（对齐设计稿 18:38）。
+   ⚠️ `.countdown-info` 已随 DOM 改造删除（旧结构是「头像+名字+文案」挤在一行，
+   回执徽章另起一行居中）。新结构分两层：
+     .countdown-head  = 头像 + 名字 + 回执徽章（同一行，徽章靠右）
+     .countdown-bar   = 薄荷图标底 + 冷却文案（独立一行）
+   不再需要 .countdown-info 的规则，留着会让人误以为结构还在。 */
+.countdown-head {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -445,9 +460,59 @@ p.subtitle {
     color: var(--text-soft);
 }
 
-/* 已读回执状态条（药丸徽章，醒目） */
+/* 名字占满中间，把徽章挤到最右（设计稿 18:38：徽章右对齐，x180/卡宽335） */
+.countdown-head #countdownName {
+    flex: 1;
+    min-width: 0;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+/* 冷却条：浅薄荷底 + 圆角 12 + 图标底 24 圆 + 文案左对齐 */
+.countdown-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: var(--mint-bg);
+    text-align: left;
+}
+
+.countdown-bar-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border-radius: 20px;
+    background: var(--mint-chip);
+    color: var(--mint-deep);
+    font-size: 0.7rem;
+}
+
+.countdown-bar #countdownText {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted-solid);
+    text-align: left;
+}
+
+/* UI-14 E2：徽章在卡内右上靠右（对齐设计稿 18:38）。
+   ⚠️ 这里刻意**不再另写一个 .receipt-status 覆盖块**，而是直接改下面
+   原来的那一条（:449 附近）—— 同一选择器出现两次、靠源码顺序决胜，
+   下一个改样式的人会被双份定义绊倒。E1 之后它的父节点变成 flex 行，
+   所以 margin 从「12px auto 0」（旧结构里靠 auto 在整行内居中）
+   改成「0 0 0 auto」（新结构里靠 auto 把自己推到行尾 = 卡内右侧）。 */
+
+/* 已读回执状态条（药丸徽章，醒目）
+   UI-14 E1/E2：父节点改为 .countdown-head（flex 行）后，
+   margin 由「12px auto 0」（旧结构里在卡片整行内水平居中）
+   改为「0 0 0 auto」（新结构里推到行尾 → 卡内右上，对齐设计稿 18:38）。 */
 .receipt-status {
-    margin: 12px auto 0;
+    margin: 0 0 0 auto;
     padding: 8px 16px;
     border-radius: 999px;
     display: flex;
@@ -656,6 +721,49 @@ p.subtitle {
 
 .mode-toggle i {
     font-size: 1rem;
+}
+
+/* UI-14 D2：「布局调整」按钮的气泡提示。
+   正文由 buttonManager.updateModeDisplay() 写进 data-tip（跟随语言），
+   CSS 只负责显隐 —— 不让样式里出现第二种文案来源。
+   触发条件：hover / 键盘聚焦 / 首次打开模态框时自动显示一次的 .tip-once。
+   pointer-events:none：提示不能挡住按钮自身的点击。 */
+.mode-toggle {
+    position: relative;
+}
+
+.mode-toggle::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--surface-toast);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: all 0.2s var(--ease-premium);
+    pointer-events: none;
+    z-index: 20;
+}
+
+/* 无文案时不显示（data-tip 为空或缺失）—— 避免出现一个空的深色小方块。
+   用 :not([data-tip='']) 而不是要求 JS 先删元素，保持 CSS 自洽。 */
+.mode-toggle:not([data-tip=''])::after {
+    content: attr(data-tip);
+}
+
+.mode-toggle:hover::after,
+.mode-toggle:focus-visible::after,
+.mode-toggle.tip-once::after {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
 }
 
 .close-btn {
@@ -1557,6 +1665,23 @@ p.subtitle {
     margin: 16px auto 0;
     padding: 16px;
     box-shadow: var(--shadow-md);
+}
+
+/* UI-14 E2：list 主题下卡片内文案一律左对齐。
+   根因：`.container { text-align: center }`（index.css:245 附近）会被
+   #countdownText 继承；而 list 主题的 `--title-align: left` 只作用于 `.header`，
+   所以日文冷却文案在 list 主题下仍是居中的（用户提的就是这条，问题不分语言）。
+   作用域限定在 list 主题的卡内，bubble 主题观感不变。 */
+[data-theme='list'] .countdown,
+[data-theme='list'] .countdown-head,
+[data-theme='list'] .countdown-bar {
+    text-align: left;
+}
+
+/* 徽章在 list 主题下继续靠右（设计稿 18:38 徽章在卡内右上），
+   这里显式重申，避免将来有人把 .receipt-status 的 margin 改回 auto 居中。 */
+[data-theme='list'] .receipt-status {
+    margin: 0 0 0 auto;
 }
 
 [data-theme='list'] .history-entry {

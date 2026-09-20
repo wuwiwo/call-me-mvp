@@ -405,6 +405,18 @@ export const buttonManager = {
         setTimeout(() => {
             this.updateModeDisplay();
         }, 100);
+
+        // UI-14 D2：首次打开时自动亮一次气泡提示，然后撤掉。
+        // 用「只在第一次」而不是每次打开都亮：这是引导性提示，
+        // 反复出现会变成噪音。2.5s 后移除，之后只剩 hover/focus 触发。
+        if (!this._layoutTipShown) {
+            this._layoutTipShown = true;
+            const btn = document.getElementById('toggleMode');
+            if (btn) {
+                btn.classList.add('tip-once');
+                setTimeout(() => btn.classList.remove('tip-once'), 2500);
+            }
+        }
     },
 
     /**
@@ -724,15 +736,25 @@ export const buttonManager = {
 
         if (this.displayMode === 'minimal') {
             buttonsArea.classList.add('minimal-mode');
-            if (modeLabel) modeLabel.textContent = '简约模式 - 首页每行2个按钮';
+            if (modeLabel) modeLabel.textContent = utils.getTranslation('profile.minimalMode');
             if (toggleIcon) {
                 toggleIcon.className = 'fas fa-list';
             }
         } else {
             buttonsArea.classList.remove('minimal-mode');
-            if (modeLabel) modeLabel.textContent = '默认模式 - 首页每行1个按钮';
+            if (modeLabel) modeLabel.textContent = utils.getTranslation('profile.defaultMode');
             if (toggleIcon) {
                 toggleIcon.className = 'fas fa-th-large';
+            }
+        }
+
+        // UI-14 D2：气泡提示文案（CSS 用 ::after + attr(data-tip) 渲染，见 index.css）。
+        // 放在这里而不是 HTML 里，是为了让它跟随语言切换；
+        // 空值时不写（CSS 的 :not([data-tip='']) 保证不会出现空提示块）。
+        if (toggleModeBtn) {
+            const tip = utils.getTranslation('profile.layoutTip');
+            if (tip && tip !== 'profile.layoutTip') {
+                toggleModeBtn.dataset.tip = tip;
             }
         }
     }

@@ -163,15 +163,23 @@
                     <!-- 按钮将由JavaScript动态生成 -->
                 </div>
 
+                <!-- UI-14 E1：回执卡改版（对齐设计稿 18:38）。
+                     结构从「头像+名字+文案 一行，回执徽章另起一行居中」
+                     改为「头像 + 名字 + 回执徽章 同一行（徽章靠右）」+「冷却条独立一行」。
+                     ⚠️ 四个 id 全部保留且层级不变更语义：
+                        #countdownAvatar / #countdownName / #countdownText / #receiptStatus
+                     tools/receipt-lifecycle.mjs（54 项）钉着 #receiptStatus 的 className
+                     与 innerHTML，只挪位置、不改这些契约。 -->
                 <div id="countdown" class="countdown">
-                    <div class="countdown-info">
+                    <div class="countdown-head">
                         <div id="countdownAvatar" class="emoji-avatar"></div>
-                        <div>
-                            <span id="countdownName"></span>
-                            <span id="countdownText"></span>
-                        </div>
+                        <span id="countdownName"></span>
+                        <div id="receiptStatus" class="receipt-status"></div>
                     </div>
-                    <div id="receiptStatus" class="receipt-status"></div>
+                    <div class="countdown-bar">
+                        <span class="countdown-bar-icon"><i class="fas fa-bolt"></i></span>
+                        <span id="countdownText"></span>
+                    </div>
                 </div>
 
                 <!-- 历史入口：首页内切换视图，不跳转（Human 要求） -->

@@ -51,7 +51,10 @@ export const TRANSLATIONS = {
             customButton: '自定义按钮',
             buttonTextPlaceholder: '按钮文字(最多{maxLength}字)',
             randomIcon: '随机图标',
-            confirmReset: '确定要重置为默认按钮吗？'
+            confirmReset: '确定要重置为默认按钮吗？',
+            defaultMode: '默认模式 - 首页每行1个按钮',
+            minimalMode: '简约模式 - 首页每行2个按钮',
+            layoutTip: '点击可切换首页按钮布局'
         },
         time: {
             justNow: '刚刚',
@@ -159,7 +162,10 @@ export const TRANSLATIONS = {
             customButton: 'Custom Button',
             buttonTextPlaceholder: 'Button text (max {maxLength} chars)',
             randomIcon: 'Random icon',
-            confirmReset: 'Reset to default buttons?'
+            confirmReset: 'Reset to default buttons?',
+            defaultMode: 'Default mode - 1 button per row',
+            minimalMode: 'Compact mode - 2 buttons per row',
+            layoutTip: 'Tap to change the homepage button layout'
         },
         time: {
             justNow: 'just now',
@@ -267,7 +273,10 @@ export const TRANSLATIONS = {
             customButton: 'カスタムボタン',
             buttonTextPlaceholder: 'ボタンテキスト(最大{maxLength}文字)',
             randomIcon: 'ランダムアイコン',
-            confirmReset: 'デフォルトボタンにリセットしますか？'
+            confirmReset: 'デフォルトボタンにリセットしますか？',
+            defaultMode: '標準モード - 1行に1つ',
+            minimalMode: 'シンプルモード - 1行に2つ',
+            layoutTip: 'タップでホームのボタン配置を切り替え'
         },
         time: {
             justNow: 'たった今',
@@ -375,7 +384,10 @@ export const TRANSLATIONS = {
             customButton: '커스텀 버튼',
             buttonTextPlaceholder: '버튼 텍스트(최대 {maxLength}자)',
             randomIcon: '랜덤 아이콘',
-            confirmReset: '기본 버튼으로 초기화하시겠습니까？'
+            confirmReset: '기본 버튼으로 초기화하시겠습니까？',
+            defaultMode: '기본 모드 - 한 줄에 1개',
+            minimalMode: '간편 모드 - 한 줄에 2개',
+            layoutTip: '탭하여 홈 버튼 배치를 전환'
         },
         time: {
             justNow: '방금',

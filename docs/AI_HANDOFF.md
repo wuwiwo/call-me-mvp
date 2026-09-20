@@ -92,21 +92,46 @@
 ## EXECUTION STATUS
 
 ```text
-状态：DISPATCHED — UI-14（14 项改动）已派发，等外部 AI 执行
-当前分支：main（= origin/main = 9c00488）
-工作区：干净（4 个未跟踪文件：本施工图 + 3 个 0 字节乱码残渣）
-       ；check-worktree 缺失 0；lint exit 0
-基线：run-all 14 项 / 811 断言 / 0 失败（最近全量 313.7s）
+状态：IN_PROGRESS — UI-14 施工中（5/6 组已完成，剩 D2 + E1 + E2）
+当前分支：codex/ui-14（基线 main = 8d23ce2）
+当前提交：89d3472（F 组）
+工作区：干净（check-worktree 缺失 0；lint exit 0）
+基线：run-all 14 项 / 811 断言 / 0 失败
+当前：run-all 14 项 / 850 断言 / 0 失败（+39，F 组新增）
 
-主 AI 已完成的准备（本次派发）：
-  ✓ 施工图核对（R1，见 REVIEW RESULT）—— 15 处抽查全部与源码吻合
-  ✓ G1 圆角冲突裁决并同步 DESIGN_THEME_SWITCH.md:32
-  ✓ 任务卡写入本文件 CURRENT TASK
+已完成分组（每组 = 1 个原子提交，均通过专项断言 + 反向验证 + 全量回归）：
+
+| 提交      | 分组              | 专项断言    | 反向验证     | 全量            |
+|-----------|-------------------|-------------|--------------|-----------------|
+| `26c5c08` | C1 + B3 + G1      | 37/37       | —            | 14/14 · 811     |
+| `0683ef5` | B1 + B2           | 34/34       | 11 FAIL ✅   | 14/14 · 811     |
+| `b002d00` | B4 + C2 + C3      | 43/43       | 33 FAIL ✅   | 14/14 · 811     |
+| `daf70d8` | A1 + A2 + A3 + A4 | 44/44       | 24 FAIL ✅   | 14/14 · 811     |
+| `89d3472` | F1 + F2 + F3      | 82/82       | 59 FAIL ✅   | 14/14 · 850     |
+
+未完成：D2（布局提示气泡）、E1（回执卡改版，动 DOM 风险最高）、E2（文案左对齐）
 
 外部 AI 执行流程（Human 2026-09-20 21:44 授权：自行验收 + 合并 + push）：
   建 codex/ui-14 → 实现 14 条 → 反向验证 → run-all 全量 → 自验收
   → merge --ff-only main → push origin main → 回填 EXECUTION REPORT
 ```
+
+### UI-14 施工中抓到的真问题（执行 AI 记录）
+
+1. **`.btn` 引入后暴露既有隐患**：`#addCustomButton` 是 `"btn add-btn"`，
+   `.add-btn`(784) 定义在 `.btn`(1074) **之前** → 特异度相同靠源码顺序决胜 →
+   `.btn` 的 radius/padding 反压 `.add-btn`，满宽虚线按钮被压小。
+   修法：`.btn` 之后按原值重新声明 `.add-btn`（4 条断言钉住）。
+2. **`buttonConfig` 形状是 `{buttons:[...], activeGroup}` 不是裸数组** ——
+   `loadButtonConfig` 的 isValid 是「非 null 对象且非数组」，喂数组会静默回退默认按钮。
+3. **Edit 工具在"同构重复结构"上会隐式 no-op**：`more: '更多'` vs `more: '更多',`
+   是不同 old_string；改四语言块必须带足够区分性上下文（否则报 success 但没改）。
+4. **`goto()` 就绪判据曾写死 `.bubble-btn`**（index.html 专属）→ 历史页永远等不到，
+   真正的就绪从未被判定，表现为 `SecurityError: localStorage Access is denied`。
+   已修为按 URL 给判据 + 整轮重试，并加静态服务器可达性前置检查（不可达 exit 3）。
+5. **反向验证必须容错**：断言段若因"被检对象缺失"而抛异常，套件会崩溃、
+   只能拿到 `null passed`，无法区分"断言检出 bug"与"套件坏了"。
+   已在页面内 try/catch 并把异常当观测结果返回。
 
 ### 历史（S1–S5，已完成）
 
