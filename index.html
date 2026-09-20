@@ -3,6 +3,22 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- 主题防闪：ES module 是 defer，等不到它，必须在 CSS 渲染前同步写入 data-theme。
+             这里只做「安全形状」校验并原样回写，合法性的唯一来源是 CONFIG.themes.valid，
+             由 theme.init() 最终裁定 —— 不在这里复制允许列表，避免两处漂移。
+             非法值不会命中任何 [data-theme] 选择器，外观等同默认主题，因此不会闪。 -->
+        <script>
+            (function () {
+                try {
+                    var raw = localStorage.getItem('appTheme');
+                    if (typeof raw === 'string' && /^[a-zA-Z0-9_-]{1,32}$/.test(raw)) {
+                        document.documentElement.setAttribute('data-theme', raw);
+                    }
+                } catch (e) {
+                    /* storage 不可访问（隐私模式等）：保持默认主题 */
+                }
+            })();
+        </script>
         <title>Call Me</title>
         <link
             href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"

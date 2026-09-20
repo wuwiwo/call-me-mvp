@@ -30,6 +30,21 @@ export const CONFIG = {
         expiryDays: 7 // 密码过期天数
     },
 
+    // 主题配置 —— **主题名称与合法值的唯一来源**
+    //
+    // S2 只搭机制：主题名写入 <html data-theme>，令牌覆盖值由 CSS 的
+    // `[data-theme="xxx"]` 选择器承载（S3 填充），这里不复制一份配色。
+    // `js/modules/theme.js` 只从这里读取默认主题与合法列表，
+    // **不要在其他模块再硬编码一份**。
+    themes: {
+        default: 'bubble', // bubble = 现状气泡列表
+        valid: ['bubble', 'list'], // list = S3 的按钮列表主题
+        // LocalStorage key。与 appLanguage / buttonDisplayMode 一致，存**纯字符串**
+        // （不是 JSON）—— 便于手工排查与控制台验证。
+        // ⚠️ 同时被两个 html 的 <head> 防闪内联脚本按字面引用，改名必须一起改。
+        storageKey: 'appTheme'
+    },
+
     // 新手引导配置
     onboarding: {
         enabled: true, // 是否启用新手引导

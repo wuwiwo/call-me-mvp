@@ -3,6 +3,7 @@ import { state } from './modules/state.js';
 import { utils } from './modules/utils.js';
 import { profile } from './modules/profile.js';
 import { language } from './modules/language.js';
+import { theme } from './modules/theme.js';
 import { notification } from './modules/notification.js';
 import { countdown } from './modules/countdown.js';
 import { buttonManager } from './modules/buttonManager.js';
@@ -69,6 +70,10 @@ class CallMeApp {
 
             // 初始化语言模块（确保最先初始化）
             language.init(this.elements);
+
+            // 初始化主题模块：把已持久化的主题同步到 <html data-theme>。
+            // 防闪由 <head> 内联脚本在 CSS 前完成，这里负责最终定值与非法值纠正。
+            theme.init();
 
             // 然后初始化profile模块
             profile.init(this.elements);

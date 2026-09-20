@@ -1,4 +1,5 @@
 // /src/modules/state.js
+import { CONFIG } from './config.js';
 
 /**
  * 安全读取并解析 LocalStorage 中的 JSON。
@@ -45,6 +46,45 @@ export function readJsonSafe(key, fallback, isValid) {
     return parsed;
 }
 
+/**
+ * 把任意值归一化成合法主题名（fail-safe）。
+ *
+ * 非法、缺失、类型不对一律回退默认主题，不抛异常。
+ * 合法性的唯一来源是 `CONFIG.themes.valid` / `CONFIG.themes.default`。
+ *
+ * @param {*} value 候选主题名
+ * @returns {string} 合法主题名
+ */
+export function normalizeThemeName(value) {
+    return CONFIG.themes.valid.includes(value) ? value : CONFIG.themes.default;
+}
+
+/**
+ * 读取持久化的主题名。
+ *
+ * 存储格式是**纯字符串**（与 appLanguage / buttonDisplayMode 一致），
+ * 但历史上也可能被写成 JSON 字符串（`"list"`），两种都接受：
+ * 先按纯字符串判定，失败再走 readJsonSafe —— 损坏的 JSON 由它安全回退。
+ *
+ * @returns {string} 合法主题名
+ */
+function readThemeName() {
+    const key = CONFIG.themes.storageKey;
+    let raw;
+    try {
+        raw = localStorage.getItem(key);
+    } catch (e) {
+        console.warn(`[theme] 无法读取 ${key}:`, e);
+        return CONFIG.themes.default;
+    }
+
+    if (CONFIG.themes.valid.includes(raw)) return raw;
+
+    // 不是合法纯字符串 → 尝试 JSON 形式；非法 JSON 在 readJsonSafe 内降级
+    const parsed = readJsonSafe(key, null, (v) => typeof v === 'string');
+    return normalizeThemeName(parsed);
+}
+
 export const state = {
     userProfile: null,
 
@@ -54,6 +94,10 @@ export const state = {
 
     isRequestPending: false,
     currentLang: 'zh',
+
+    // 当前主题名。**由 theme 模块独占写入**（读取在 init 里完成一次），
+    // 其他模块只读，不自行解析 appTheme（CM-010 单一来源教训）。
+    appTheme: CONFIG.themes.default,
 
     init() {
         // 从localStorage加载用户资料
@@ -74,6 +118,9 @@ export const state = {
             const supportedLangs = ['zh', 'en', 'ja', 'ko'];
             this.currentLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
         }
+
+        // 从localStorage加载主题设置，非法/损坏值回退默认主题
+        this.appTheme = readThemeName();
 
         // 冷却状态的恢复不再在这里进行：
         // 它需要倒计时显示元素，而本模块在导入期就会执行，

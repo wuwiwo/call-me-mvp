@@ -3,6 +3,7 @@
 import { utils } from './utils.js';
 import { readJsonSafe } from './state.js';
 import { language } from './language.js';
+import { theme } from './theme.js';
 
 // 历史记录只允许两种既有状态。
 // `_status` 来自 LocalStorage，属于可控输入：未知或缺失一律不产生状态 class，
@@ -28,6 +29,10 @@ export const history = {
         }
 
         this.elements = domElements;
+
+        // 主题：历史页只加载本模块，没有 main.js，主题 init 要在这里补一次。
+        // 与首页共用 <head> 防闪脚本 + theme.init()，保证两页 data-theme 一致。
+        theme.init();
 
         // 复用首页的语言初始化与回退规则：读取 appLanguage → 校验是否受支持
         // → 落到 state.currentLang。历史页没有语言切换控件，不传元素即可

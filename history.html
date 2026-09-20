@@ -3,6 +3,21 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- 主题防闪：与 index.html 同一段逻辑（两处保持一致），
+             在 CSS 渲染前把持久化的主题同步写到 <html data-theme>。
+             合法性由 theme.init() 最终裁定，详见 index.html 同位置注释。 -->
+        <script>
+            (function () {
+                try {
+                    var raw = localStorage.getItem('appTheme');
+                    if (typeof raw === 'string' && /^[a-zA-Z0-9_-]{1,32}$/.test(raw)) {
+                        document.documentElement.setAttribute('data-theme', raw);
+                    }
+                } catch (e) {
+                    /* storage 不可访问（隐私模式等）：保持默认主题 */
+                }
+            })();
+        </script>
         <title>通知历史</title>
         <link
             href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
