@@ -21,28 +21,26 @@ Human 新增要求：页面不跳转 / 保持轻量 / 工程化组件化 / 准�
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — S4 已自验 PASS；待快进合并 main 并 push 后开始 S5
-当前分支：codex/s4-componentize（基线 8f97e32 = S3 合并 + 测试/文档提交）
-工作区：仅 S4 相关改动；check-worktree 缺失 0
-远端：origin/main 已同步到 8f97e32；S4 合并后 push
+状态：READY_FOR_REVIEW — S1–S5 全部完成；S5 已自验 PASS，待快进合并 main 并 push
+当前分支：codex/s5-pwa（基线 abf8d29 = S4 合并后的 main HEAD）
+工作区：仅 S5 相关改动；check-worktree 缺失 0
+远端：origin/main = abf8d29（S4 已推送）
 
 外部 AI 执行流程（Human 授权自行验收 + 合并 + push）：
   S1 → S2 → S3 → S4 → S5
-  ✓    ✓    ✓    ^^^ 已完成（本次）
+  ✓    ✓    ✓    ✓    ✓ 代码完成（S5 待合并推送）
 ```
 
-S3 合并与推送实录：
+S4 合并与推送实录：
 
-- `git merge --ff-only codex/s3-theme-entry` → Fast-forward `9b53128..8f97e32`
-- **合并后复跑全量回归：12/12 PASS，654 断言 0 失败，247.6s**（与合并前一致）
-- push 实录：直连 `SSL_ERROR_SYSCALL`；带 `-c http.proxy=127.0.0.1:7897` 仍失败；
-  **加 `-c http.version=HTTP/1.1` 后成功** → `9b53128..8f97e32 main -> main`
-  （HTTP/2 over proxy 被掐，是本机 push 的已知坑，见 `docs/handoff/archive/WORKTREE-FILE-LOSS.md`
-  之外的本机笔记）
-- checkout main 时再次触发级联（tools/ 下 29 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
+- `git merge --ff-only codex/s4-componentize` → Fast-forward `8f97e32..abf8d29`
+- **合并后复跑全量回归：13/13 PASS，741 断言 0 失败，269.5s**
+- push 实录：**加 `-c http.version=HTTP/1.1` + 代理 127.0.0.1:7897 后成功**
+  → `8f97e32..abf8d29 main -> main`；`ls-remote` 核对远端 = 本地 = `abf8d29`
+- checkout main 时级联再次触发（33 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
 
 > 注：CURRENT TASK 区块仍写着「S1 ← 当前」，已过期 —— 按协议该区块由主 AI 维护，
-> 请主 AI 在验收时同步为「S3 已完成 / S4 进行中」。
+> 请主 AI 在验收时同步为「S1–S5 已完成，待验收」。
 
 ## EXECUTION REPORT
 
@@ -238,6 +236,68 @@ eslint·prettier·check-worktree 全 0 ✓。
 2. **`history.css:143` 的死规则** `var(--notion-text-secondary)` 仍未清理
    （该变量在 index.css / history.css 中从未定义，声明恒回落继承值）。
    S1 报告里提过、本次仍不在 SCOPE，未动 —— 建议并入后续卡片。
+
+### S5 — PWA 准备｜PASS
+
+- 分支 `codex/s5-pwa`（基线 `abf8d29`）
+
+改动文件：
+
+- **新增** `manifest.json`、`sw.js`、`js/sw-register.js`、`icons/`（3 个 PNG）、
+  `tools/generate-icons.py`（图标生成器）、`tools/pwa.mjs`（回归套件，CDP 9454）
+- `index.html`：接 manifest link + favicon + sw-register（head 末尾）
+- `history.html`：接 manifest link + favicon
+- `tools/run-all.mjs`、`tools/README.md`：注册第 12 个套件
+- `eslint.config.js`：给 `sw.js` 配 `globals.serviceworker` 环境（经典脚本，SW 专用全局）
+
+关键设计决策（三条，请主 AI 重点复核）：
+
+1. **应用代码网络优先，不是任务卡字面的"缓存优先"。**
+   本项目无构建步骤、资源 URL 没有内容哈希（只有手写的 `?3.3`），
+   缓存优先会让改版后的代码被旧缓存挡住（线上"改了不生效"）；
+   网络优先保证联网永远最新、断网仍可离线，AC"离线可加载"照样满足。
+   缓存优先只用于真正不可变的资源：icons / sounds / 版本化 CDN 字体。
+   副产品：解决了测试套件复用持久 Chrome profile 会被旧缓存污染的隐患 ——
+   合并后全量 14/14 全绿即是证据。
+2. **图标从零造，零依赖可复现。** 仓库原本没有任何 png/svg/ico，也不能引
+   PIL/sharp（无构建链）→ `tools/generate-icons.py` 用纯标准库做数学形状光栅化 +
+   手写 PNG（zlib/struct，SS=4 超采样抗锯齿），生成 192 / 512 any + 512 maskable
+   三个图标（铃铛剪影 + `--accent → --accent-deep` 渐变底，颜色取自 index.css 令牌）。
+   重跑该脚本即可逐字节复现。
+3. **路径全部相对。** 任务卡 IMPLEMENTATION 写 `register('/sw.js')`，但线上是
+   GitHub Pages 子路径部署（`/call-me-mvp/`），绝对路径会 404；
+   manifest 的 start_url/scope、注册路径、预缓存清单全部用相对路径，
+   本地根路径服务器与线上子路径下行为一致。
+
+自验结果：
+
+| 验收项                         | 结果                                                       |
+| ------------------------------ | ---------------------------------------------------------- |
+| `node tools/run-all.mjs`       | **14/14 PASS，787 断言 0 失败**（S5 新增套件 46 断言）     |
+| `eslint .`                     | exit 0，0 error                                            |
+| `prettier --check`（改动文件） | exit 0（`.py` 无 prettier 解析器，属预期；目录扫描会跳过） |
+| `check-worktree`               | 未发现被删除的已跟踪文件                                   |
+| DevTools 等效验证              | `pwa.mjs` 已自动化：manifest 校验 / SW 注册激活 / 离线加载 |
+
+AC 逐条对照：manifest 存在且字段达标（name/display/start_url/icons 192+512/
+theme_color·background_color=令牌值）✓ / sw.js 注册且 activated、页面被控制 ✓ /
+**离线可加载（停掉静态服务器 = 真实断网，首页/历史页/CSS 令牌/JS 模块全部来自缓存）** ✓ /
+run-all 全绿 ✓ / eslint·prettier·check-worktree ✓。
+补强项：预缓存清单从 sw.js 源码解析出来逐条验证文件存在与落地（防 addAll 整体失败）；
+JSONBin 不写缓存（实时数据）；SW 更新策略 skipWaiting + clients.claim ✓。
+
+**偏离任务卡 2 处（请主 AI 裁决）**：
+
+1. AC 写「run-all 10/10（537 断言）」，实际 **14/14（787 断言）** —— S2/S3/S4/S5
+   各新增一个回归套件并注册进 run-all，套件数 8 → 12，总项数 10 → 14。
+2. 「静态资源缓存优先」改为「应用代码网络优先 + 缓存兜底」（理由见决策 1）；
+   `register('/sw.js')` 改为相对路径 `./sw.js`（理由见决策 3）。
+
+**已知边界（非缺陷，请主 AI 知悉）**：
+
+- 离线时的 CDN 字体/图标 CSS 首次需联网成功后才进缓存（本地测试环境无外网，
+  套件只验证同源资源离线可用；CDN 走「缓存优先 + 运行时缓存」策略）。
+- 仓库 3 个 0 字节乱码未跟踪文件仍未处理（S4 已报告，待 Human 决定）。
 
 ## REVIEW RESULT
 
