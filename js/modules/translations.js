@@ -8,7 +8,9 @@ export const TRANSLATIONS = {
             failure: '失败',
             confirm: '确认',
             cancel: '取消',
-            more: '更多'
+            more: '更多',
+            // UI-14 A3：保存成功反馈（notification.show(msg, true) 会自动带成功音）
+            saveSuccess: '设置已保存'
         },
         theme: {
             sectionTitle: '主题',
@@ -16,6 +18,11 @@ export const TRANSLATIONS = {
             // 名字是**用户可见文案**，改它要同步 tools/theme-entry.mjs 的 golden 断言。
             bubble: '浮光絮语',
             list: '青笺行'
+        },
+        // UI-14 A4：音效开关（首页 ⋯ 菜单）。历史页无菜单，只读 soundEnabled。
+        sound: {
+            on: '音效：开',
+            off: '音效：关'
         },
         mainPage: {
             subtitle: '点击下方按钮，我会立即收到通知',
@@ -107,13 +114,18 @@ export const TRANSLATIONS = {
             failure: 'Failure',
             confirm: 'Confirm',
             cancel: 'Cancel',
-            more: 'More'
+            more: 'More',
+            saveSuccess: 'Settings saved'
         },
         theme: {
             sectionTitle: 'Theme',
             // B1：保留「光 / 纸笺」意象，不做字面直译。
             bubble: 'Gleam Whisper',
             list: 'Cyan Scroll'
+        },
+        sound: {
+            on: 'Sound: On',
+            off: 'Sound: Off'
         },
         mainPage: {
             subtitle: 'Click the button below to notify me immediately',
@@ -205,13 +217,18 @@ export const TRANSLATIONS = {
             failure: '失敗',
             confirm: '確認',
             cancel: 'キャンセル',
-            more: 'もっと見る'
+            more: 'もっと見る',
+            saveSuccess: '設定を保存しました'
         },
         theme: {
             sectionTitle: 'テーマ',
             // B1：「浮光」（揺らめく光）／「青箋」（青い便箋）。
             bubble: '浮光の便り',
             list: '青箋の行'
+        },
+        sound: {
+            on: '効果音：オン',
+            off: '効果音：オフ'
         },
         mainPage: {
             subtitle: '下のボタンをクリックすると、すぐに通知が届きます',
@@ -303,13 +320,18 @@ export const TRANSLATIONS = {
             failure: '실패',
             confirm: '확인',
             cancel: '취소',
-            more: '더보기'
+            more: '더보기',
+            saveSuccess: '설정이 저장되었습니다'
         },
         theme: {
             sectionTitle: '테마',
             // B1：「잔물결 빛」（물결처럼 일렁이는 빛）／「푸른 전장（箋）」（푸른 편지지).
             bubble: '잔물결 빛',
             list: '푸른 전장'
+        },
+        sound: {
+            on: '효과음: 켬',
+            off: '효과음: 끔'
         },
         mainPage: {
             subtitle: '아래 버튼을 클릭하면 즉시 알림이 전송됩니다',

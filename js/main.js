@@ -8,6 +8,7 @@ import { notification } from './modules/notification.js';
 import { countdown } from './modules/countdown.js';
 import { buttonManager } from './modules/buttonManager.js';
 import { soundManager } from './modules/sounds.js';
+import { soundToggle } from './modules/soundToggle.js';
 import { onboarding } from './modules/onboarding.js';
 import { password } from './modules/password.js';
 
@@ -65,6 +66,18 @@ class CallMeApp {
         try {
             soundManager.preload().catch((e) => console.warn('音效预加载失败:', e));
 
+            // A1-2：装上 iOS 音频解锁（首个用户手势里静音"播放"一次）。
+            // 必须在任何 play 之前挂好，否则首个手势就白过了。
+            soundManager.installUnlockHandler();
+
+            // A2：全局点击音效。挂在冒泡阶段 —— 业务处理器可能 stopPropagation，
+            // 但那些恰恰是带专属音效的控件（已用 data-no-click-sound 排除），
+            // 所以漏掉的只会是"既无专属音效又被拦"的边缘情况，可接受。
+            document.addEventListener('click', (e) => {
+                if (e.target.closest?.('[data-no-click-sound]')) return;
+                soundManager.playClick();
+            });
+
             // 先初始化密码验证模块（最优先）
             password.init(this.elements);
 
@@ -74,6 +87,9 @@ class CallMeApp {
             // 初始化主题模块：把已持久化的主题同步到 <html data-theme>。
             // 防闪由 <head> 内联脚本在 CSS 前完成，这里负责最终定值与非法值纠正。
             theme.init();
+
+            // UI-14 A4：音效开关（首页有 ⋯ 菜单 → 绑定；历史页无节点 → 静默跳过）
+            soundToggle.init();
 
             // 然后初始化profile模块
             profile.init(this.elements);

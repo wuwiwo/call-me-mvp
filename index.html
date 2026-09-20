@@ -41,7 +41,7 @@
         <!-- 顶部操作栏（甲方案：左 头像+昵称 / 右 语言胶囊 + ⋯ 更多） -->
         <div class="top-bar">
             <div class="user-info" id="userInfo">
-                <div id="userAvatar" class="emoji-avatar"></div>
+                <div id="userAvatar" class="emoji-avatar" data-no-click-sound></div>
                 <span id="userName"></span>
             </div>
             <div class="top-controls">
@@ -132,6 +132,15 @@
                             </span>
                             <span class="more-item-label" data-i18n="theme.list">青笺行</span>
                             <i class="fas fa-check more-item-check"></i>
+                        </button>
+
+                        <div class="more-divider"></div>
+                        <!-- UI-14 A4：音效开关。图标与文案由 soundToggle.js 统一同步。
+                             ⚠️ 文案**不加 data-i18n**：它随开关状态变化，
+                             加了会被 language.applyDeclarativeTexts() 重置成固定值。 -->
+                        <button id="toggleSound" class="more-item" data-sound-toggle>
+                            <i class="fas fa-volume-high"></i>
+                            <span class="more-item-label">音效：开</span>
                         </button>
                     </div>
                 </div>

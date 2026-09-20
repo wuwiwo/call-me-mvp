@@ -286,6 +286,9 @@ export const buttonManager = {
         const buttonEl = document.createElement('div');
         buttonEl.className = 'bubble-btn';
         buttonEl.setAttribute('data-button-index', String(index));
+        // UI-14 A2：bubble-btn 点击会发通知 → 自带发送反馈音，
+        // 不要再叠一层全局 click 音（否则一次点击两个声音）。
+        buttonEl.setAttribute('data-no-click-sound', '');
 
         const contentEl = document.createElement('div');
         contentEl.className = 'bubble-content';
@@ -598,7 +601,7 @@ export const buttonManager = {
         this.saveConfig();
         this.renderButtons();
 
-        notification.show('按钮配置已保存');
+        notification.show(utils.getTranslation('common.saveSuccess'), true);
         this.editModalCtl?.close();
     },
 
@@ -669,7 +672,7 @@ export const buttonManager = {
         this.saveConfig();
         this.renderButtons();
         this.editModalCtl?.close();
-        notification.show('已恢复默认按钮');
+        notification.show(utils.getTranslation('common.saveSuccess'), true);
     },
 
     /**

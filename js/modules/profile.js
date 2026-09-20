@@ -114,6 +114,8 @@ export const profile = {
         localStorage.setItem('userProfile', JSON.stringify(state.userProfile));
         this.modal?.close();
         this.loadProfile(); // 刷新显示
+        // UI-14 A3：保存成功给反馈 + 成功音（此前保存是完全静默的）
+        notification.show(utils.getTranslation('common.saveSuccess'), true);
     },
 
     // 加载资料

@@ -75,7 +75,10 @@ export const CONFIG = {
             success: 'sounds/success-notification.wav',
             // 失败/警告反馈：输入校验失败、初始化失败、冷却限制等（notification.show(msg, false)）
             error: 'sounds/error-notification.wav'
-        }
+        },
+        // 全局点击音效（UI-14 A2）。带 `data-no-click-sound` 的元素不触发它
+        // （已有专属音效的控件，例如头像、bubble-btn）。
+        click: 'sounds/default-click.m4a'
     },
     //按钮
     buttons: {
