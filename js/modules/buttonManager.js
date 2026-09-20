@@ -3,6 +3,12 @@ import { utils } from './utils.js';
 import { state, readJsonSafe } from './state.js';
 import { notification } from './notification.js';
 import { countdown } from './countdown.js';
+import { createModal, modal } from '../components/modal.js';
+import {
+    createIconPicker,
+    bindIconPickerDelegation,
+    resolveIconName
+} from '../components/iconPicker.js';
 
 // 图标渲染的**严格允许列表**。
 //
@@ -20,7 +26,7 @@ import { countdown } from './countdown.js';
 // 关于 "circle"：saveButtonConfig() 里有一个 `icon || "circle"` 的防御性默认值，
 // 而 "circle" 既不在 availableIcons、也没有对应翻译（`icons.circle` 不存在），
 // 因此它**同样按"未知历史值"处理** —— 显示回退、保存保留原值。
-// 详情见 displayIcon() 与 createIconPicker()。
+// 详情见 iconPicker.js 的 resolveIconName()。
 const ALLOWED_ICON_NAMES = new Set([...(CONFIG.buttons.availableIcons || []), 'random']);
 
 // 允许列表之外的一律显示为这个值。
@@ -31,40 +37,14 @@ const ALLOWED_ICON_NAMES = new Set([...(CONFIG.buttons.availableIcons || []), 'r
 // 预选另一项"的自我矛盾，用户一保存又变成第三个值。
 const FALLBACK_ICON = 'random';
 
-// 是否属于允许列表（闭集判断，没有正则兜底）
-function isAllowedIcon(name) {
-    return typeof name === 'string' && ALLOWED_ICON_NAMES.has(name);
-}
-
-/**
- * 只用于「这个值要变成 class」的场合。
- * 允许列表之外一律回退到 FALLBACK_ICON，绝不放行任意值。
- *
- * 注意：它**只影响显示**，不改变存储 —— 保存回写用的原始值由调用方另行携带
- * （见 createIconPicker 的 `original`），以免用户未改图标时静默丢数据。
- */
-function displayIcon(name) {
-    return isAllowedIcon(name) ? name : FALLBACK_ICON;
-}
-
-// 选择器内部的**展示图标名**。
-//
-// 与 displayIcon 的区别：displayIcon 处理"存储值 → 要渲染的图标"，
-// 而选择器里的 "random" 语义在界面上用一个专用字形表示（shuffle），
-// 这个字形是**表现层常量**，并不是一个可存储的图标值。
-// 两者必须分开，否则把 "shuffle" 交给 displayIcon 会被判成白名单外、
-// 回退成 "random"，于是随机选项显示成 fa-random、触发按钮显示成 fa-shuffle ——
-// 同一控件内自相矛盾。
-//
-// 这里仍然是闭集判断：只放行允许列表与表现层常量，不放行任意字符串。
-const PICKER_GLYPH_NAMES = new Set([...ALLOWED_ICON_NAMES, 'shuffle']);
-
-function pickerGlyph(name) {
-    return PICKER_GLYPH_NAMES.has(name) ? name : 'shuffle';
-}
+// 判定逻辑本身在 `components/iconPicker.js` 的 `resolveIconName()` ——
+// 首页按钮渲染与编辑表单里的选择器共用同一个闭集判断，
+// 否则会出现"按钮显示某图标、打开编辑却预选另一项"。
 
 export const buttonManager = {
     elements: null,
+    // 按钮编辑模态框的组件实例（节点预埋在 html，组件只接管开关）
+    editModalCtl: null,
     customButtons: [],
     activeButtonGroup: 'default',
     displayMode: 'default', // 'default' 或 'minimal'
@@ -89,6 +69,10 @@ export const buttonManager = {
             modeIndicator: document.getElementById('modeIndicator'),
             buttonsEditArea: document.getElementById('buttonsEditArea')
         };
+
+        // 编辑模态框的开关（关闭按钮 / 点遮罩）交给 modal 组件统一处理
+        this.editModalCtl = this.elements.editModal ? createModal(this.elements.editModal) : null;
+        this.editModalCtl?.render();
 
         // 加载配置并渲染
         this.loadButtonConfig();
@@ -242,78 +226,18 @@ export const buttonManager = {
         // 保存配置
         this.elements.saveButtons?.addEventListener('click', () => this.saveButtonConfig());
 
-        // 重置按钮
+        // 重置按钮（确认对话框：运行时创建，关闭即销毁）
         this.elements.resetButtons?.addEventListener('click', () => {
-            this.showConfirmDialog(utils.getTranslation('profile.confirmReset'), () =>
-                this.resetToDefault()
-            );
-        });
-
-        // 关闭模态框
-        this.elements.closeEditModal?.addEventListener('click', () => {
-            this.elements.editModal.classList.remove('show');
-        });
-
-        // 点击模态框外部关闭
-        window.addEventListener('click', (e) => {
-            if (e.target === this.elements.editModal) {
-                this.elements.editModal.classList.remove('show');
-            }
-        });
-
-        // 图标选择器：事件委托（表单每次打开都会重建）
-        const editModal = this.elements.editModal;
-        if (editModal && !editModal.dataset.iconPickerBound) {
-            editModal.dataset.iconPickerBound = '1';
-
-            editModal.addEventListener('click', (e) => {
-                // 点击触发器：切换菜单
-                const trigger = e.target.closest('.icon-picker-trigger');
-                if (trigger) {
-                    const picker = trigger.closest('.icon-picker');
-                    const menu = picker.querySelector('.icon-picker-menu');
-                    const isOpen = menu.classList.contains('show');
-                    editModal.querySelectorAll('.icon-picker.open').forEach((p) => {
-                        if (p !== picker) {
-                            p.classList.remove('open');
-                            p.querySelector('.icon-picker-menu')?.classList.remove('show');
-                        }
-                    });
-                    menu.classList.toggle('show', !isOpen);
-                    picker.classList.toggle('open', !isOpen);
-                    return;
-                }
-
-                // 点击选项：选中并关闭
-                const option = e.target.closest('.icon-picker-option');
-                if (option) {
-                    const picker = option.closest('.icon-picker');
-                    const value = option.dataset.value;
-                    const iconClass = option.querySelector('i').className;
-                    const label = option.querySelector('span').textContent;
-
-                    picker.dataset.value = value;
-                    const triggerEl = picker.querySelector('.icon-picker-trigger');
-                    triggerEl.querySelector('i').className = iconClass;
-                    triggerEl.querySelector('.icon-picker-label').textContent = label;
-                    picker
-                        .querySelectorAll('.icon-picker-option')
-                        .forEach((o) => o.classList.toggle('selected', o === option));
-                    picker.classList.remove('open');
-                    picker.querySelector('.icon-picker-menu')?.classList.remove('show');
-                }
+            modal.confirm({
+                message: utils.getTranslation('profile.confirmReset'),
+                onConfirm: () => this.resetToDefault()
             });
+        });
 
-            // 点击外部关闭所有菜单
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.icon-picker')) {
-                    editModal.querySelectorAll('.icon-picker.open').forEach((p) => {
-                        p.classList.remove('open');
-                        p.querySelector('.icon-picker-menu')?.classList.remove('show');
-                    });
-                }
-            });
-        }
+        // 关闭按钮与"点遮罩关闭"已由 modal 组件接管（见 init 里的 createModal）
+
+        // 图标选择器的开合与选中：事件委托，一次绑定（表单每次打开都会重建节点）
+        bindIconPickerDelegation(this.elements.editModal);
     },
 
     /**
@@ -350,7 +274,7 @@ export const buttonManager = {
      *
      * button.message 与 button.icon 都来自 LocalStorage（可控输入）：
      * - message 用 textContent 写入，恶意标记只显示为字面文本；
-     * - icon 先过严格允许列表，列表外一律回退（见 displayIcon）。
+     * - icon 先过严格允许列表，列表外一律回退（见 iconPicker.js 的 resolveIconName）。
      * 不使用模板字符串，避免任何一个字段突破 DOM 结构。
      *
      * @param {Object} button - 按钮配置对象
@@ -367,7 +291,7 @@ export const buttonManager = {
         contentEl.className = 'bubble-content';
 
         const iconEl = document.createElement('i');
-        iconEl.className = `fas fa-${displayIcon(data.icon)}`;
+        iconEl.className = `fas fa-${resolveIconName(data.icon, ALLOWED_ICON_NAMES, FALLBACK_ICON)}`;
 
         const labelEl = document.createElement('span');
         labelEl.textContent = data.message ?? '';
@@ -472,7 +396,7 @@ export const buttonManager = {
         this.updateModeDisplay();
 
         // 显示模态框
-        this.elements.editModal.classList.add('show');
+        this.editModalCtl?.open();
 
         // 更新模式显示
         setTimeout(() => {
@@ -481,106 +405,29 @@ export const buttonManager = {
     },
 
     /**
-     * 创建单个图标选项（DOM 节点，不经过 HTML 字符串）
-     * @param {string} value - data-value（写入 dataset，不拼字符串）
-     * @param {string} iconName - 展示字形名（须在允许列表或表现层常量内）
-     * @param {string} label - 显示文本（textContent）
-     * @param {boolean} selected - 是否选中
+     * 生成一个图标选择器并挂到表单上。
+     *
+     * 选择器本身是 `components/iconPicker.js` 的组件；这里只负责把
+     * "可选图标集合 / 白名单 / 当前值 / 文案"喂给它。
+     *
+     * 关于当前值：`selectedIcon` 是**原始值**（可能不在白名单内），
+     * 组件会把它放进 `data-value` 用于保存回写，同时只把白名单内的值用于显示 ——
+     * 于是"打开编辑 → 不碰图标 → 保存"不会静默改写用户数据。
+     *
+     * @param {HTMLElement} formGroup 表单容器
+     * @param {string} [selectedIcon] 当前图标值（原值）
+     * @param {string} [id] 选择器节点 id（默认按钮用）
      */
-    createIconOption(value, iconName, label, selected) {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.className = 'icon-picker-option' + (selected ? ' selected' : '');
-        option.dataset.value = value;
-
-        const iconEl = document.createElement('i');
-        iconEl.className = `fas fa-${pickerGlyph(iconName)}`;
-
-        const labelEl = document.createElement('span');
-        labelEl.textContent = label;
-
-        option.appendChild(iconEl);
-        option.appendChild(labelEl);
-
-        return option;
-    },
-
-    /**
-     * 创建图标选择器（带预览的网格弹出）
-     *
-     * selectedIcon 来自 LocalStorage（可控输入），需要分两种用途处理：
-     *
-     * 1. **显示**：只使用允许列表内的值（displayIcon）。列表外的值回退到
-     *    FALLBACK_ICON，因此 class 的内容始终由配置决定，而不是由数据决定。
-     * 2. **保存回写**：`dataset.value` 保留**原始值**。这是"用户未主动修改
-     *    icon 时不静默丢数据"的实现方式 —— saveButtonConfig() 读的正是
-     *    dataset.value，所以"打开编辑 → 直接保存"会原样写回原值。
-     *    （这与修复前的行为一致：原实现同样把选中值直接放进 data-value。）
-     *
-     * 选中项只在值真的等于原始值时才点亮；未知值 → 没有任何选项被选中，
-     * 不会假装用户选了"随机"。
-     *
-     * 整个选择器用 DOM API 构建：值走 dataset，文本走 textContent。
-     *
-     * @param {string} [selectedIcon] - 当前选中的图标
-     * @param {string} [id] - 选择器 ID（默认按钮用）
-     */
-    createIconPicker(selectedIcon, id) {
-        // 保存回写载体：保持与修复前一致的回写语义（原值优先，缺失才取回退值）
-        const original =
-            typeof selectedIcon === 'string' && selectedIcon ? selectedIcon : FALLBACK_ICON;
-        // 预览与 class 只使用允许列表内的值
-        const current = displayIcon(original);
-        const randomLabel = utils.getTranslation('profile.randomIcon');
-
-        const picker = document.createElement('div');
-        picker.className = 'icon-picker';
-        picker.dataset.value = original;
-        if (id) picker.id = id;
-
-        const trigger = document.createElement('button');
-        trigger.type = 'button';
-        trigger.className = 'icon-picker-trigger';
-
-        const triggerIcon = document.createElement('i');
-        const triggerIconName = current === 'random' ? 'shuffle' : current;
-        triggerIcon.className = `fas fa-${pickerGlyph(triggerIconName)}`;
-
-        const triggerLabel = document.createElement('span');
-        triggerLabel.className = 'icon-picker-label';
-        triggerLabel.textContent =
-            current === 'random' ? randomLabel : utils.getTranslation('icons.' + current);
-
-        const caret = document.createElement('i');
-        caret.className = 'fas fa-chevron-down icon-picker-caret';
-
-        trigger.appendChild(triggerIcon);
-        trigger.appendChild(triggerLabel);
-        trigger.appendChild(caret);
-
-        const menu = document.createElement('div');
-        menu.className = 'icon-picker-menu';
-
-        // "随机"选项排在图标列表之前（保持既有顺序）
-        menu.appendChild(
-            this.createIconOption('random', 'shuffle', randomLabel, original === 'random')
-        );
-
-        CONFIG.buttons.availableIcons.forEach((icon) => {
-            menu.appendChild(
-                this.createIconOption(
-                    icon,
-                    icon,
-                    utils.getTranslation('icons.' + icon),
-                    icon === original
-                )
-            );
-        });
-
-        picker.appendChild(trigger);
-        picker.appendChild(menu);
-
-        return picker;
+    mountIconPicker(formGroup, selectedIcon, id) {
+        createIconPicker({
+            icons: CONFIG.buttons.availableIcons || [],
+            allowed: ALLOWED_ICON_NAMES,
+            fallback: FALLBACK_ICON,
+            selected: selectedIcon,
+            id,
+            labels: (name) => utils.getTranslation('icons.' + name),
+            randomLabel: utils.getTranslation('profile.randomIcon')
+        }).render(formGroup);
     },
 
     /**
@@ -619,7 +466,7 @@ export const buttonManager = {
             { maxLength: CONFIG.buttons.maxLength }
         );
 
-        formGroup.appendChild(this.createIconPicker(buttonData?.icon, `button${index + 1}Icon`));
+        this.mountIconPicker(formGroup, buttonData?.icon, `button${index + 1}Icon`);
 
         this.elements.defaultButtonsArea.appendChild(form);
     },
@@ -668,10 +515,10 @@ export const buttonManager = {
             { maxLength: CONFIG.buttons.maxLength }
         );
 
-        formGroup.appendChild(this.createIconPicker(buttonData?.icon));
+        this.mountIconPicker(formGroup, buttonData?.icon);
 
-        // 图标回显由 createIconPicker(buttonData?.icon) 统一处理，
-        // 它会根据 icon 计算 trigger 图标、label 与 data-value（含 random 分支）
+        // 图标回显由选择器组件统一处理：
+        // 它按白名单算出 trigger 图标与 label，并把**原始值**放进 data-value（含 random 分支）
 
         // 绑定删除事件
         form.querySelector('.remove-btn').addEventListener('click', () => {
@@ -752,7 +599,7 @@ export const buttonManager = {
         this.renderButtons();
 
         notification.show('按钮配置已保存');
-        this.elements.editModal.classList.remove('show');
+        this.editModalCtl?.close();
     },
 
     /**
@@ -821,50 +668,8 @@ export const buttonManager = {
         this.customButtons = JSON.parse(JSON.stringify(CONFIG.buttons.defaultButtons));
         this.saveConfig();
         this.renderButtons();
-        this.elements.editModal.classList.remove('show');
+        this.editModalCtl?.close();
         notification.show('已恢复默认按钮');
-    },
-
-    /**
-     * 显示确认对话框（Notion 风格模态框，替代原生 confirm）
-     *
-     * `message` 是调用方传入的提示文本，属动态内容，用 textContent 写入。
-     * 模板中其余插值均为应用自带的多语言文案（translations.js，
-     * 不随用户输入变化），因此保留在模板里，不做整段重写。
-     *
-     * @param {string} message - 提示消息
-     * @param {Function} onConfirm - 确认回调
-     */
-    showConfirmDialog(message, onConfirm) {
-        const modal = document.createElement('div');
-        modal.className = 'modal show confirm-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>${utils.getTranslation('common.confirm')}</h2>
-                </div>
-                <div class="modal-body">
-                    <p class="confirm-message"></p>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn confirm-cancel-btn">${utils.getTranslation('common.cancel')}</button>
-                    <button class="btn save-btn confirm-ok-btn">${utils.getTranslation('common.confirm')}</button>
-                </div>
-            </div>
-        `;
-        modal.querySelector('.confirm-message').textContent = message ?? '';
-        document.body.appendChild(modal);
-
-        const close = () => modal.remove();
-        modal.querySelector('.confirm-cancel-btn').addEventListener('click', close);
-        modal.querySelector('.confirm-ok-btn').addEventListener('click', () => {
-            close();
-            onConfirm();
-        });
-        // 点击遮罩层取消
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) close();
-        });
     },
 
     /**

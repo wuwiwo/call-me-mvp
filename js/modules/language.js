@@ -2,11 +2,15 @@
 import { TRANSLATIONS } from './translations.js';
 import { state } from './state.js';
 import { utils } from './utils.js';
+import { createPopupMenu } from '../components/popupMenu.js';
 
 // 多语言管理
 export const language = {
     // DOM元素缓存
     elements: null,
+
+    // 语言下拉菜单的组件实例（历史页没有切换控件 → 保持 null）
+    menu: null,
 
     // 语言显示映射
     languageDisplayMap: {
@@ -47,98 +51,34 @@ export const language = {
     },
 
     // 绑定语言切换事件
+    //
+    // 下拉的开合交给 popupMenu 组件（与 ⋯ 更多菜单同一套实现）：
+    // 本模块只注入"选中某项 = 切换语言"这一条语义，以及"哪一项是当前语言"。
+    // 历史页没有切换控件 → 不创建组件，也就不注册任何监听。
     bindEvents() {
-        // 语言切换按钮事件
-        if (this.elements.languageToggle) {
-            this.elements.languageToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleLanguageMenu();
-            });
-        }
+        const toggle = this.elements.languageToggle;
+        const panel = this.elements.languageMenu;
+        if (!toggle || !panel) return;
 
-        // 语言选项点击事件
-        if (this.elements.languageMenu) {
-            this.elements.languageMenu.addEventListener('click', (e) => {
-                const option = e.target.closest('.language-option');
-                if (option) {
-                    const lang = option.dataset.lang;
-                    this.update(lang);
-                    this.hideLanguageMenu();
-                }
-            });
-        }
-
-        // 点击外部关闭菜单
-        document.addEventListener('click', () => {
-            this.hideLanguageMenu();
+        this.menu = createPopupMenu({
+            toggle,
+            panel,
+            // 语言下拉的遮罩是运行时创建/销毁的（与 ⋯ 菜单的预埋节点不同），
+            // 形态差异由配置项表达，不强行统一 —— 各自的 class 已被样式钉住。
+            createBackdrop: {
+                id: 'languageDropdownBackdrop',
+                className: 'language-dropdown-backdrop'
+            },
+            itemSelector: '.language-option',
+            onSelect: (target) => {
+                const option = target.closest('.language-option');
+                if (!option) return;
+                this.update(option.dataset.lang);
+            },
+            onSync: () => this.updateLanguageOptions(state.currentLang)
         });
 
-        // 阻止菜单内部点击事件冒泡
-        if (this.elements.languageMenu) {
-            this.elements.languageMenu.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        }
-    },
-
-    // 切换语言菜单显示/隐藏
-    //
-    // 以下三个方法都对元素做存在性判断：历史页没有语言切换控件，
-    // 但 bindEvents() 会注册一个全局 click 监听去调用 hideLanguageMenu()，
-    // 若不判断，在历史页上任意点击都会抛 TypeError。
-    toggleLanguageMenu() {
-        const menu = this.elements?.languageMenu;
-        if (!menu) return;
-
-        if (menu.classList.contains('show')) {
-            this.hideLanguageMenu();
-        } else {
-            this.showLanguageMenu();
-        }
-    },
-
-    // 显示语言菜单
-    showLanguageMenu() {
-        const menu = this.elements?.languageMenu;
-        const toggle = this.elements?.languageToggle;
-        if (!menu || !toggle) return;
-
-        menu.classList.add('show');
-        toggle.classList.add('active');
-
-        // 添加背景遮罩
-        this.addBackdrop();
-    },
-
-    // 隐藏语言菜单
-    hideLanguageMenu() {
-        const menu = this.elements?.languageMenu;
-        const toggle = this.elements?.languageToggle;
-
-        menu?.classList.remove('show');
-        toggle?.classList.remove('active');
-
-        // 移除背景遮罩
-        this.removeBackdrop();
-    },
-
-    // 添加背景遮罩
-    addBackdrop() {
-        if (!document.getElementById('languageDropdownBackdrop')) {
-            const backdrop = document.createElement('div');
-            backdrop.id = 'languageDropdownBackdrop';
-            backdrop.className = 'language-dropdown-backdrop';
-            backdrop.addEventListener('click', () => this.hideLanguageMenu());
-            document.body.appendChild(backdrop);
-        }
-    },
-
-    // 移除背景遮罩
-    removeBackdrop() {
-        const backdrop = document.getElementById('languageDropdownBackdrop');
-        if (backdrop) {
-            backdrop.remove();
-        }
+        this.menu.render();
     },
 
     // 更新界面语言
@@ -157,7 +97,7 @@ export const language = {
         this.updateUI();
 
         // 隐藏菜单
-        this.hideLanguageMenu();
+        this.menu?.close();
     },
 
     // 更新界面元素

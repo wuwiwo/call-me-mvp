@@ -2,11 +2,15 @@
 import { utils } from './utils.js';
 import { state } from './state.js';
 import { notification } from './notification.js';
+import { createModal } from '../components/modal.js';
 
 // 用户资料管理
 export const profile = {
     elements: null,
     selectedEmoji: null,
+
+    // 资料模态框组件实例（开关与"点遮罩/关闭按钮关闭"由组件统一处理）
+    modal: null,
 
     // 初始化方法
     init(domElements) {
@@ -14,6 +18,12 @@ export const profile = {
         if (!this.elements.editProfileBtn) {
             console.error('编辑资料按钮未找到');
             return;
+        }
+
+        // 接上模态框：节点预埋在 html，组件只接管开关
+        if (this.elements.profileModal) {
+            this.modal = createModal(this.elements.profileModal);
+            this.modal.render();
         }
         // 初始化选中的头像
         if (this.elements.emojiOptions?.length > 0) {
@@ -55,25 +65,10 @@ export const profile = {
         if (this.elements.saveProfileBtn) {
             this.elements.saveProfileBtn.addEventListener('click', () => this.save());
         }
-
-        if (this.elements.profileModal) {
-            this.elements.profileModal.addEventListener('click', (e) => {
-                // 点击关闭按钮
-                if (e.target.classList.contains('close-btn')) {
-                    this.closeModal();
-                }
-                // 点击模态框外部
-                else if (e.target === this.elements.profileModal) {
-                    this.closeModal();
-                }
-            });
-        }
     },
     //关闭模块框
     closeModal() {
-        if (this.elements.profileModal) {
-            this.elements.profileModal.classList.remove('show');
-        }
+        this.modal?.close();
     },
 
     // 显示模态框
@@ -95,7 +90,7 @@ export const profile = {
         );
 
         this.elements.nicknameInput.value = state.userProfile?.nickname || '';
-        this.elements.profileModal.classList.add('show');
+        this.modal?.open();
     },
 
     // 保存资料
@@ -117,7 +112,7 @@ export const profile = {
         };
 
         localStorage.setItem('userProfile', JSON.stringify(state.userProfile));
-        this.elements.profileModal.classList.remove('show');
+        this.modal?.close();
         this.loadProfile(); // 刷新显示
     },
 

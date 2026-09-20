@@ -1,28 +1,30 @@
 // /src/modules/theme.js
 import { CONFIG } from './config.js';
 import { state, normalizeThemeName } from './state.js';
+import { createPopupMenu } from '../components/popupMenu.js';
 
 const THEME_ATTR = 'data-theme';
-const PANEL_OPEN_CLASS = 'show';
-const TOGGLE_ACTIVE_CLASS = 'active';
 const ITEM_ACTIVE_CLASS = 'active';
 
 /**
- * 主题模块 —— `appTheme` 的**唯一写入者**，以及 ⋯ 菜单的唯一所有者。
+ * 主题模块 —— `appTheme` 的**唯一写入者**。
  *
  * 职责边界（与 CM-006 countdown / CM-010 password 同构）：
  * - 只有这里写 `localStorage.appTheme` 与 `state.appTheme`
  * - 只有这里写 `<html data-theme>`
- * - 只有这里开合 ⋯ 菜单、判定哪个菜单项是当前主题
+ * - 只有这里判定哪个 ⋯ 菜单项是当前主题（菜单的开合本身由 popupMenu 组件负责）
  * - 其他模块只读 `state.appTheme` 或用它派生样式
  *
  * 视觉层面：主题名只是 `<html>` 上的一个属性，真正的令牌覆盖由 CSS 的
  * `[data-theme="xxx"]` 选择器承载。本模块不碰具体配色，
  * 因此新增主题只需要：config.themes 加名字 + CSS 加一组令牌 + html 加一个菜单项。
+ *
+ * ⋯ 菜单的开合是通用交互（语言下拉用的是同一套），已抽到
+ * `components/popupMenu.js`；本模块只通过 `onSelect` / `onSync` 注入主题语义。
  */
 export const theme = {
     /**
-     * ⋯ 菜单的三个节点。历史页没有这些节点 → 保持 null，所有菜单方法自动退化为空操作。
+     * ⋯ 菜单的组件实例。历史页没有这些节点 → 保持 null，菜单相关调用全部退化为空操作。
      */
     menu: null,
 
@@ -36,7 +38,6 @@ export const theme = {
     init() {
         this.apply(state.appTheme);
         this.bindMenu();
-        this.syncMenu();
     },
 
     /**
@@ -86,11 +87,10 @@ export const theme = {
     },
 
     /**
-     * 绑定 ⋯ 菜单事件。
+     * 接上 ⋯ 菜单（开合交给 popupMenu 组件）。
      *
-     * 菜单项一律用 `data-theme-name` 声明目标主题，事件**委托在面板上**：
-     * buttonManager 会用 `replaceWith(cloneNode)` 重建 #editButtons，
-     * 委托能保证重建后菜单行为不丢。
+     * 菜单项一律用 `data-theme-name` 声明目标主题；组件在**捕获阶段**派发点击，
+     * 因此 `#editButtons` 这类会 `stopPropagation()` 的菜单项也能被正确关闭。
      */
     bindMenu() {
         const toggle = document.getElementById('moreToggle');
@@ -100,74 +100,24 @@ export const theme = {
         // 没有 ⋯ 菜单的页面（history.html）：直接跳过，不注册任何监听
         if (!toggle || !panel) return;
 
-        this.menu = { toggle, panel, backdrop };
-
-        toggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleMenu();
+        this.menu = createPopupMenu({
+            toggle,
+            panel,
+            backdrop,
+            itemSelector: '.more-item, [data-theme-name]',
+            onSelect: (target) => {
+                // 只有主题项需要本模块处理；编辑资料 / 编辑按钮由各自模块接管，
+                // 这里什么都不做 —— 组件的默认行为就是"选完即关菜单"。
+                const themeItem = target.closest('[data-theme-name]');
+                if (!themeItem) return;
+                this.setTheme(themeItem.dataset.themeName);
+            },
+            onSync: () => this.syncMenu()
         });
 
-        // 捕获阶段处理：#editButtons / #editProfile 自己的监听会 stopPropagation
-        // （buttonManager 就是这么干的），冒泡阶段的面板监听收不到 ——
-        // 放在捕获阶段才能保证点菜单项后菜单一定关闭。
-        panel.addEventListener(
-            'click',
-            (e) => {
-                const themeItem = e.target.closest('[data-theme-name]');
-                if (themeItem) {
-                    this.setTheme(themeItem.dataset.themeName);
-                    this.closeMenu();
-                    return;
-                }
-                // 编辑资料 / 编辑按钮：关掉菜单，按钮自身的监听照常执行
-                if (e.target.closest('.more-item')) {
-                    this.closeMenu();
-                }
-            },
-            true
-        );
-
-        // 点遮罩关闭
-        backdrop?.addEventListener('click', () => this.closeMenu());
-
-        // 点页面其他位置也关闭
-        document.addEventListener('click', () => this.closeMenu());
-    },
-
-    /**
-     * 开合 ⋯ 菜单（面板在顶栏下方展开，不是底部动作面板）。
-     */
-    toggleMenu() {
-        if (!this.menu) return;
-
-        if (this.menu.panel.classList.contains(PANEL_OPEN_CLASS)) {
-            this.closeMenu();
-        } else {
-            this.openMenu();
-        }
-    },
-
-    /**
-     * 打开 ⋯ 菜单。
-     */
-    openMenu() {
-        if (!this.menu) return;
-
-        this.menu.panel.classList.add(PANEL_OPEN_CLASS);
-        this.menu.toggle.classList.add(TOGGLE_ACTIVE_CLASS);
-        this.menu.backdrop?.classList.add(PANEL_OPEN_CLASS);
+        // 行为组件：节点已在 html 里，render() 只负责挂载（不传容器，不做插入）
+        this.menu.render();
         this.syncMenu();
-    },
-
-    /**
-     * 关闭 ⋯ 菜单。
-     */
-    closeMenu() {
-        if (!this.menu) return;
-
-        this.menu.panel.classList.remove(PANEL_OPEN_CLASS);
-        this.menu.toggle.classList.remove(TOGGLE_ACTIVE_CLASS);
-        this.menu.backdrop?.classList.remove(PANEL_OPEN_CLASS);
     },
 
     /**
@@ -177,7 +127,7 @@ export const theme = {
      * setTheme 与 init 都会调它，两条路径结果一致。
      */
     syncMenu() {
-        const panel = this.menu?.panel;
+        const panel = this.menu?.panelEl;
         if (!panel) return;
 
         panel.querySelectorAll('[data-theme-name]').forEach((el) => {
