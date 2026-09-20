@@ -487,15 +487,19 @@ console.log('T5 记录渲染：内容与状态 class 不变');
 console.log('─'.repeat(64));
 await openHistory({ lang: 'en', records: RECORDS });
 s = await snapHistory();
+// UI-14 F2 起，.history-item 的 class 会追加一个回执 tag class
+// （success/pending|read|timeout）。T5 只关心**既有**语义没被破坏，
+// 所以用 startsWith 判前缀；tag 的精确三态由 T10 单独覆盖。
+// RECORDS 里没有 receipt 字段 → 旧数据路径 → pending。
 check('渲染出 2 条记录', s.items.length === 2, String(s.items.length));
 check(
-    "success 行 class = 'history-item success'",
-    s.items[0]?.cls === 'history-item success',
+    "success 行 class 以 'history-item success' 开头",
+    s.items[0]?.cls.startsWith('history-item success'),
     String(s.items[0]?.cls)
 );
 check(
-    "error 行 class = 'history-item error'",
-    s.items[1]?.cls === 'history-item error',
+    "error 行 class 以 'history-item error' 开头",
+    s.items[1]?.cls.startsWith('history-item error'),
     String(s.items[1]?.cls)
 );
 check('昵称按文本渲染', s.items[0]?.name === '阿珍', String(s.items[0]?.name));
@@ -552,14 +556,32 @@ check(
 console.log('\n' + '─'.repeat(64));
 console.log('T7 清除动作：数据范围 + toast 文案');
 console.log('─'.repeat(64));
+// UI-14 F3：清除反馈改走与「发送通知」同一条通道 —— #notification +
+// notification.show()，不再自建 .history-toast（那个类名 history.css 里
+// 根本没有定义，实际渲染为无样式裸文本）。因此这里断言：
+//   - 文案落在 #notification 内
+//   - 带 show 类（出现中）
+//   - 带 sent 类（成功变体，与发送成功的通知同款样式；注意是 sent 不是 success）
+//   - 页面上**不存在** .history-toast（旧实现已删除）
+//
+// textContent 归一化：notification.show 渲染的是
+// `<i class="fas fa-{icon}"></i> {message}`，图标元素后带一个空格，
+// 所以容器 textContent 会多一个前导空格 —— trim 后再比。
+// （旧实现自建 toast 时，取的是 toast 自己的 textContent，没有图标，故无空格。）
 for (const l of LANGS) {
     await openHistory({ lang: l, records: RECORDS });
     const before = await snapHistory();
     const toastText = await evalJs(`(() => {
         document.getElementById('clearHistory').click();
-        const el = document.querySelector('.history-toast');
-        return el ? el.textContent : null;
+        const el = document.getElementById('notification');
+        return el ? el.textContent.trim() : null;
     })()`);
+    const toastCls = await evalJs(
+        `document.getElementById('notification')?.className ?? null`
+    );
+    const legacyToast = await evalJs(
+        `document.querySelectorAll('.history-toast').length`
+    );
     await wait(150);
     const after = await snapHistory();
 
@@ -582,6 +604,14 @@ for (const l of LANGS) {
         JSON.stringify(toastText)
     );
     check(
+        `${l}: 清除 toast 走 #notification 且带 show + sent 类`,
+        typeof toastCls === 'string' &&
+            toastCls.split(/\s+/).includes('show') &&
+            toastCls.split(/\s+/).includes('sent'),
+        JSON.stringify(toastCls)
+    );
+    check(`${l}: 旧 .history-toast 节点已不再创建`, legacyToast === 0, String(legacyToast));
+    check(
         `${l}: 清除后重新渲染为空状态`,
         after.emptyText === TRANSLATIONS[l].history.empty && after.items.length === 0,
         JSON.stringify(after.emptyText)
@@ -601,6 +631,9 @@ const XSS_RECORDS = [
         nickname: '<script>window.__pwned=2</script>',
         emoji: '<svg onload="window.__pwned=3">',
         _status: 'error',
+        // UI-14 F2：三态 tag 的 `receipt` 同样是可控输入，这里一并注入恶意值，
+        // 与 _status 一起验证「LocalStorage 值进不了 class」。
+        receipt: 'read" onload="window.__pwned=5',
         webhook: '"><img src=x onerror="window.__pwned=4">'
     },
     {
@@ -740,9 +773,158 @@ const menuState = JSON.parse(
 check('首页语言菜单可打开', menuState.opened === true, String(menuState.opened));
 check('首页语言菜单可关闭', menuState.closed === true, String(menuState.closed));
 
+// ── UI-14 F2：右上角真三态 tag ──
+console.log('\n' + '─'.repeat(64));
+console.log('T10 UI-14 F2 回执 tag：真三态 + 闭合枚举 + 旧数据兼容');
+console.log('─'.repeat(64));
+// 覆盖矩阵：error（发送失败，receipt 无关）/ read / timeout / pending /
+// receipt 缺失（旧数据）/ receipt 非法值（可控输入）/ _status 非法值
+const TAG_RECORDS = [
+    { timestamp: '2026-09-19T10:00:00.000Z', message: '失败', nickname: '甲', emoji: 'x', _status: 'error', receipt: 'failed', webhook: 'h' },
+    { timestamp: '2026-09-19T10:01:00.000Z', message: '已读', nickname: '乙', emoji: 'x', _status: 'success', receipt: 'read' },
+    { timestamp: '2026-09-19T10:02:00.000Z', message: '超时', nickname: '丙', emoji: 'x', _status: 'success', receipt: 'timeout' },
+    { timestamp: '2026-09-19T10:03:00.000Z', message: '未回执', nickname: '丁', emoji: 'x', _status: 'success', receipt: 'pending' },
+    // 旧数据：没有 receipt 字段 → 必须按 pending 处理，不能渲染成「失败」
+    { timestamp: '2026-09-19T10:04:00.000Z', message: '旧数据', nickname: '戊', emoji: 'x', _status: 'success' },
+    // 可控输入：恶意 receipt 值 → 必须落回 pending，且不得进入 class
+    { timestamp: '2026-09-19T10:05:00.000Z', message: '恶意回执', nickname: '己', emoji: 'x', _status: 'success', receipt: '<img src=x onerror="window.__pwned=9">' },
+    // _status 非法 + receipt 合法 read：_status 无效 → 不算失败，按回执走 read
+    { timestamp: '2026-09-19T10:06:00.000Z', message: '非法状态', nickname: '庚', emoji: 'x', _status: 'weird', receipt: 'read' }
+];
+await openHistory({ lang: 'zh', records: TAG_RECORDS });
+const tags = JSON.parse(
+    await evalJs(`(() => {
+        const list = document.getElementById('historyList');
+        const items = [...list.querySelectorAll('.history-item')];
+        return JSON.stringify({
+            pwned: window.__pwned ?? null,
+            count: items.length,
+            tags: items.map(el => {
+                const t = el.querySelector('.history-tag');
+                return t ? { cls: t.className, text: t.textContent } : null;
+            }),
+            // tag 必须是 .history-item 的直接子节点（F2 的 DOM 契约）
+            tagIsDirectChild: items.every(el => {
+                const t = el.querySelector('.history-tag');
+                return !!t && t.parentElement === el;
+            }),
+            // 纯展示：不得拦截命中测试
+            tagPointerEvents: [...list.querySelectorAll('.history-tag')]
+                .map(t => getComputedStyle(t).pointerEvents),
+            // 定位基准：每张卡都必须是 position:relative
+            itemPositions: items.map(el => getComputedStyle(el).position),
+            injectedNodes: list.querySelectorAll('script,img,svg,b').length,
+            onAttrs: [...list.querySelectorAll('*')]
+                .flatMap(el => [...el.attributes])
+                .filter(a => /^on/i.test(a.name)).length
+        });
+    })()`)
+);
+check('渲染出 7 条记录', tags.count === 7, String(tags.count));
+check('恶意 receipt 未执行脚本（__pwned 未设置）', tags.pwned === null, String(tags.pwned));
+check('无注入元素（script/img/svg/b 计数为 0）', tags.injectedNodes === 0, String(tags.injectedNodes));
+check('无 on* 事件属性', tags.onAttrs === 0, String(tags.onAttrs));
+
+const EXPECT_TAGS = [
+    ['failed', TRANSLATIONS.zh.history.tag.failed, 'error → failed'],
+    ['read', TRANSLATIONS.zh.history.tag.read, 'receipt=read → read'],
+    ['pending', TRANSLATIONS.zh.history.tag.pending, 'receipt=timeout → pending'],
+    ['pending', TRANSLATIONS.zh.history.tag.pending, 'receipt=pending → pending'],
+    ['pending', TRANSLATIONS.zh.history.tag.pending, 'receipt 缺失（旧数据）→ pending'],
+    ['pending', TRANSLATIONS.zh.history.tag.pending, 'receipt 非法值 → pending'],
+    ['read', TRANSLATIONS.zh.history.tag.read, '_status 非法 + receipt=read → read']
+];
+EXPECT_TAGS.forEach(([kind, text, label], i) => {
+    check(
+        `tag[${i}] ${label}：class = 'history-tag ${kind}'`,
+        tags.tags[i]?.cls === `history-tag ${kind}`,
+        JSON.stringify(tags.tags[i]?.cls ?? null)
+    );
+    check(
+        `tag[${i}] ${label}：文案 = ${JSON.stringify(text)}`,
+        tags.tags[i]?.text === text,
+        JSON.stringify(tags.tags[i]?.text ?? null)
+    );
+});
+check(
+    '恶意 receipt 未把任意字符串带进 class',
+    tags.tags[5]?.cls === 'history-tag pending' &&
+        !tags.tags[5].cls.includes('onerror') &&
+        !tags.tags[5].cls.includes('"'),
+    JSON.stringify(tags.tags[5]?.cls ?? null)
+);
+check('每个 tag 都是 .history-item 的直接子节点', tags.tagIsDirectChild === true, '');
+check(
+    'tag 为纯展示（pointer-events: none，不遮挡卡片）',
+    tags.tagPointerEvents.length === 7 && tags.tagPointerEvents.every((v) => v === 'none'),
+    JSON.stringify(tags.tagPointerEvents)
+);
+check(
+    'tag 的定位基准成立（7 张卡均 position:relative）',
+    tags.itemPositions.length === 7 && tags.itemPositions.every((v) => v === 'relative'),
+    JSON.stringify(tags.itemPositions)
+);
+
+// 四语言 tag 文案（防串位）
+for (const l of LANGS) {
+    await openHistory({ lang: l, records: TAG_RECORDS });
+    const t = TRANSLATIONS[l].history.tag;
+    const got = JSON.parse(
+        await evalJs(`JSON.stringify(
+            [...document.querySelectorAll('#historyList .history-tag')]
+                .slice(0, 3)
+                .map(el => el.textContent)
+        )`)
+    );
+    check(
+        `${l}: tag 文案跟随语言（failed/read/pending）`,
+        got[0] === t.failed && got[1] === t.read && got[2] === t.pending,
+        JSON.stringify(got)
+    );
+}
+
+// ── UI-14 F1：历史页不再垂直居中（body.history-page 生效） ──
+console.log('\n' + '─'.repeat(64));
+console.log('T10b UI-14 F1 body.history-page：顶部对齐 + 避让顶栏');
+console.log('─'.repeat(64));
+await openHistory({ lang: 'zh', records: RECORDS });
+const f1 = JSON.parse(
+    await evalJs(`(() => {
+        const cs = getComputedStyle(document.body);
+        const bar = document.querySelector('.top-bar');
+        const barH = bar ? bar.getBoundingClientRect().height : 0;
+        const container = document.querySelector('.container');
+        return JSON.stringify({
+            hasClass: document.body.classList.contains('history-page'),
+            alignItems: cs.alignItems,
+            paddingTop: parseFloat(cs.paddingTop),
+            barHeight: barH,
+            containerMarginTop: container ? parseFloat(getComputedStyle(container).marginTop) : -1,
+            containerTop: container ? container.getBoundingClientRect().top : -1
+        });
+    })()`)
+);
+check('history.html 的 body 带 history-page 类', f1.hasClass === true, String(f1.hasClass));
+check("align-items 为 flex-start（不再垂直居中）", f1.alignItems === 'flex-start', f1.alignItems);
+check(
+    `padding-top (${f1.paddingTop}) 大于顶栏高度 (${Math.round(f1.barHeight)})`,
+    f1.paddingTop > f1.barHeight,
+    `${f1.paddingTop} vs ${Math.round(f1.barHeight)}`
+);
+check(
+    '.container 的 margin-top 已被抵消为 0（不叠加留白）',
+    f1.containerMarginTop === 0,
+    String(f1.containerMarginTop)
+);
+check(
+    `内容起点在顶栏之下（container.top=${Math.round(f1.containerTop)} > bar=${Math.round(f1.barHeight)}）`,
+    f1.containerTop >= f1.barHeight,
+    `${Math.round(f1.containerTop)} vs ${Math.round(f1.barHeight)}`
+);
+
 // ── 页面异常 ──
 console.log('\n' + '─'.repeat(64));
-console.log('T10 页面异常检查');
+console.log('T11 页面异常检查');
 console.log('─'.repeat(64));
 const uniqErr = [...new Set(pageErrors)];
 check('全流程无未捕获异常 / console.error', uniqErr.length === 0, uniqErr.join(' | '));

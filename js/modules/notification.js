@@ -52,7 +52,14 @@ export const notification = {
     // 我们在此基础上**用新记录覆盖损坏值**，让历史功能自我修复，
     // 而不是让用户永久停在"每次发通知都抛异常"的状态。
     // 注意：仅在数据不可用（非法 JSON / 非数组）时才覆盖，合法数据一律保留。
-    addHistoryRecord(message, isSuccess) {
+    //
+    // UI-14 F2：新增 `msgId` 与 `receipt` 两个字段，用于历史页右上角的三态 tag。
+    // `receipt` 与 `_status` 是**两个维度**，不要合并：
+    //   - `_status`   = 发送本身是否成功（success / error），发送失败即终态
+    //   - `receipt`   = 发送成功后对方是否已读（pending → read / timeout）
+    // 发送失败时写 'failed' 而不是 'pending'：它永远不会再变，
+    // 渲染层的 tagKind 也能直接由它得出，不必再去读 `_status`。
+    addHistoryRecord(message, isSuccess, msgId = '') {
         const existing = readJsonSafe('notificationHistory', [], (v) => Array.isArray(v));
         const history = Array.isArray(existing) ? existing : [];
         history.unshift({
@@ -61,12 +68,47 @@ export const notification = {
             nickname: state.userProfile?.nickname || utils.getTranslation('common.unregistered'),
             emoji: state.userProfile?.emoji || CONFIG.defaultAvatar,
             _status: isSuccess ? 'success' : 'error',
-            webhook: CONFIG.webhookUrl
+            webhook: CONFIG.webhookUrl,
+            msgId: typeof msgId === 'string' ? msgId : '',
+            receipt: isSuccess ? 'pending' : 'failed'
         });
         localStorage.setItem(
             'notificationHistory',
             JSON.stringify(history.slice(0, CONFIG.maxHistoryRecords))
         );
+    },
+
+    /**
+     * 回写某条历史记录的回执终态（UI-14 F2）。
+     *
+     * 由回执轮询在命中 read / timeout 时调用，把 `receipt` 从 'pending'
+     * 推进到终态，下次打开历史页即可看到三态 tag。
+     *
+     * 匹配规则：找**第一条** `msgId` 相等的记录 —— 列表是 `unshift` 追加的，
+     * 同一条消息的最新记录在最前，因此"第一条匹配"就是它。
+     * 找不到（旧数据没有 msgId、或记录已被清除/被 maxHistoryRecords 截断）
+     * 一律静默返回，绝不新建记录：回执只是装饰，不该凭空造出历史。
+     *
+     * @param {string} msgId 目标消息 ID
+     * @param {"read"|"timeout"} receiptState 终态
+     */
+    markReceipt(msgId, receiptState) {
+        if (!msgId) return;
+        if (receiptState !== 'read' && receiptState !== 'timeout') return;
+
+        const existing = readJsonSafe('notificationHistory', [], (v) => Array.isArray(v));
+        if (!Array.isArray(existing) || existing.length === 0) return;
+
+        const idx = existing.findIndex((r) => r && r.msgId === msgId);
+        if (idx === -1) return;
+
+        existing[idx].receipt = receiptState;
+        try {
+            localStorage.setItem('notificationHistory', JSON.stringify(existing));
+        } catch (e) {
+            // 写入失败（配额/隐私模式）不影响本次发送的可见结果，仅记录
+            console.warn('回执状态写入失败:', e);
+        }
     },
 
     // 发送Webhook通知
@@ -112,7 +154,8 @@ export const notification = {
 
             // 确保使用翻译文本而不是翻译键
             this.show(utils.getTranslation('notification.successMsg'));
-            this.addHistoryRecord(buttonData.message, true);
+            // UI-14 F2：把 msgId 一并交给历史记录，轮询才有键可回写回执
+            this.addHistoryRecord(buttonData.message, true, msgId);
 
             // 回执轮询：**先让旧轮询失效，再写「已发送」**。
             // 这三句在同一个同步块内执行，因此上一轮的残留回调不可能插进来；
@@ -218,6 +261,8 @@ export const notification = {
                 // 否则字段会留着已触发的旧 id，让"是否还有轮询"无法据此判断。
                 this.receiptPollTimer = null;
                 this.setReceiptStatus('timeout');
+                // UI-14 F2：终态同步回写历史（找不到该 msgId 时静默返回）
+                this.markReceipt(msgId, 'timeout');
                 return;
             }
             try {
@@ -236,6 +281,8 @@ export const notification = {
                         // 终态：同上，清空句柄表示"没有已排队的轮询"
                         this.receiptPollTimer = null;
                         this.setReceiptStatus('read');
+                        // UI-14 F2：终态同步回写历史
+                        this.markReceipt(msgId, 'read');
                         return;
                     }
                 }

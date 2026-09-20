@@ -336,3 +336,98 @@ body.history-page {
     margin: 80px auto 40px;
     padding: 0 20px;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   UI-14 F1：历史页不再垂直居中，整体上移到顶栏之下
+   ═══════════════════════════════════════════════════════════
+
+   index.css 的 `body { display:flex; align-items:center; min-height:100vh }`
+   会把内容在当前视口里垂直居中：记录少时整块浮在屏幕中央，
+   记录多到超过视口又变成贴顶 —— 同一次"打开历史"的观感不稳定。
+
+   修法：只改 history 页的 body（.history-page 只在 history.html 上），
+   用 align-items:flex-start 让内容从顶部开始排。
+   用**页级作用域**而不是去改 index.css 的全局 body，首页不受影响。
+
+   下面这段同时"救活"了上面那两条一直没生效的规则：
+   `body.history-page` 从来没有被 <body> 用过（缺 class），
+   `.history-container` 也没有任何元素使用（history.html 用的是 .container）。
+   两者都是死规则，这里保留原样但把 class 接上，
+   真正生效的是本注释块之后新增的规则（层级更高，且写在文件末尾）。 */
+body.history-page {
+    align-items: flex-start;
+    /* 避让 .top-bar（fixed，高度随断点 72 / 61 / 57 浮动）。
+       给"顶栏高度 + 呼吸位"的合成值，再按断点收窄，不写死单一数值。 */
+    padding-top: 88px;
+}
+
+@media (max-width: 768px) {
+    body.history-page {
+        padding-top: 76px;
+    }
+}
+
+@media (max-width: 480px) {
+    body.history-page {
+        padding-top: 70px;
+    }
+}
+
+/* history.html 的 .container 自带 margin-top:60px（index.css:259），
+   叠在 body 的 padding-top 上会让顶部空出一大块。
+   页面级抵消掉：纵向间距统一由 body.history-page 的 padding-top 决定。 */
+body.history-page .container {
+    margin-top: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UI-14 F2：右上角三态 tag（未回执 / 已回执 / 失败）
+   ═══════════════════════════════════════════════════════════
+
+   `position:relative` 必须加在 .history-item 上作为定位基准。
+   注意 history.css 里有**三条** .history-item 规则（:9 / :157 / :200），
+   按源码顺序最后一条（:200）胜出 —— 所以这条写在文件最末，
+   不会被前面的规则覆盖，也不会去覆盖它们的 flex 布局。 */
+.history-item {
+    position: relative;
+}
+
+.history-tag {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.6;
+    white-space: nowrap;
+    pointer-events: none; /* 纯展示，不参与命中测试（避免遮挡卡片内容） */
+}
+
+/* 三态配色：未回执 = 中性灰；已回执 = 薄荷绿；失败 = 红。
+   颜色全部走既有令牌，不新增硬编码色值。 */
+.history-tag.pending {
+    background: rgba(55, 53, 47, 0.06);
+    color: rgba(55, 53, 47, 0.65);
+}
+
+.history-tag.read {
+    background: rgba(15, 163, 128, 0.13);
+    color: #0ba380;
+}
+
+.history-tag.failed {
+    background: var(--danger-faint);
+    color: var(--danger-solid);
+}
+
+/* 窄屏：卡片在 600px 以下改成纵向 flex，tag 贴右上角会压到昵称。
+   改为静态定位、跟随内容流排在最后，宽度自适应。 */
+@media (max-width: 600px) {
+    .history-tag {
+        position: static;
+        align-self: flex-start;
+        margin-top: 2px;
+    }
+}

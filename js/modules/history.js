@@ -4,15 +4,37 @@ import { utils } from './utils.js';
 import { readJsonSafe } from './state.js';
 import { language } from './language.js';
 import { theme } from './theme.js';
+import { notification } from './notification.js';
 
 // 历史记录只允许两种既有状态。
 // `_status` 来自 LocalStorage，属于可控输入：未知或缺失一律不产生状态 class，
 // 以免任意字符串经由模板字符串突破 class 属性。
 const HISTORY_STATUSES = new Set(['success', 'error']);
 
+// UI-14 F2：回执状态的闭合枚举，与上面的 _status 同构。
+// `receipt` 同样来自 LocalStorage，且会直接参与 class 拼接 → 必须白名单化。
+// 注意 'failed' 不在此集合：失败不是回执状态，而是由 `_status === 'error'`
+// 推出的 tag 种类，永远不来自存储值。
+const HISTORY_RECEIPTS = new Set(['pending', 'read', 'timeout']);
+
 // 安全的历史状态取值：非法值返回空串（不产生状态 class）。
 function safeStatus(status) {
     return HISTORY_STATUSES.has(status) ? status : '';
+}
+
+// 安全的回执取值：非法值（含缺失，即旧数据）一律按 'pending'（未回执）处理。
+// 用默认值而不是空串：tag 是三态之一，任何记录都必然有且只有一个 tag。
+function safeReceipt(receipt) {
+    return HISTORY_RECEIPTS.has(receipt) ? receipt : 'pending';
+}
+
+// 由一条记录推出 tag 的种类。**闭合三态**，且只在三个字面量里选一个：
+// error（发送失败）> read（已回执）> pending（未回执，含旧数据无 receipt 字段）。
+// 之所以和 safeReceipt 分开：`_status` 的优先级高于 `receipt`
+// （发送失败的记录 receipt 已是 'failed'，但即便它是别的值也应显示失败）。
+function tagKindOf(item) {
+    if (safeStatus(item._status) === 'error') return 'failed';
+    return safeReceipt(item.receipt) === 'read' ? 'read' : 'pending';
 }
 
 // 历史记录管理
@@ -33,6 +55,12 @@ export const history = {
         // 主题：历史页只加载本模块，没有 main.js，主题 init 要在这里补一次。
         // 与首页共用 <head> 防闪脚本 + theme.init()，保证两页 data-theme 一致。
         theme.init();
+
+        // 通知：历史页同样没有 main.js，而 F3 要求「清除」用与发送通知一致的
+        // toast（同一个 #notification 节点 + notification.show）。节点预埋在
+        // history.html，缺失时 notification.show 会因为 element 为 null 抛错，
+        // 所以这里必须传；传 null 则优雅降级为「无反馈」而不是页面崩。
+        notification.init(domElements.notificationEl || null);
 
         // 复用首页的语言初始化与回退规则：读取 appLanguage → 校验是否受支持
         // → 落到 state.currentLang。历史页没有语言切换控件，不传元素即可
@@ -156,6 +184,17 @@ export const history = {
 
             itemEl.appendChild(emojiEl);
             itemEl.appendChild(contentEl);
+
+            // UI-14 F2：右上角三态 tag（绝对定位，CSS 负责贴角）。
+            // tagKind 由 tagKindOf() 在闭合枚举里推出，
+            // 文案走 history.tag.<kind>，节点用 textContent 写入 ——
+            // 三条纪律合起来保证 LocalStorage 里的任何值都进不了 class 或 HTML。
+            const tagKind = tagKindOf(item);
+            const tagEl = document.createElement('span');
+            tagEl.className = `history-tag ${tagKind}`;
+            tagEl.textContent = utils.getTranslation(`history.tag.${tagKind}`);
+            itemEl.appendChild(tagEl);
+
             list.appendChild(itemEl);
         });
     },
@@ -170,15 +209,11 @@ export const history = {
         localStorage.removeItem('notificationHistory');
         this.renderList(listEl || this.elements?.list);
 
-        // 显示清除成功的反馈（文案跟随当前语言）
-        const toast = document.createElement('div');
-        toast.className = 'history-toast';
-        toast.textContent = utils.getTranslation('history.cleared');
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.classList.add('fade-out');
-            setTimeout(() => toast.remove(), 300);
-        }, 2000);
+        // UI-14 F3：反馈与「发送通知成功」用同一条通道（#notification +
+        // notification.show），不再自建 .history-toast 节点 ——
+        // 那个类名在 history.css 里根本没有定义，实际渲染为无样式裸文本，
+        // 这正是 Human 说的"不一致"。走 notification.show 顺带获得成功音
+        // 与统一的 success 样式。
+        notification.show(utils.getTranslation('history.cleared'), true);
     }
 };

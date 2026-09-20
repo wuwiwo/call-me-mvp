@@ -69,7 +69,12 @@ export const TRANSLATIONS = {
             webhookLabel: 'Webhook',
             empty: '暂无历史记录',
             timeFormat: 'YYYY年MM月DD日 HH:mm:ss',
-            viewEntry: '查看通知历史'
+            viewEntry: '查看通知历史',
+            tag: {
+                pending: '未回执',
+                read: '已回执',
+                failed: '发送失败'
+            }
         },
         password: {
             title: '🔐 访问验证',
@@ -172,7 +177,12 @@ export const TRANSLATIONS = {
             webhookLabel: 'Webhook URL',
             empty: 'No history records',
             timeFormat: 'MM/DD/YYYY HH:mm:ss',
-            viewEntry: 'View notification history'
+            viewEntry: 'View notification history',
+            tag: {
+                pending: 'Unread',
+                read: 'Read',
+                failed: 'Failed'
+            }
         },
         password: {
             title: '🔐 Access Verification',
@@ -275,7 +285,12 @@ export const TRANSLATIONS = {
             webhookLabel: 'Webhook URL',
             empty: '履歴がありません',
             timeFormat: 'YYYY年MM月DD日 HH:mm:ss',
-            viewEntry: '通知履歴を見る'
+            viewEntry: '通知履歴を見る',
+            tag: {
+                pending: '未読',
+                read: '既読',
+                failed: '送信失敗'
+            }
         },
         password: {
             title: '🔐 アクセス認証',
@@ -378,7 +393,12 @@ export const TRANSLATIONS = {
             webhookLabel: 'Webhook 주소',
             empty: '기록이 없습니다',
             timeFormat: 'YYYY년 MM월 DD일 HH:mm:ss',
-            viewEntry: '알림 기록 보기'
+            viewEntry: '알림 기록 보기',
+            tag: {
+                pending: '미확인',
+                read: '확인됨',
+                failed: '전송 실패'
+            }
         },
         password: {
             title: '🔐 액세스 인증',
