@@ -20,6 +20,8 @@
             })();
         </script>
         <title>Call Me</title>
+        <link rel="manifest" href="manifest.json" />
+        <link rel="icon" type="image/png" href="icons/icon-192.png" />
         <link
             href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
             rel="stylesheet"
@@ -31,6 +33,8 @@
         <link href="index.css?3.3" rel="stylesheet" />
         <link rel="stylesheet" href="history.css" />
         <script type="module" src="js/main.js"></script>
+        <!-- PWA：head 末尾注册（module 自带 defer），真正的 register 等到 load 之后 -->
+        <script type="module" src="js/sw-register.js"></script>
     </head>
 
     <body>

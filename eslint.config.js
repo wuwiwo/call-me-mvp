@@ -32,5 +32,14 @@ export default [
             globals: { ...globals.node }
         }
     },
+    {
+        // Service Worker（S5）：经典脚本（非 module），全局是 SW 专用的一套
+        // （self / caches / clients / skipWaiting），用 serviceworker 环境而不是 browser
+        files: ['sw.js'],
+        languageOptions: {
+            sourceType: 'script',
+            globals: { ...globals.serviceworker }
+        }
+    },
     eslintConfigPrettier
 ];
