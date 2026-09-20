@@ -7,7 +7,13 @@ export const TRANSLATIONS = {
             success: '成功',
             failure: '失败',
             confirm: '确认',
-            cancel: '取消'
+            cancel: '取消',
+            more: '更多'
+        },
+        theme: {
+            sectionTitle: '主题',
+            bubble: '气泡列表',
+            list: '按钮列表'
         },
         mainPage: {
             subtitle: '点击下方按钮，我会立即收到通知',
@@ -53,7 +59,8 @@ export const TRANSLATIONS = {
             cleared: '历史记录已清除',
             webhookLabel: 'Webhook',
             empty: '暂无历史记录',
-            timeFormat: 'YYYY年MM月DD日 HH:mm:ss'
+            timeFormat: 'YYYY年MM月DD日 HH:mm:ss',
+            viewEntry: '查看通知历史'
         },
         password: {
             title: '🔐 访问验证',
@@ -97,7 +104,13 @@ export const TRANSLATIONS = {
             success: 'Success',
             failure: 'Failure',
             confirm: 'Confirm',
-            cancel: 'Cancel'
+            cancel: 'Cancel',
+            more: 'More'
+        },
+        theme: {
+            sectionTitle: 'Theme',
+            bubble: 'Bubble list',
+            list: 'Button list'
         },
         mainPage: {
             subtitle: 'Click the button below to notify me immediately',
@@ -143,7 +156,8 @@ export const TRANSLATIONS = {
             cleared: 'History cleared',
             webhookLabel: 'Webhook URL',
             empty: 'No history records',
-            timeFormat: 'MM/DD/YYYY HH:mm:ss'
+            timeFormat: 'MM/DD/YYYY HH:mm:ss',
+            viewEntry: 'View notification history'
         },
         password: {
             title: '🔐 Access Verification',
@@ -187,7 +201,13 @@ export const TRANSLATIONS = {
             success: '成功',
             failure: '失敗',
             confirm: '確認',
-            cancel: 'キャンセル'
+            cancel: 'キャンセル',
+            more: 'もっと見る'
+        },
+        theme: {
+            sectionTitle: 'テーマ',
+            bubble: 'バブルリスト',
+            list: 'ボタンリスト'
         },
         mainPage: {
             subtitle: '下のボタンをクリックすると、すぐに通知が届きます',
@@ -233,7 +253,8 @@ export const TRANSLATIONS = {
             cleared: '履歴を消去しました',
             webhookLabel: 'Webhook URL',
             empty: '履歴がありません',
-            timeFormat: 'YYYY年MM月DD日 HH:mm:ss'
+            timeFormat: 'YYYY年MM月DD日 HH:mm:ss',
+            viewEntry: '通知履歴を見る'
         },
         password: {
             title: '🔐 アクセス認証',
@@ -277,7 +298,13 @@ export const TRANSLATIONS = {
             success: '성공',
             failure: '실패',
             confirm: '확인',
-            cancel: '취소'
+            cancel: '취소',
+            more: '더보기'
+        },
+        theme: {
+            sectionTitle: '테마',
+            bubble: '버블 목록',
+            list: '버튼 목록'
         },
         mainPage: {
             subtitle: '아래 버튼을 클릭하면 즉시 알림이 전송됩니다',
@@ -323,7 +350,8 @@ export const TRANSLATIONS = {
             cleared: '기록이 지워졌습니다',
             webhookLabel: 'Webhook 주소',
             empty: '기록이 없습니다',
-            timeFormat: 'YYYY년 MM월 DD일 HH:mm:ss'
+            timeFormat: 'YYYY년 MM월 DD일 HH:mm:ss',
+            viewEntry: '알림 기록 보기'
         },
         password: {
             title: '🔐 액세스 인증',

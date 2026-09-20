@@ -1,6 +1,7 @@
 // /src/modules/language.js
 import { TRANSLATIONS } from './translations.js';
 import { state } from './state.js';
+import { utils } from './utils.js';
 
 // 多语言管理
 export const language = {
@@ -185,6 +186,29 @@ export const language = {
 
         // 更新用户信息
         this.updateUserInfo();
+
+        // 更新声明式文案：任何元素只要写上 data-i18n="a.b"（文本）
+        // 或 data-i18n-title="a.b"（title 属性），就会在这里统一填充。
+        // ⋯ 菜单项、主题名、历史入口等都走这条通道 ——
+        // 新增静态文案不需要再给 language 加字段。
+        this.applyDeclarativeTexts();
+    },
+
+    // 填充 [data-i18n] / [data-i18n-title] 声明的文案
+    applyDeclarativeTexts() {
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+            const value = utils.getTranslation(el.dataset.i18n);
+            if (typeof value === 'string') {
+                el.textContent = value;
+            }
+        });
+
+        document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+            const value = utils.getTranslation(el.dataset.i18nTitle);
+            if (typeof value === 'string') {
+                el.title = value;
+            }
+        });
     },
 
     // 更新语言选项状态

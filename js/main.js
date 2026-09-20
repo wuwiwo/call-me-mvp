@@ -1,9 +1,9 @@
 import { CONFIG } from './modules/config.js';
 import { state } from './modules/state.js';
-import { utils } from './modules/utils.js';
 import { profile } from './modules/profile.js';
 import { language } from './modules/language.js';
 import { theme } from './modules/theme.js';
+import { homeHistory } from './modules/homeHistory.js';
 import { notification } from './modules/notification.js';
 import { countdown } from './modules/countdown.js';
 import { buttonManager } from './modules/buttonManager.js';
@@ -16,7 +16,7 @@ class CallMeApp {
     constructor() {
         this.initElements();
         this.initModules();
-        this.addHistoryButton();
+        this.initHomeHistory();
     }
 
     // /src/main.js
@@ -125,18 +125,22 @@ class CallMeApp {
         }
     }
 
-    addHistoryButton() {
-        if (!window.location.pathname.includes('history.html')) {
-            const historyBtn = document.createElement('button');
-            historyBtn.className = 'icon-btn';
-            historyBtn.title = utils.getTranslation('history.title');
-            historyBtn.innerHTML = '<i class="fas fa-history"></i>';
-            historyBtn.addEventListener('click', () => {
-                window.location.href = 'history.html';
-            });
-            const controls = document.querySelector('.top-controls');
-            if (controls) controls.prepend(historyBtn);
-        }
+    /**
+     * 接上首页内嵌的历史视图。
+     *
+     * 旧实现是在运行时往 `.top-controls` 里塞一个跳转 history.html 的图标按钮；
+     * Human 要求「不跳转」，且 DOM 契约规定新节点必须预埋在 html 里 ——
+     * 所以入口与视图都写在 index.html，这里只做绑定。
+     */
+    initHomeHistory() {
+        homeHistory.init({
+            entry: document.getElementById('historyEntry'),
+            homeView: document.getElementById('homeView'),
+            view: document.getElementById('homeHistoryView'),
+            list: document.getElementById('homeHistoryList'),
+            back: document.getElementById('homeHistoryBack'),
+            clear: document.getElementById('homeHistoryClear')
+        });
     }
 }
 

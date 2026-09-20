@@ -78,16 +78,29 @@ export const history = {
 
     // 渲染历史记录
     //
-    // 记录内容（nickname / emoji / message / webhook）与 `_status` 都来自
-    // LocalStorage，属于可控输入，必须作为**文本**进入页面：
-    // 全部用 createElement + textContent 构建 DOM，不用模板字符串拼 HTML。
-    // 这样恶意字符串 `<img onerror=...>` 只会显示成字面文本，
-    // 不会产生新元素、新属性，也不会执行脚本。
+    // 两个页面共用：history.html 走无参的 render()（渲染到 init 传入的列表），
+    // 首页内嵌视图走 renderList(外部列表节点)。
     render() {
+        this.renderList(this.elements?.list);
+    },
+
+    /**
+     * 把历史渲染到指定列表节点。
+     *
+     * 记录内容（nickname / emoji / message / webhook）与 `_status` 都来自
+     * LocalStorage，属于可控输入，必须作为**文本**进入页面：
+     * 全部用 createElement + textContent 构建 DOM，不用模板字符串拼 HTML。
+     * 这样恶意字符串 `<img onerror=...>` 只会显示成字面文本，
+     * 不会产生新元素、新属性，也不会执行脚本。
+     *
+     * @param {HTMLElement|null} list 目标列表容器；缺失时静默跳过
+     */
+    renderList(list) {
+        if (!list) return;
+
         // 损坏或类型错误时回退为空数组，历史页仍可加载并显示空状态
         const records = readJsonSafe('notificationHistory', [], (v) => Array.isArray(v));
 
-        const list = this.elements.list;
         list.textContent = '';
 
         if (records.length === 0) {
@@ -147,10 +160,15 @@ export const history = {
         });
     },
 
-    // 清除历史记录
-    clear() {
+    /**
+     * 清除历史记录。
+     *
+     * @param {HTMLElement} [listEl] 需要重绘的列表；不传则重绘 init 时的列表。
+     * 首页内嵌视图会传自己的列表节点进来。
+     */
+    clear(listEl) {
         localStorage.removeItem('notificationHistory');
-        this.render();
+        this.renderList(listEl || this.elements?.list);
 
         // 显示清除成功的反馈（文案跟随当前语言）
         const toast = document.createElement('div');

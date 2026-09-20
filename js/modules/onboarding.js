@@ -37,12 +37,13 @@ export const onboarding = {
                 ko: '📝 1단계: 프로필 설정'
             },
             content: {
-                zh: '点击左上角的"编辑资料"按钮，设置你的昵称和头像',
-                en: 'Click "Edit Profile" in the top-left to set your nickname and avatar',
-                ja: '左上の「プロフィール編集」をクリックして、ニックネームとアバターを設定',
-                ko: '왼쪽 상단의 "프로필 수정"을 클릭하여 닉네임과 아바타를 설정하세요'
+                zh: '点击右上角的「⋯」菜单里的「编辑资料」，设置你的昵称和头像',
+                en: 'Open the "⋯" menu in the top-right, then "Edit Profile" to set your nickname and avatar',
+                ja: '右上の「⋯」メニューから「プロフィール編集」を選び、ニックネームとアバターを設定',
+                ko: '오른쪽 상단의 "⋯" 메뉴에서 "프로필 수정"을 눌러 닉네임과 아바타를 설정하세요'
             },
-            highlight: 'editProfile'
+            // 编辑资料已收进 ⋯ 菜单（甲顶栏重构），高亮目标改为菜单入口
+            highlight: 'moreToggle'
         },
         {
             id: 'buttons',
@@ -69,12 +70,13 @@ export const onboarding = {
                 ko: '⚙️ 버튼 사용자 정의'
             },
             content: {
-                zh: '点击滑块图标可以编辑按钮文字和图标，添加自定义按钮',
-                en: 'Click the sliders icon to edit button text and icons, add custom buttons',
-                ja: 'スライダーアイコンをクリックしてボタンテキストとアイコンを編集、カスタムボタンを追加',
-                ko: '슬라이더 아이콘을 클릭하여 버튼 텍스트와 아이콘을 편집하고 사용자 정의 버튼을 추가하세요'
+                zh: '在「⋯」菜单里点「自定义按钮」，可以编辑按钮文字和图标，添加自定义按钮',
+                en: 'Open the "⋯" menu and choose "Custom Button" to edit button text and icons, add custom buttons',
+                ja: '「⋯」メニューから「カスタムボタン」を選ぶと、ボタンのテキストとアイコンを編集・追加できます',
+                ko: '"⋯" 메뉴에서 "커스텀 버튼"을 눌러 버튼 텍스트와 아이콘을 편집하고 추가하세요'
             },
-            highlight: 'editButtons'
+            // 同 editProfile：滑块图标已收进 ⋯ 菜单
+            highlight: 'moreToggle'
         },
         {
             id: 'language',
@@ -101,12 +103,13 @@ export const onboarding = {
                 ko: '📜 기록 보기'
             },
             content: {
-                zh: '点击历史图标可以查看所有通知发送记录',
-                en: 'Click the history icon to view all notification records',
-                ja: '履歴アイコンをクリックして全ての通知記録を表示',
-                ko: '기록 아이콘을 클릭하여 모든 알림 기록을 확인하세요'
+                zh: '点击底部的「查看通知历史」，可以在本页直接查看所有发送记录',
+                en: 'Tap "View notification history" at the bottom to see all records right on this page',
+                ja: '下部の「通知履歴を見る」をタップすると、このページで全ての送信記録を確認できます',
+                ko: '하단의 "알림 기록 보기"를 누르면 이 페이지에서 모든 전송 기록을 확인할 수 있습니다'
             },
-            highlight: null // 这个按钮是动态添加的
+            // 入口从顶栏图标改为首页底部文字按钮（不再跳转 history.html）
+            highlight: 'historyEntry'
         },
         {
             id: 'cooldown',
@@ -257,14 +260,8 @@ export const onboarding = {
 
         if (!elementId) return;
 
-        let targetElement;
-
-        // 特殊处理动态添加的历史按钮
-        if (elementId === 'history') {
-            targetElement = document.querySelector('.fa-history')?.parentElement;
-        } else {
-            targetElement = elements[elementId] || document.getElementById(elementId);
-        }
+        // elements 里没有的就按 id 兜底查（historyEntry / moreToggle 等在 index.html 预埋）
+        const targetElement = elements[elementId] || document.getElementById(elementId);
 
         if (targetElement) {
             targetElement.classList.add('onboarding-highlight');

@@ -32,17 +32,24 @@ export const CONFIG = {
 
     // 主题配置 —— **主题名称与合法值的唯一来源**
     //
-    // S2 只搭机制：主题名写入 <html data-theme>，令牌覆盖值由 CSS 的
-    // `[data-theme="xxx"]` 选择器承载（S3 填充），这里不复制一份配色。
-    // `js/modules/theme.js` 只从这里读取默认主题与合法列表，
-    // **不要在其他模块再硬编码一份**。
+    // 主题 = 「令牌集 + 布局类」（docs/DESIGN_THEME_SWITCH.md §4）：
+    // 名字与合法值在这里，配色/布局一律由 CSS 的 `[data-theme="xxx"]` 承载，
+    // **不在 JS 里复制第二份色值**（与 CM-010 的单一来源纪律同源）。
+    // `js/modules/theme.js` 只从这里读取默认主题、合法列表与展示名键。
     themes: {
         default: 'bubble', // bubble = 现状气泡列表
-        valid: ['bubble', 'list'], // list = S3 的按钮列表主题
+        valid: ['bubble', 'list'], // list = 按钮列表主题
         // LocalStorage key。与 appLanguage / buttonDisplayMode 一致，存**纯字符串**
         // （不是 JSON）—— 便于手工排查与控制台验证。
         // ⚠️ 同时被两个 html 的 <head> 防闪内联脚本按字面引用，改名必须一起改。
-        storageKey: 'appTheme'
+        storageKey: 'appTheme',
+        // 展示名走 i18n 键（translations.theme.*），由 index.html 的
+        // `data-i18n` 属性声明、language.updateUI() 统一填充。
+        // 新增主题 = 这里加一个名字 + CSS 加一组令牌 + html 加一个菜单项。
+        labelKeys: {
+            bubble: 'theme.bubble',
+            list: 'theme.list'
+        }
     },
 
     // 新手引导配置

@@ -34,23 +34,14 @@
     </head>
 
     <body>
-        <!-- 顶部操作栏 -->
+        <!-- 顶部操作栏（甲方案：左 头像+昵称 / 右 语言胶囊 + ⋯ 更多） -->
         <div class="top-bar">
             <div class="user-info" id="userInfo">
                 <div id="userAvatar" class="emoji-avatar"></div>
                 <span id="userName"></span>
             </div>
             <div class="top-controls">
-                <button id="editProfile" class="icon-btn" title="编辑资料">
-                    <i class="fas fa-user-edit"></i>
-                </button>
-
-                <!-- 修改后的编辑按钮 -->
-                <button id="editButtons" class="icon-btn" title="编辑按钮">
-                    <i class="fas fa-sliders-h"></i>
-                </button>
-
-                <!-- 改进的语言选择器：下拉菜单 -->
+                <!-- 改进的语言选择器：下拉菜单（id 被 tools 钉死，不可改） -->
                 <div class="language-dropdown">
                     <button id="languageToggle" class="language-toggle" title="选择语言">
                         <span id="currentLanguage">中</span>
@@ -75,29 +66,121 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ⋯ 更多菜单：编辑资料 / 编辑按钮 / 主题切换 都收在这里。
+                     #editProfile 与 #editButtons 必须**留在 DOM**（tools 用
+                     getElementById().click() 驱动，隐藏元素仍可被程序化点击），
+                     只是从顶栏直排移进了这个浮空面板。 -->
+                <div class="more-menu" id="moreMenu">
+                    <button
+                        id="moreToggle"
+                        class="icon-btn"
+                        title="更多"
+                        data-i18n-title="common.more"
+                    >
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <div id="morePanel" class="more-panel">
+                        <button id="editProfile" class="more-item">
+                            <i class="fas fa-user-edit"></i>
+                            <span class="more-item-label" data-i18n="profile.editTitle"
+                                >编辑资料</span
+                            >
+                        </button>
+
+                        <button id="editButtons" class="more-item">
+                            <i class="fas fa-sliders-h"></i>
+                            <span class="more-item-label" data-i18n="profile.customButton"
+                                >自定义按钮</span
+                            >
+                        </button>
+
+                        <div class="more-divider"></div>
+                        <div
+                            id="moreThemeLabel"
+                            class="more-section"
+                            data-i18n="theme.sectionTitle"
+                        >
+                            主题
+                        </div>
+
+                        <button class="more-item" data-theme-name="bubble">
+                            <i class="fas fa-circle"></i>
+                            <span class="more-item-label" data-i18n="theme.bubble">气泡列表</span>
+                            <i class="fas fa-check more-item-check"></i>
+                        </button>
+
+                        <button class="more-item" data-theme-name="list">
+                            <i class="fas fa-list"></i>
+                            <span class="more-item-label" data-i18n="theme.list">按钮列表</span>
+                            <i class="fas fa-check more-item-check"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <!-- ⋯ 菜单遮罩：点它关闭菜单（预埋节点，不在运行时创建） -->
+        <div id="moreBackdrop" class="more-backdrop"></div>
+
         <div class="container">
-            <div class="header">
-                <div class="dynamic-title" id="title">CALL ME</div>
+            <!-- 首页主视图 -->
+            <div id="homeView" class="home-view">
+                <div class="header">
+                    <div class="dynamic-title" id="title">CALL ME</div>
 
-                <p class="subtitle" id="subtitle">🐟点击下方按钮通知我🐟</p>
-            </div>
-
-            <div class="bubble-container">
-                <!-- 按钮将由JavaScript动态生成 -->
-            </div>
-
-            <div id="countdown" class="countdown">
-                <div class="countdown-info">
-                    <div id="countdownAvatar" class="emoji-avatar"></div>
-                    <div>
-                        <span id="countdownName"></span>
-                        <span id="countdownText"></span>
-                    </div>
+                    <p class="subtitle" id="subtitle">🐟点击下方按钮通知我🐟</p>
                 </div>
-                <div id="receiptStatus" class="receipt-status"></div>
+
+                <div class="bubble-container">
+                    <!-- 按钮将由JavaScript动态生成 -->
+                </div>
+
+                <div id="countdown" class="countdown">
+                    <div class="countdown-info">
+                        <div id="countdownAvatar" class="emoji-avatar"></div>
+                        <div>
+                            <span id="countdownName"></span>
+                            <span id="countdownText"></span>
+                        </div>
+                    </div>
+                    <div id="receiptStatus" class="receipt-status"></div>
+                </div>
+
+                <!-- 历史入口：首页内切换视图，不跳转（Human 要求） -->
+                <button id="historyEntry" class="history-entry" data-i18n="history.viewEntry">
+                    查看通知历史
+                </button>
+            </div>
+
+            <!-- 首页内历史视图（预埋，默认隐藏；内容与 history.html 同源同构） -->
+            <div id="homeHistoryView" class="home-history-view" hidden>
+                <div class="home-history-head">
+                    <button
+                        id="homeHistoryBack"
+                        class="icon-btn"
+                        title="返回"
+                        data-i18n-title="history.backTitle"
+                    >
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <span
+                        id="homeHistoryTitle"
+                        class="home-history-title"
+                        data-i18n="history.pageTitle"
+                    >
+                        通知历史
+                    </span>
+                    <button
+                        id="homeHistoryClear"
+                        class="icon-btn"
+                        title="清除记录"
+                        data-i18n-title="history.clearTitle"
+                    >
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+                <div id="homeHistoryList" class="history-list"></div>
             </div>
         </div>
 

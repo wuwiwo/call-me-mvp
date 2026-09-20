@@ -83,6 +83,37 @@
     --list-divider: #eee;
     --text-muted-solid: #666;
     --surface-inset: #f8f9fa;
+
+    /* ===== 主题轴令牌（S3） =====
+       这六条轴对应 docs/DESIGN_THEME_SWITCH.md §4。
+       这里的取值 = 现状（bubble 主题）外观，逐字照搬原硬编码值；
+       新主题只在 [data-theme="list"] 里覆盖，不动任何具体规则。 */
+    --title-size: 3.2rem;
+    --title-align: center;
+    --title-gradient: linear-gradient(
+        110deg,
+        var(--title-metal-dark) 0%,
+        var(--accent-gold) 50%,
+        var(--title-metal-dark) 100%
+    );
+    /* 背景光晕：现状是金 + 蓝两层 */
+    --bg-glow-a: var(--gold-glow);
+    --bg-glow-b: var(--accent-wash);
+    /* 顶栏材质：现状玻璃 72% */
+    --topbar-bg: var(--glass-bg);
+    --topbar-blur: var(--glass-blur);
+    --topbar-border: var(--notion-border);
+    --topbar-shadow: var(--shadow-sm);
+    /* 主卡包裹：现状有玻璃主卡 */
+    --container-bg: var(--glass-bg);
+    --container-border: var(--glass-border);
+    --container-shadow: var(--shadow-md), var(--shadow-inset);
+    --container-padding: 32px;
+    /* 按钮排列：现状全宽胶囊 */
+    --btn-radius: 10px;
+    --btn-justify: center;
+    --btn-icon-size: 30px;
+    --btn-gap: 8px;
 }
 
 * {
@@ -114,8 +145,8 @@ body {
         'Segoe UI',
         sans-serif;
     background:
-        radial-gradient(120% 80% at 50% -10%, var(--gold-glow), transparent 60%),
-        radial-gradient(100% 60% at 100% 110%, var(--accent-wash), transparent 55%),
+        radial-gradient(120% 80% at 50% -10%, var(--bg-glow-a), transparent 60%),
+        radial-gradient(100% 60% at 100% 110%, var(--bg-glow-b), transparent 55%),
         var(--notion-gray);
     background-attachment: fixed;
     min-height: 100vh;
@@ -136,11 +167,11 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-    box-shadow: var(--shadow-sm);
-    border-bottom: 1px solid var(--notion-border);
+    background: var(--topbar-bg);
+    backdrop-filter: blur(var(--topbar-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--topbar-blur)) saturate(160%);
+    box-shadow: var(--topbar-shadow);
+    border-bottom: 1px solid var(--topbar-border);
     z-index: 100;
 }
 
@@ -150,6 +181,15 @@ body {
     gap: 12px;
     font-weight: 500;
     font-size: 0.95rem;
+    min-width: 0;
+}
+
+/* 昵称过长时截断，避免把右侧控件挤出顶栏 */
+.user-info #userName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 40vw;
 }
 
 .emoji-avatar {
@@ -195,16 +235,16 @@ body {
 }
 
 .container {
-    background: var(--glass-bg);
+    background: var(--container-bg);
     backdrop-filter: blur(var(--glass-blur)) saturate(160%);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
     border-radius: 16px;
-    padding: 32px;
+    padding: var(--container-padding);
     width: 100%;
     max-width: 480px;
     text-align: center;
-    box-shadow: var(--shadow-md), var(--shadow-inset);
-    border: 1px solid var(--glass-border);
+    box-shadow: var(--container-shadow);
+    border: 1px solid var(--container-border);
     margin-top: 60px;
     transition:
         transform 0.35s var(--ease-premium),
@@ -218,22 +258,19 @@ body {
 
 .header {
     margin-bottom: 32px;
+    text-align: var(--title-align);
 }
 
-/* 标题：金属光泽流动（高级感，替代霓虹彩虹） */
+/* 标题：金属光泽流动（高级感，替代霓虹彩虹）
+   颜色与尺度全部走主题轴令牌，新主题只需覆盖令牌。 */
 .dynamic-title {
-    font-size: 3.2rem;
+    font-size: var(--title-size);
     margin-bottom: 12px;
     font-weight: 700;
     letter-spacing: -0.5px;
     position: relative;
     display: inline-block;
-    background: linear-gradient(
-        110deg,
-        var(--title-metal-dark) 0%,
-        var(--accent-gold) 50%,
-        var(--title-metal-dark) 100%
-    );
+    background: var(--title-gradient);
     background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
@@ -289,7 +326,7 @@ p.subtitle {
     border: 1px solid var(--notion-border);
     padding: 16px 20px;
     font-size: 0.9rem;
-    border-radius: 10px;
+    border-radius: var(--btn-radius);
     cursor: pointer;
     transition:
         transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -298,13 +335,13 @@ p.subtitle {
     font-weight: 600;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: var(--btn-justify);
     box-shadow: var(--shadow-sm);
     width: 100%;
     min-height: 60px;
     position: relative;
     overflow: hidden;
-    gap: 8px;
+    gap: var(--btn-gap);
 }
 
 .bubble-btn:hover {
@@ -320,13 +357,13 @@ p.subtitle {
 .bubble-content {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: var(--btn-justify);
     gap: 10px;
 }
 
 .bubble-btn .bubble-content i {
-    width: 30px;
-    height: 30px;
+    width: var(--btn-icon-size);
+    height: var(--btn-icon-size);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1110,6 +1147,246 @@ p.subtitle {
     display: block;
 }
 
+/* ===== ⋯ 更多菜单（从顶栏下方展开，全宽浮空卡） =====
+   行高 56 保证 ≥44 的触控标准；点遮罩关闭。 */
+.more-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.more-panel {
+    position: fixed;
+    top: 68px;
+    left: 12px;
+    right: 12px;
+    max-width: 456px;
+    margin: 0 auto;
+    background: var(--light);
+    border: 1px solid var(--notion-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    padding: 8px;
+    z-index: 900;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition:
+        opacity 0.2s var(--ease-premium),
+        transform 0.2s var(--ease-premium),
+        visibility 0.2s linear;
+}
+
+.more-panel.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.more-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 0 16px;
+    background: none;
+    border: none;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--notion-text);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease;
+}
+
+.more-item:hover {
+    background: var(--surface-quiet);
+}
+
+.more-item > i:first-child {
+    width: 20px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.more-item-label {
+    flex: 1;
+}
+
+/* 当前主题的勾：只有 active 项显示 */
+.more-item-check {
+    font-size: 0.8rem;
+    color: var(--notion-blue);
+    visibility: hidden;
+}
+
+.more-item.active {
+    background: var(--accent-soft);
+    color: var(--notion-blue);
+}
+
+.more-item.active .more-item-check {
+    visibility: visible;
+}
+
+.more-divider {
+    height: 1px;
+    background: var(--notion-border);
+    margin: 6px 8px;
+}
+
+.more-section {
+    padding: 8px 16px 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+}
+
+/* 遮罩层级低于面板（900）、高于顶栏（100） */
+.more-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 800;
+    display: none;
+}
+
+.more-backdrop.show {
+    display: block;
+}
+
+/* ===== 首页内历史视图 ===== */
+.home-history-view[hidden],
+.home-view[hidden] {
+    display: none;
+}
+
+.home-history-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.home-history-title {
+    flex: 1;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+/* 底部历史入口（设计定稿：灰字 13px 居中） */
+.history-entry {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 8px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--text-faint);
+    text-align: center;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.history-entry:hover {
+    color: var(--text-secondary);
+}
+
+/* ===== [data-theme="list"]：按钮列表主题 =====
+   只覆盖令牌 + 少量结构性规则，DOM 结构一律不动。 */
+[data-theme='list'] {
+    /* ④ 标题尺度：36px 左对齐 + 薄荷青绿渐变 */
+    --title-size: 2.25rem;
+    --title-align: left;
+    --title-gradient: linear-gradient(110deg, #0fa47f 0%, #5fd8a8 100%);
+    /* 背景光晕换成薄荷调 */
+    --bg-glow-a: rgba(15, 164, 127, 0.07);
+    --bg-glow-b: rgba(95, 216, 168, 0.06);
+    /* ⑥ 顶栏材质：白色实底 + 8% 分隔线 */
+    --topbar-bg: #ffffff;
+    --topbar-blur: 0px;
+    --topbar-border: rgba(55, 53, 47, 0.08);
+    --topbar-shadow: none;
+    /* ③ 主卡包裹：无卡，内容直铺 */
+    --container-bg: transparent;
+    --container-border: transparent;
+    --container-shadow: none;
+    --container-padding: 20px 16px 24px;
+    /* ① 按钮排列：全宽列表卡，圆角 14、左图标底 36 */
+    --btn-radius: 14px;
+    --btn-justify: flex-start;
+    --btn-icon-size: 36px;
+    --btn-gap: 12px;
+}
+
+[data-theme='list'] .top-bar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+[data-theme='list'] .container {
+    margin-top: 76px;
+    transform: none;
+}
+
+[data-theme='list'] .container:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+[data-theme='list'] .header {
+    margin-bottom: 20px;
+}
+
+[data-theme='list'] .bubble-container {
+    align-items: stretch;
+    gap: 10px;
+}
+
+/* 列表主题恒为单列：用户的「简约模式」网格不再生效 */
+[data-theme='list'] .bubble-container.minimal-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+[data-theme='list'] .bubble-btn {
+    padding: 0 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+[data-theme='list'] .bubble-btn:hover {
+    transform: translateY(-1px);
+}
+
+[data-theme='list'] .bubble-content {
+    gap: var(--btn-gap);
+}
+
+/* ⑤ 进行中状态：底部独立呼叫卡（335 宽、圆角 12） */
+[data-theme='list'] .countdown {
+    background: var(--light);
+    border: 1px solid var(--notion-border);
+    border-radius: 12px;
+    max-width: 335px;
+    margin: 16px auto 0;
+    padding: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme='list'] .history-entry {
+    color: var(--text-muted);
+}
+
 /* 移动端优化 */
 @media (max-width: 480px) {
     .language-toggle {
@@ -1127,6 +1404,36 @@ p.subtitle {
         padding: 8px 10px;
         font-size: 0.85rem;
     }
+
+    /* 顶栏控件由「三图标」变为「语言胶囊 + ⋯」后重新收紧 */
+    .top-bar {
+        padding: 12px 16px;
+    }
+
+    .user-info {
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+
+    .top-controls {
+        gap: 8px;
+    }
+
+    .more-panel {
+        top: 62px;
+        left: 8px;
+        right: 8px;
+        border-radius: 18px;
+    }
+
+    .more-item {
+        min-height: 52px;
+        padding: 0 12px;
+    }
+
+    .history-entry {
+        font-size: 0.8rem;
+    }
 }
 
 /* 确保顶部控制器的布局适应新设计 */
@@ -1141,6 +1448,38 @@ p.subtitle {
 @media (max-width: 360px) {
     .top-controls {
         gap: 8px;
+    }
+
+    .top-bar {
+        padding: 10px 12px;
+    }
+
+    .emoji-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
+    }
+
+    .user-info {
+        gap: 6px;
+        font-size: 0.85rem;
+    }
+
+    .user-info #userName {
+        max-width: 34vw;
+    }
+
+    .more-panel {
+        top: 58px;
+        left: 6px;
+        right: 6px;
+        border-radius: 16px;
+    }
+
+    .more-item {
+        min-height: 48px;
+        padding: 0 10px;
+        font-size: 0.9rem;
     }
 
     .language-toggle {
