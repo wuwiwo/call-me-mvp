@@ -1298,11 +1298,12 @@ p.subtitle {
     display: block;
 }
 
-/* 宽屏沿用同一套遮罩，但只做轻压暗：传统下拉不该抢走页面的注意力。
+/* 宽屏沿用同一套遮罩节点，但**完全透明**：传统下拉不压暗页面，
+   遮罩只作为"点别处即关"的命中层存在（Human 2026-09-20 拍板）。
    必须写在基础规则**之后**才能覆盖上面的 `var(--scrim-modal)`。 */
 @media (min-width: 769px) {
     .more-backdrop {
-        background: rgba(55, 53, 47, 0.12);
+        background: transparent;
     }
 }
 

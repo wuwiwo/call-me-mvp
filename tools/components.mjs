@@ -959,7 +959,12 @@ for (const vp of [
             `${geo.panelTop} vs ${geo.topbarBottom}`
         );
     }
-    check(`${vp.label}：遮罩可见（非透明）`, geo.backdropBg !== 'rgba(0, 0, 0, 0)', geo.backdropBg);
+    if (vp.wide) {
+        // 宽屏：传统下拉不压暗页面，遮罩只是"点别处即关"的命中层
+        check('宽屏：遮罩透明（不压暗页面）', geo.backdropBg === 'rgba(0, 0, 0, 0)', geo.backdropBg);
+    } else {
+        check('窄屏：遮罩可见（非透明）', geo.backdropBg !== 'rgba(0, 0, 0, 0)', geo.backdropBg);
+    }
     check(`${vp.label}：遮罩层级 < 顶栏 100`, geo.backdropZ < 100, String(geo.backdropZ));
 
     // 最关键的一条：真机路径下点「编辑资料」必须真的打开资料模态框。
@@ -972,30 +977,36 @@ for (const vp of [
     check(`${vp.label}：真实鼠标点「编辑资料」→ 资料模态框打开`, profileOpened === true);
 }
 
-// 窄屏遮罩点击关闭（真实鼠标），确认遮罩仍在工作
-await setViewport(390, 844);
-await seed('/index.html');
-await sleep(300);
-await realClickSel('#moreToggle');
-await sleep(400);
-const beforeScrim = await evalJs(`document.getElementById('morePanel').classList.contains('show')`);
-await cdp.send(
-    'Input.dispatchMouseEvent',
-    { type: 'mousePressed', x: 195, y: 700, button: 'left', clickCount: 1, buttons: 1 },
-    S
-);
-await cdp.send(
-    'Input.dispatchMouseEvent',
-    { type: 'mouseReleased', x: 195, y: 700, button: 'left', clickCount: 1, buttons: 1 },
-    S
-);
-await sleep(400);
-const afterScrim = await evalJs(`document.getElementById('morePanel').classList.contains('show')`);
-check(
-    '窄屏：真实鼠标点遮罩 → 菜单关闭',
-    beforeScrim === true && afterScrim === false,
-    `${beforeScrim} → ${afterScrim}`
-);
+// 遮罩点击关闭（真实鼠标）—— 两端都要成立：窄屏遮罩可见，宽屏遮罩透明但仍是命中层
+for (const scrimVp of [
+    { w: 390, h: 844, x: 195, y: 700, label: '窄屏' },
+    { w: 1280, h: 800, x: 200, y: 700, label: '宽屏' }
+]) {
+    await setViewport(scrimVp.w, scrimVp.h);
+    await seed('/index.html');
+    await sleep(300);
+    await realClickSel('#moreToggle');
+    await sleep(400);
+    const beforeScrim = await evalJs(
+        `document.getElementById('morePanel').classList.contains('show')`
+    );
+    for (const type of ['mousePressed', 'mouseReleased']) {
+        await cdp.send(
+            'Input.dispatchMouseEvent',
+            { type, x: scrimVp.x, y: scrimVp.y, button: 'left', clickCount: 1, buttons: 1 },
+            S
+        );
+    }
+    await sleep(400);
+    const afterScrim = await evalJs(
+        `document.getElementById('morePanel').classList.contains('show')`
+    );
+    check(
+        `${scrimVp.label}：真实鼠标点遮罩 → 菜单关闭`,
+        beforeScrim === true && afterScrim === false,
+        `${beforeScrim} → ${afterScrim}`
+    );
+}
 
 await setViewport(1280, 800);
 
