@@ -1,8 +1,8 @@
 // /tools/run-all.mjs
 //
-// CM-009 统一测试入口：一条命令串行跑完 lint + 11 个回归套件 + 工作区完整性检查。
-// （S2 起新增 theme-layer、S3 起新增 theme-entry、S4 起新增 components；
-//   套件清单见下面 BROWSER_SUITES）
+// CM-009 统一测试入口：一条命令串行跑完 lint + 12 个回归套件 + 工作区完整性检查。
+// （S2 起新增 theme-layer、S3 起新增 theme-entry、S4 起新增 components、
+//   S5 起新增 pwa；套件清单见下面 BROWSER_SUITES）
 //
 // 运行方式：
 //   node tools/run-all.mjs                 # 全量（含浏览器套件，约 6–10 分钟）
@@ -55,7 +55,7 @@ function out(line = '') {
 }
 
 // ── 用例清单 ──
-// 顺序：lint → 11 套件 → check-worktree
+// 顺序：lint → 12 套件 → check-worktree
 const LINT_ITEM = {
     id: 'lint',
     label: 'lint（ESLint）',
@@ -85,7 +85,8 @@ const BROWSER_SUITES = [
     { id: 'password-gate', label: 'password-gate（CM-010）', argv: ['tools/password-gate.mjs'] },
     { id: 'theme-layer', label: 'theme-layer（S2）', argv: ['tools/theme-layer.mjs'] },
     { id: 'theme-entry', label: 'theme-entry（S3）', argv: ['tools/theme-entry.mjs'] },
-    { id: 'components', label: 'components（S4）', argv: ['tools/components.mjs'] }
+    { id: 'components', label: 'components（S4）', argv: ['tools/components.mjs'] },
+    { id: 'pwa', label: 'pwa（S5）', argv: ['tools/pwa.mjs'] }
 ];
 
 const WORKTREE_ITEM = {

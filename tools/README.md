@@ -114,6 +114,8 @@ npm test            # = node tools/run-all.mjs
 | `theme-layer.mjs`                         | S2：主题层（data-theme + 持久化 + 防闪），40 项断言                                                                                               |
 | `theme-entry.mjs`                         | S3：切换入口（甲顶栏 / ⋯ 菜单 / 新主题布局 / 首页内历史视图），77 项断言                                                                          |
 | `components.mjs`                          | S4：组件化（接口标准化 + 语言下拉 / ⋯ 菜单 / 模态框 / 图标选择器 / 确认对话框行为不变），87 项断言                                                |
+| `pwa.mjs`                                 | S5：PWA 准备（manifest 校验 / SW 注册激活 / **停服真实离线** / JSONBin 不缓存），~45 项断言                                                       |
+| `generate-icons.py`                       | S5：PWA 图标生成器（纯标准库光栅化 + 写 PNG，`python tools/generate-icons.py` 复现 icons/）                                                       |
 | `check-worktree.mjs`                      | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复                                                                        |
 | `worktree-guard.mjs`（已移至 `scripts/`） | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤。**不在 `tools/` 下** —— 见下节 GOV-002 说明 |
 | `ACCEPTANCE.md`                           | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告                                                                                                  |
@@ -151,6 +153,7 @@ npm test            # = node tools/run-all.mjs
 | S2 `theme-layer.mjs`            | CDP `9451` | 主题层（data-theme + 持久化 + 防闪）                                         |
 | S3 `theme-entry.mjs`            | CDP `9452` | 切换入口（甲顶栏 / ⋯ 菜单 / 新主题布局 / 首页内历史视图）                    |
 | S4 `components.mjs`             | CDP `9453` | 组件化（popupMenu / modal / iconPicker 接口 + 行为不变）                     |
+| S5 `pwa.mjs`                    | CDP `9454` | PWA 准备（manifest / SW 注册 / 停服离线 / JSONBin 不缓存）                   |
 
 **新增套件时**：挑一个未被占用的 CDP 端口（尽量避开 `9440–9500` 这类动态端口范围），
 并更新本表。若运行时报 `CDP 未就绪：Chrome 是否启动？`，**先确认端口是不是被占了**：
@@ -371,6 +374,23 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 > 「组件可独立 import 并 render」是在页面里 `await import('/js/components/*.js')`
 > 挂到**游离容器**上验证的 —— 不碰页面已有 DOM，也不依赖全局状态。
 > 组件模块在页面上下文里 import，与 main.js 拿到的是同一份 ESM 实例。
+
+### S5（`pwa.mjs`）
+
+| 变量            | 默认值                          | 说明                      |
+| --------------- | ------------------------------- | ------------------------- |
+| `PWA_PORT`      | `8899`                          | 自带服务器端口            |
+| `PWA_BASE`      | `http://127.0.0.1:8899`         | 测试站点地址              |
+| `PWA_NO_SERVER` | 未设置                          | 设为 `1` 则复用外部服务器 |
+| `PWA_CDP_PORT`  | `9454`                          | Chrome 调试端口           |
+| `PWA_CHROME`    | 由 `tools/chrome-path.mjs` 解析 | Chrome 路径               |
+
+> 「离线可加载」用**停掉自带静态服务器**的方式验证（`server.close()` +
+> `closeAllConnections()`），而不是 CDP `Network.emulateNetworkConditions`：
+> Service Worker 是独立 target，页面会话上的离线仿真**不一定作用到 SW 内的
+> fetch**；服务器不可达是无条件真实的断网，语义与 AC「断网后页面可加载」一致。
+> 断言改自 sw.js 里**解析出来的预缓存清单**（不是复制一份期望值），
+> sw.js 改清单后无需同步本脚本。
 
 > 读取 4 语言文案时直接 `await import('../js/modules/translations.js')`，
 > 与页面看到的同一份数据，不在脚本里复制一份期望值。
