@@ -237,6 +237,14 @@ LocalStorage key：
 - `state.js`、`main.js`、`buttonManager.js`、`notification.js`：冷却状态只读 `state.canClick`；冷却转换与 `lastClickTime` 写入由 `countdown.js` 独占（CM-006）。
 - `history.html`：只加载 `history.js`，由其自行调用 `language.init()`（CM-007）。
 - `notification.js`：已读回执轮询句柄化、可取消；新发送先 `stopReceiptPolling()` 使旧轮询失效，同一时刻活跃轮询 ≤ 1（CM-008）。
+- `index.html` / `index.css`（UI-15）：首页顶部留白**只有一处来源** —— `body.home-page` 的
+  `padding-top: calc(var(--topbar-h) + var(--content-top-gap))`（`--content-top-gap` 恒为 48px），
+  由 `body.home-page .container { margin-top: 0 }` 抵消容器自身的 margin-top（两处留白会叠加）。
+  `--topbar-h` 按断点取实测值 **72 / 61 / 57**（≤480 / ≤360），**改顶栏高度必须同步该令牌**。
+  历史页走 `.history-page`，不受此块影响。
+- `index.css`：**「每行几个按钮」是显示模式 `buttonDisplayMode` 的语义，主题不得覆盖**。`[data-theme='list'] .bubble-container.minimal-mode` 只能调卡内排布，不得再压回 `flex-direction: column`（UI-15）。
+- `history.css`：宽屏（≥601px）历史条目是三列网格 `auto minmax(0,1fr) auto` + `.history-tag { position: static }`；绝对定位元素不占列，删掉 static 会让 tag 重新压住日期（UI-15）。
+- `buttonManager.js`：布局气泡 `.tip-show` 由 `showLayoutTip()` / `hideLayoutTip()` 独占管理；卸载监听必须复用同一引用 `__dismissTipRef`，且**必须挂 window 捕获阶段**（`#toggleMode` 的 click 里有 `stopPropagation()`）（UI-15）。
 - `config.js` 与 `password.js`：密码配置的重复定义已收敛为单一来源 `CONFIG.password`（CM-010）；`password.js` 不再硬编码默认密码与过期天数，损坏的 `passwordSetTime` 按「已过期」处理（fail-closed）。音效配置 `notifications.error` 已补上（CM-001-TD-08，`sounds/error-notification.wav`），`sounds.js` 的 `playNotificationSound` 加了防御性检查（配置缺失时 `console.warn` + return，不传 undefined 给 `play()`）。
 
 ## 修改流程

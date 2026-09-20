@@ -15,6 +15,8 @@
 | [`CM-010.md`](CM-010.md) | 访问提示威胁模型、密码配置单一来源收敛、四语言诚实文案、合并时第五次级联事故与恢复记录 |
 | [`GOV-002.md`](GOV-002.md) | 守卫移出 tools/ 并自安装到 .git/、钩子三级回退、cherry-pick 合并时新守卫第一次实战成功（22 个级联误伤全部恢复） |
 | [`CM-001-TD-08.md`](CM-001-TD-08.md) | 修复 error 通知音效静默失败（config.js 加 notifications.error + sounds.js 防御性检查）、切 main 未触发级联（GOV-002 附带收益） |
+| [`UI-14.md`](UI-14.md) | UI-14 的 14 项改动（音效/主题/按钮/模态框/回执冷却/历史页/顶部菜单）任务卡、执行报告、反向验证与 R1 核对；末尾附 S1–S5 主题切换全套纪要 |
+| [`AI_HANDOFF_LEGACY_2026-09-20.md`](AI_HANDOFF_LEGACY_2026-09-20.md) | UI-14 轮结束时（`main = c2030c4`）面板的**字节级原文快照**（`git show HEAD:docs/AI_HANDOFF.md`），含 UI-14 任务卡 / 执行报告 / R1 核对表与 S1–S5 全套纪要。2026-09-20 迁移 UI-15 时保留，未作任何改动 |
 | [`GOV-001.md`](GOV-001.md) | 本次通信文档拆分、迁移核对和结构验证 |
 | [`AI_HANDOFF_LEGACY_2026-09-18.md`](AI_HANDOFF_LEGACY_2026-09-18.md) | 拆分前 `AI_HANDOFF.md` 的完整原文快照，不修改、不删除 |
 | [`WORKTREE-FILE-LOSS.md`](WORKTREE-FILE-LOSS.md) | 环境缺陷：已跟踪文件在工作区反复被级联删除（git 上溯 rmdir + 沙箱改写回收站所致），含根因、判读判据、恢复步骤与防线 |

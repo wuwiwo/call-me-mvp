@@ -2,592 +2,233 @@
 
 本文件是主 AI 与外部 Execution AI 的当前通信面板。只保留当前任务、当前状态、当前报告、当前验收和下一步；历史记录见 [`docs/handoff/archive/INDEX.md`](handoff/archive/INDEX.md)。
 
+> UI-14 及更早（S1–S5）的面板原文已按字节快照归档到
+> [`docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-20.md`](handoff/archive/AI_HANDOFF_LEGACY_2026-09-20.md)。
+
 ## CURRENT TASK
 
-**UI-14：14 项改动（音效 / 主题 / 按钮 / 设置模态框 / 回执冷却 / 历史页 / 顶部菜单）**
+**UI-15：版式四项修正（概述：显示模式归位 / 气泡常驻 / 历史 tag 不压日期 / 首页顶部对齐 48px）**
 
-完整施工图（**开工前必读**）：[`docs/HANDOFF_14_ITEMS_2026-09-20.md`](HANDOFF_14_ITEMS_2026-09-20.md)
+### Objective
 
-设计稿精确规格：Ardot `727742261679190`（施工图 §1 已把关键节点的填充/圆角/间距/字重逐条抄录，
-**不需要再开画布**）。
+修正 Human 在 2026-09-20 复核 UI-14 后提出的 4 项版式缺陷，并新增一个锁定这些几何行为的回归套件。
 
-### Human 拍板（2026-09-20）
+### Scope
 
-| 决策点 | 结论 |
-| --- | --- |
-| 主题中文名 | bubble = **浮光絮语**；list = **青笺行** |
-| 历史 tag | **真三态**（未回执 / 已回执 / 失败）→ 必须新增 `receipt` 字段并回写历史 |
-| G1 圆角冲突 | **以施工图为准**：窄屏面板「顶/左/右三边直角 + 底两角 16px」；`DESIGN_THEME_SWITCH.md:32` 已同步改（主 AI 已完成） |
+| #      | 项目                                  | 目标行为                                                                                            |
+| ------ | ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **P1** | 青笺行（list）主题下「简约模式」失效  | 「每行几个按钮」是**显示模式**语义，两个主题都必须生效；卡片半宽后要能显示完整排版（等高 + 省略号） |
+| **P2** | 布局提示气泡改为常驻                  | 打开「编辑按钮」后气泡立即可见，**点击页面任意区域**才关闭；不再依赖 hover，不再定时消失            |
+| **P3** | 历史记录右侧 tag 与日期重叠           | ≥601px 时 tag 独占一列，四语言下都不压日期；≤600px 维持 UI-14 F2 的纵向流                           |
+| **P4** | 首页核心内容整体向上，与顶栏保持 48px | 首页改为顶部对齐，顶部留白**只有一处来源**：`顶栏高度 + 48px`；历史页不受影响                       |
 
-### 本轮授权（Human 2026-09-20 21:44 明示）
+### Non-Goals
 
-**执行 AI 自行验收 + 合并 main + push，不需回主 AI 验收。**
+- 不改主题令牌的取值、配色、圆角（`--topbar-h` / `--content-top-gap` 是新增的**布局尺寸令牌**，不入 `[data-theme]`）
+- 不改 `profile.layoutTip` 的四语言文案；不改 `tagKindOf()` 的枚举值集合
+- 不改 DOM 契约 id；不改回执轮询节奏（`2s × 15`）
+- 不清理 `history.css` 的既有死规则 `var(--notion-text-secondary)`（既往遗留，留给下一张卡片）
 
-即：施工图 §4 的 6 个原子提交全部落在 `codex/ui-14` 分支 → 自验通过后
-`git checkout main && git merge --ff-only codex/ui-14` → push origin main。
-**这是 Human 明确给出的授权，不属越权**（区别于既往"merge-only 不含 push"的默认约束）。
+### Acceptance Criteria
 
-> **执行结果：已完成。** 见 `## EXECUTION STATUS`（`main = 47f594f`，已 push）
-> 与 `## EXECUTION REPORT` 的「UI-14」小节（14 条逐条对照 + 反向验证 + 未验证声明）。
+1. **P1**：两个主题 × 1280/390 视口下，`minimal-mode` 都是 2 列网格；同排两张卡顶边一致、等高；第 3 个按钮换行；`default` 模式仍是每行 1 个。
+2. **P2**：打开编辑框后气泡**立即**可见且 **3.2s 后仍在**；用 **CDP 真实坐标**点击页面空白处后消失；按键也会关闭；再次打开会重现。
+3. **P3**：1000/601 视口 × 四语言下，tag 与日期**矩形不相交**且 tag 排在日期右侧；390px 保持纵向流与 UI-14 F2 行为。
+4. **P4**：1280/480/320 三档 × bubble/list 两主题下，容器顶距顶栏**恒为 48px**；按钮数从 2 变 4 时留白不变；历史页顶部留白不受影响。
+5. 新增回归套件必须**进 CI**（注册到 `tools/run-all.mjs`），且既有套件断言数不得减少。
+6. `node tools/run-all.mjs` 全量通过；`eslint .` exit 0；`prettier --check` 改动文件 0 违规；`check-worktree` 无缺失文件。
+7. 四项修复**逐条做反向验证**：把 bug 放回去时新断言必须 FAIL，还原后必须全绿。
 
-### SCOPE
+### Verification
 
-`docs/HANDOFF_14_ITEMS_2026-09-20.md` §2 的 A/B/C/D/E/F/G 共 **14 条**：
+| 命令                                                             | 期望                                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `node tools/run-all.mjs`                                         | 15/15 PASS（新增 ui-layout 套件）                                 |
+| `node tools/ui-layout.mjs`                                       | 80 断言 PASS                                                      |
+| `node node_modules/eslint/bin/eslint.js .`                       | exit 0                                                            |
+| `node node_modules/prettier/bin/prettier.cjs --check <改动文件>` | 0 违规                                                            |
+| `node tools/check-worktree.mjs`                                  | 未发现被删除的已跟踪文件                                          |
+| `.workbuddy/ui15-reverse.mjs`                                    | R1–R5 全部检出 FAIL，还原后 80/80 全绿（一次性手工工具，不进 CI） |
 
-- **A 音效组（4）**：A1 iOS 不生效（持久化 + unlock + 失败重试）/ A2 全局 click 音效 /
-  A3 保存成功 toast + 成功音 / A4 音效开关
-- **B 主题组（4）**：B1 改名（浮光絮语 / 青笺行）/ B2 四色方块图标 / B3 list 内容上移 /
-  B4 模态框适配 list
-- **C 按钮组（3）**：C1 恢复默认次级按钮（**根因：`.btn` 无 CSS 定义**）/ C2 六彩循环 /
-  C3 历史入口保持可见
-- **D 编辑模态框（1）**：D2「布局调整」气泡提示
-- **E 回执 / 冷却（2）**：E1 回执卡改新版（**动 DOM，风险最高**）/ E2 文案左对齐
-- **F 历史页（3）**：F1 垂直居中 + 上移 / F2 右上角三态 tag（**XSS 纪律**）/ F3 清除 toast 统一
-- **G 顶部更多栏（1）**：G1 底部圆角 + hover 淡绿
+### Branch
 
-### NON-GOALS
-
-- 不改 `CONFIG.password` 语义、不动密码闸门
-- 不改回执轮询节奏（`2s × 15`，`receipt-lifecycle.mjs` 钉死）
-- 不改任何 DOM 契约 id（施工图 §5 列出 10 个）
-- 不改 `zh.history.webhookLabel`（必须保持 `Webhook`，`input-safety.mjs:1024` 钉死）
-- 不为凑测试而改断言；新增断言必须**先反向验证**确认有区分力
-
-### ACCEPTANCE CRITERIA
-
-1. 14 条**逐条**实现，逐条给出验证方式（不是笼统"已完成"）
-2. `node tools/run-all.mjs` 全量 **0 失败**（基线 14 项 / 811 断言；新增断言允许，既有断言数不得减少）
-3. `eslint .` 0 error；`prettier --check` 改动文件 0；`node tools/check-worktree.mjs` 缺失 0
-4. **B1 改名必须与 `tools/theme-entry.mjs:617-618` 同一次提交**（否则套件立刻红）
-5. **E1 动 DOM 后 `receipt-lifecycle.mjs` 54 项必须全绿**
-6. **F2 的 tag 必须走闭合枚举 + `textContent`**（不得把 LocalStorage 值拼进 class）
-7. 涉及浮层/遮罩的验证**必须**用 CDP 真实坐标（`Input.dispatchMouseEvent` + `elementFromPoint`），
-   不得只用 `el.click()`
-8. **A1 无法 headless 验证** → 必须在报告里显式声明"需真机确认"，不得声称已验证
-9. 每个修复必须做**反向验证**（把 bug 放回去，确认新断言真的 FAIL）
-
-### VERIFICATION（自报告须含）
-
-- 每个 commit 的 SHA + 改动文件 + 对应施工图条目号
-- `run-all` 全量输出（项数 / 断言数 / 耗时 / 退出码）
-- 反向验证的重跑结果（改造前 vs 改造后的 pass/fail 对比）
-- 明确列出**未验证**或**有偏离**的条目及其理由
-
-### BRANCH
-
-`codex/ui-14`，基线 = 开工前实测 `main` HEAD（`git rev-parse --short HEAD` 确认；
-建分支后**立即** `node tools/check-worktree.mjs`）。
-
-### 建议施工顺序（按风险，非文档字母序）
-
-1. **C1 / B3 / G1**（只改 CSS，零 DOM 风险，最快见效）
-2. **B1 + `theme-entry.mjs:617-618`**（同提交）
-3. **B2 / C2 / B4**（CSS + 少量 html）
-4. **A 组**（音效，独立性强）
-5. **F 组**（历史页，含 XSS 纪律）
-6. **E1 放最后**（动 DOM，必须全量）
-
----
-
-**（历史）S1-S5 主题切换全套任务卡已完成并合并推送。** 归档见
-[`docs/handoff/archive/INDEX.md`](handoff/archive/INDEX.md)。
+`codex/ui-15-layout`，基线 `c2030c4`（UI-14 收尾提交，`main = origin/main`）。
 
 ## EXECUTION STATUS
 
 ```text
-状态：DONE — UI-14 全部 14 条已实现、已验证、已合并 main、已 push
-当前分支：main（codex/ui-14 与 design/design-tokens 已删除）
-当前提交：47f594f（HEAD = main = origin/main）
-工作区：干净（check-worktree 缺失 0；lint exit 0）
-基线：run-all 14 项 / 811 断言 / 0 失败
-当前：run-all 14 项 / 850 断言 / 0 失败（+39）
+状态：READY_FOR_REVIEW — 四项修正已实现，单套件 + 全量回归 + 反向验证全部通过
+分支：**main**（偏离：本轮命令重复执行，提交直接落在 main 未按任务分支隔离；**未 push**）
+提交：60bec65  产品代码（P1 显示模式归位 / P2 气泡常驻 / P3 tag 三列 / P4 顶部对齐）
+      5348172  测试（tools/ui-layout.mjs + run-all 注册）
+      随 HEAD   面板换版 + UI-14 快照归档 + AGENTS.md invariants（含笔误修正）
 
-已完成分组（每组 = 1 个原子提交，均通过专项断言 + 反向验证 + 全量回归）：
+改动文件（相对 c2030c4）：
+  index.css                    +100 / -11
+  history.css                  +29
+  index.html                   +6 / -1
+  js/modules/buttonManager.js  +44 / -13
+  AGENTS.md                    +4（UI-15 invariants）
+  docs/AI_HANDOFF.md           UI-14 → UI-15 换版
+  docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-20.md   +594（UI-14 面板原文快照）
+  docs/handoff/archive/INDEX.md   +1（快照索引）
+  tools/ui-layout.mjs          +（新增，第 13 个浏览器套件）
+  tools/run-all.mjs            +2 / -2
+（不含 docs/ 的 182 insertions / 24 deletions 为产品代码侧）
 
-| 提交      | 分组              | 专项断言    | 反向验证       | 全量            |
-|-----------|-------------------|-------------|----------------|-----------------|
-| `26c5c08` | C1 + B3 + G1      | 37/37       | —（纯 CSS）    | 14/14 · 811     |
-| `0683ef5` | B1 + B2           | 34/34       | 11 FAIL ✅     | 14/14 · 811     |
-| `b002d00` | B4 + C2 + C3      | 43/43       | 33 FAIL ✅     | 14/14 · 811     |
-| `daf70d8` | A1 + A2 + A3 + A4 | 44/44       | 24 FAIL ✅     | 14/14 · 811     |
-| `89d3472` | F1 + F2 + F3      | 82/82       | 59 FAIL ✅     | 14/14 · 850     |
-| `47f594f` | D2 + E1 + E2      | 56/56       | 59 FAIL ✅（4 文件各自变红 17/26/11/5） | 14/14 · 850 |
+自验（逐条 = ui-layout 套件分组）：
+  [1] 源码级 5 条          PASS
+  [2] 简约模式 22 条        PASS（含两主题 × 1280/390）
+  [3] 顶部对齐 22 条        PASS（含 1280/480/320 × 两主题）
+  [4] 历史 tag 24 条        PASS（含四语言 × 1000/601 + 390 回归）
+  [5] 气泡常驻 7 条         PASS（含 CDP 真实坐标点击关闭）
+  [6] 无 console.error      PASS
+  ui-layout 合计：80 passed, 0 failed
+  全量 run-all：15/15 PASS，930 断言 0 失败，318.8s
+  eslint . ：exit 0 / 0 error
+  prettier --check（含 tools/ui-layout.mjs）：0 违规
+  check-worktree：未发现被删除的已跟踪文件
 
-合并与推送实录（Human 2026-09-20 授权：自行验收 + 合并 + push）：
-  git checkout main → merge --ff-only codex/ui-14 → Fast-forward 8d23ce2..47f594f
-  （切 main 时沙箱级联触发：应删 1 / 级联误伤 12，post-checkout 守卫全量恢复，零丢失）
-  合并后 check-worktree 缺失 0；专项 DE 组在 main 上复跑 56/56 全绿
-  push：Bash 工具 + -c http.version=HTTP/1.1 + 代理 → 8d23ce2..47f594f main -> main
-  分支清理：codex/ui-14、design/design-tokens 已删，仅剩 main
+一次性工具（不进 CI，位于 .workbuddy/）：
+  ui15-measure.mjs  改造前的浏览器基线测量
+  ui15-reverse.mjs  反向验证驱动（备份 → 放回 bug → 重跑 → 还原）
+  ui15-snapshot.mjs 面板原文快照生成器
 ```
-
-### UI-14 施工中抓到的真问题（执行 AI 记录）
-
-1. **`.btn` 引入后暴露既有隐患**：`#addCustomButton` 是 `"btn add-btn"`，
-   `.add-btn`(784) 定义在 `.btn`(1074) **之前** → 特异度相同靠源码顺序决胜 →
-   `.btn` 的 radius/padding 反压 `.add-btn`，满宽虚线按钮被压小。
-   修法：`.btn` 之后按原值重新声明 `.add-btn`（4 条断言钉住）。
-2. **`buttonConfig` 形状是 `{buttons:[...], activeGroup}` 不是裸数组** ——
-   `loadButtonConfig` 的 isValid 是「非 null 对象且非数组」，喂数组会静默回退默认按钮。
-3. **Edit 工具在"同构重复结构"上会隐式 no-op**：`more: '更多'` vs `more: '更多',`
-   是不同 old_string；改四语言块必须带足够区分性上下文（否则报 success 但没改）。
-4. **`goto()` 就绪判据曾写死 `.bubble-btn`**（index.html 专属）→ 历史页永远等不到，
-   真正的就绪从未被判定，表现为 `SecurityError: localStorage Access is denied`。
-   已修为按 URL 给判据 + 整轮重试，并加静态服务器可达性前置检查（不可达 exit 3）。
-5. **反向验证必须容错**：断言段若因"被检对象缺失"而抛异常，套件会崩溃、
-   只能拿到 `null passed`，无法区分"断言检出 bug"与"套件坏了"。
-   已在页面内 try/catch 并把异常当观测结果返回。
-
-### 历史（S1–S5，已完成）
-
-S5 合并与推送实录：
-
-- `git merge --ff-only codex/s5-pwa` → Fast-forward `abf8d29..30dc328`
-- **合并后复跑全量回归：14/14 PASS，787 断言 0 失败，284.2s**
-- push：`-c http.version=HTTP/1.1` + 代理 → `abf8d29..30dc328 main -> main`；
-  `ls-remote` 核对远端 = 本地 = `30dc328`
-- checkout main 时级联触发（43 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
-
-S4 合并与推送实录：
-
-- `git merge --ff-only codex/s4-componentize` → Fast-forward `8f97e32..abf8d29`
-- **合并后复跑全量回归：13/13 PASS，741 断言 0 失败，269.5s**
-- push 实录：**加 `-c http.version=HTTP/1.1` + 代理 127.0.0.1:7897 后成功**
-  → `8f97e32..abf8d29 main -> main`；`ls-remote` 核对远端 = 本地 = `abf8d29`
-- checkout main 时级联再次触发（33 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
-
-> 注：以上 S1–S5 实录为历史记录，保留供追溯。CURRENT TASK 已更新为 UI-14。
 
 ## EXECUTION REPORT
 
-### UI-14（14 项改动）— **全部完成 | 已合并 main | 已 push**
+### 修复前的实测基线（真实浏览器，`.workbuddy/ui15-measure.mjs`）
 
-分支 `codex/ui-14`（基线 `8d23ce2`）→ 6 个原子提交 → `merge --ff-only` → `main = 47f594f`。
+| 项目 | 改造前实测                                                                 | 说明                                   |
+| ---- | -------------------------------------------------------------------------- | -------------------------------------- |
+| P1   | bubble / list 的 `minimal-mode` 均为 `containerDisplay = "column"`         | 「简约模式」在两个主题下都被吞掉       |
+| P3   | 1000px / 800px 下 tag 与日期 `相交 = true`；390px 下 `相交 = false`        | 完全解释「手机上正常」                 |
+| P4   | 首屏容器距顶栏 bubble **144px** / list **176px**，且随按钮数与视口高度漂移 | 根因是 `body` 的 `align-items: center` |
 
-#### 14 条逐条对照（不是笼统"已完成"）
+### P1 — 显示模式归位（`index.css`）
 
-| 条目 | 内容 | 落点 | 验证方式 | 结论 |
-| --- | --- | --- | --- | --- |
-| **A1** | iOS 音效不生效 | `sounds.js` 解锁处理器 + 持久化 + 失败重试 | 断言验「解锁处理器已装 / 持久化读写 / 重试路径存在」 | ⚠️ **需真机确认**（见下） |
-| **A2** | 全局点击音效 | `sounds.js` 委托监听 + `[data-no-click-sound]` 白名单 | 44/44 专项断言 | ✅ |
-| **A3** | 保存成功 toast + 成功音 | `profile.js` → `notification.show(..., true)` + 成功音 | 断言验 toast class 与音效触发 | ✅ |
-| **A4** | 音效开关 | `soundToggle.js`（新增）+ ⋯ 菜单项 + 持久化 | 断言验开关状态持久化与互不干扰 | ✅ |
-| **B1** | 改名 浮光絮语 / 青笺行 | `translations.js` + `theme-entry.mjs:617-618` **同提交** | 34/34；反向验证 11 FAIL | ✅ |
-| **B2** | 四色方块图标 | `index.html` span + `index.css` 内联 SVG（`resolveIconName` 闭集） | 同上 | ✅ |
-| **B3** | list 内容上移 | `index.css` 容器上边距 76→12 / 头部 20→16 | 37/37 | ✅ |
-| **B4** | 模态框适配 list | `index.css` `[data-theme='list']` 覆盖块（只覆盖色/圆角/描边） | 43/43；反向验证 33 FAIL | ✅ |
-| **C1** | 恢复默认次级按钮 | **根因：`.btn` 无 CSS 定义** → 新增 `.btn` 并重声明 `.add-btn` | 37/37 | ✅ |
-| **C2** | 六色循环 | `index.css` 原两组色整段替换为 6 组 | 43/43 | ✅ |
-| **C3** | 历史入口吸底 | `index.html` + `index.css` | 43/43 | ✅ |
-| **D2** | 布局提示气泡 | `translations.js` 四语言 `profile.layoutTip` + `buttonManager` 写 `data-tip` + `index.css` `::after` | 56/56；反向验证 5 文件变红 | ✅ |
-| **E1** | 回执卡改版（**动 DOM**） | `index.html` 拆 `.countdown-head` / `.countdown-bar`；4 个契约 id 全保留 | 56/56 + `receipt-lifecycle.mjs` 54 项全绿 | ✅ |
-| **E2** | list 主题文案左对齐 | `index.css` `[data-theme='list']` 卡内三选择器 | 56/56；反向验证 26 FAIL | ✅ |
-| **F1** | 历史页垂直居中 + 上移 | `history.html` 补 `body.history-page` + `history.css` padding-top | 82/82 | ✅ |
-| **F2** | 右上角三态 tag | `notification.js` 新增 `receipt` 字段 + `markReceipt()`；`history.js` 闭合枚举渲染 | 82/82；反向验证 59 FAIL | ✅ |
-| **F3** | 清除 toast 统一 | 删 `history.js` 自建 `.history-toast`，改用 `notification.show()` | 82/82 | ✅ |
-| **G1** | 面板底部圆角 + hover 淡绿 | `index.css` `.more-panel { border-radius: 0 0 16px 16px }` | 37/37 | ✅ |
+- **根因**：`index.css` 里有 `[data-theme='list'] .bubble-container.minimal-mode { display: flex; flex-direction: column; gap: 10px; }`（注释写着「列表主题恒为单列：用户的『简约模式』网格不再生效」）—— **主题越权覆盖了显示模式**。
+- **改法**：删掉该越权块，改为只调 list 主题下简约模式的**卡内排布**：`.bubble-btn { padding: 0 14px; font-size: 0.9rem; min-height: 56px }`，并给 `.bubble-content` 及其 `span` 补 `min-width: 0` + `overflow: hidden / text-overflow: ellipsis / white-space: nowrap`（半宽卡片里长文案改显示省略号，而不是被硬裁断）。
+- **附带的第二个 bug**：`.bubble-container.minimal-mode` 继承了基础规则的 `align-items: center`，进网格后变成「每张卡在自己格子里垂直居中」→ 同排两张卡顶边错开（390px 视口实测相差 5px）。已加 `align-items: stretch`。
 
-#### 全量测试（合并后在 main 上）
+### P2 — 气泡常驻（`index.css` + `js/modules/buttonManager.js`）
 
-```text
-node tools/run-all.mjs → 14/14 PASS，850 断言 0 失败，292.2s，退出码 0
-eslint . → exit 0，0 error
-node tools/check-worktree.mjs → 未发现被删除的已跟踪文件
+- CSS：触发条件从 `.mode-toggle:hover::after` → `.mode-toggle.tip-show::after`（保留 `:focus-visible`），删掉 UI-14 的 `.tip-once` 选择器与其 2.5s 定时语义。注释里写明理由：**hover 在触屏上等于不存在**。
+- JS：`showEditModal()` 里原先「首次加 `.tip-once` + `setTimeout` 移除」整段改为调 `this.showLayoutTip()`；新增两个方法：
+    - `showLayoutTip()`：先 `hideLayoutTip()` 清干净上一次状态 → 加 `.tip-show` → 在 **window 捕获阶段**挂 `pointerdown` / `keydown`。
+    - `hideLayoutTip()`：摘类并**卸载**监听（多次调用无副作用）。
+- 两个必须注意的点（已写进源码注释）：
+    1. 监听必须挂在 **window 的捕获阶段** —— `#toggleMode` 自己的 click 处理里有 `stopPropagation()`，冒泡阶段收不到。
+    2. `add/removeEventListener` 靠**函数引用**配对，必须缓存同一个 `__dismissTipRef`；每次新建箭头函数会导致监听摘不干净、越堆越多。
+
+### P3 — 宽屏历史 tag 不压日期（`history.css`）
+
+- 新增 `@media (min-width: 601px)`：`.history-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; align-items: start; }` + `.history-tag { position: static; }`。
+- **关键第二步**：只加第三列没用 —— 绝对定位元素脱离文档流，第三列会被算成 0 宽，等于没预留空间。必须同时把 tag 改回 `position: static` 才会真正占住格子。
+- 用 `auto` 自适应列宽而不是给 `.history-header` 写死 `padding-right`：tag 文案宽度随语言变化（未回执 / 未読 / Unread …），写死必然在某个语言下重新叠上。
+- ≤600px 完全不动，保持 UI-14 F2 的纵向流。
+
+### P4 — 首页顶部对齐 48px（`index.html` + `index.css`）
+
+- `index.html`：`<body>` → `<body class="home-page">`（两张页面共用 `index.css`，顶部留白必须靠页面级作用域区分）。
+- `index.css` 末尾新增：
+
+```css
+:root {
+    --topbar-h: 72px;
+    --content-top-gap: 48px;
+}
+@media (max-width: 480px) {
+    :root {
+        --topbar-h: 61px;
+    }
+}
+@media (max-width: 360px) {
+    :root {
+        --topbar-h: 57px;
+    }
+}
+body.home-page {
+    align-items: flex-start;
+    padding-top: calc(var(--topbar-h) + var(--content-top-gap));
+}
+body.home-page .container {
+    margin-top: 0;
+}
 ```
 
-#### 反向验证（把 bug 放回去，确认断言真的 FAIL）
+- 顶栏高度随断点实测为 72 / 61 / 57，做成令牌而非写死偏移量；改顶栏尺寸必须同步这里（已写进 `AGENTS.md` 高风险区）。
+- `body.home-page .container`（特异度 0-2-1）压住 `[data-theme='list'] .container`（0-2-0）的 `margin-top`，避免两处留白叠加 —— 这正是原来两个主题实测值互不相同的根因。
+- 历史页没有 `.home-page`，顶部留白继续由 `history.css` 自管（套件里有断言钉住）。
 
-| 驱动 | 回退对象 | 变红断言数 | 还原后 |
-| --- | --- | --- | --- |
-| `ui14-reverse-b1.mjs` | `translations.js` / `theme-entry.mjs` | 11 | 全绿 ✅ |
-| `ui14-reverse-c2.mjs` | `index.css` | 33 | 全绿 ✅ |
-| `ui14-reverse-a.mjs` | `sounds.js` / `soundToggle.js` | 24 | 全绿 ✅ |
-| `ui14-reverse-f.mjs` | `history.js` / `notification.js` / `history.css` | 28 / 14 / 17 | 全绿 ✅ |
-| `ui14-reverse-de.mjs` | `index.html` / `index.css` / `buttonManager.js` / `translations.js` | 17 / 26 / 11 / 5 | 全绿 ✅ |
+### 新增回归套件 `tools/ui-layout.mjs`（CDP 9455，80 断言）
 
-#### ⚠️ 未验证 / 有偏离的条目（诚实声明）
+| 组  | 内容                                                                                                        | 断言数 |
+| --- | ----------------------------------------------------------------------------------------------------------- | ------ |
+| [1] | 源码级契约（list 覆盖块消失、`body.home-page`、`calc()` 令牌、`≥601px` 网格）                               | 5      |
+| [2] | 简约模式：两主题 × 1280/390 ×（是网格 / 同排顶边 / 左右分列 / 等高 / 第 3 个换行）+ default 仍单行          | 22     |
+| [3] | 顶部对齐：1280/480/320 × 两主题 ×（顶栏高 / 距顶栏 48 / align+mt）+ 按钮 2→4 不变 + 历史页不受影响          | 22     |
+| [4] | 历史 tag：1000/601 × 四语言 ×（渲染 3 条 / grid+static / 不重叠且排右侧）+ 390px 纵向 flex 回归             | 24     |
+| [5] | 气泡：打开前不可见 / 打开后常显 / 文案跟语言 / 3.2s 后仍在 / **真实坐标点击关闭** / 再次打开重现 / 按键关闭 | 7      |
 
-1. **A1（iOS 音频解锁）headless 无法验证** —— 只能证明「解锁处理器已安装 / 持久化读写正确 /
-   失败重试路径存在」，**真实手势解锁语义必须在 iOS 真机上确认**。不声称已验证。
-2. **D2 的 `.tip-once` 2.5s 自动消失只验了加类/摘类**，未验真实计时结束的视觉消失
-   （时序断言易碎，留给真机肉眼确认）。
-3. **偏离**：新增 3 个测试套件外的手工工具（`ui14-verify.mjs` 及其 5 个反向驱动）放在
-   `.workbuddy/` 而非 `tools/`，且**不进 CI**（`tools/run-all.mjs` 未注册它们）。
-   理由：它们是 UI-14 一次性施工的专项断言载体，与项目既有的 `negative-*.mjs` 手工工具同类。
+`tools/run-all.mjs` 注册为第 13 个浏览器套件；注释与「运气」文案同步更新。
 
-#### UI-14 施工中抓到的真问题（执行 AI 记录）
+### 本轮踩到的两个坑（写下来防复发）
 
-1. **`.btn` 引入后暴露既有隐患**：`#addCustomButton` 是 `"btn add-btn"`，
-   `.add-btn`(784) 定义在 `.btn`(1074) **之前** → 特异度相同靠源码顺序决胜 →
-   `.btn` 的 radius/padding 反压 `.add-btn`，满宽虚线按钮被压小。
-   修法：`.btn` 之后按原值重新声明 `.add-btn`（4 条断言钉住）。
-2. **`buttonConfig` 形状是 `{buttons:[...], activeGroup}` 不是裸数组** ——
-   `loadButtonConfig` 的 isValid 是「非 null 对象且非数组」，喂数组会静默回退默认按钮。
-3. **Edit 工具在"同构重复结构"上会隐式 no-op**：`more: '更多'` vs `more: '更多',`
-   是不同 old_string；改四语言块必须带足够区分性上下文（否则报 success 但没改）。
-4. **`goto()` 就绪判据曾写死 `.bubble-btn`**（index.html 专属）→ 历史页永远等不到，
-   真正的就绪从未被判定，表现为 `SecurityError: localStorage Access is denied`。
-   已修为按 URL 给判据 + 整轮重试，并加静态服务器可达性前置检查（不可达 exit 3）。
-5. **反向验证必须容错**：断言段若因"被检对象缺失"而抛异常，套件会崩溃、
-   只能拿到 `null passed`，无法区分"断言检出 bug"与"套件坏了"。
-   已在页面内 try/catch 并把异常当观测结果返回。
-6. **`countdown` 的公开 API 没有 `start()`**，只有 `startFromNow()` / `restore()` /
-   `cancel()` / `remaining()` / `updateDisplay()` / `init()`。写页面级断言前先读源码，别猜。
-7. **flex item 的 `margin-left:auto`，`getComputedStyle` 返回的是解算后的 used value
-   （`0px`），不是字面量 `auto`。** 断言 `=== 'auto'` 必然误报。
-   要验「靠右」应验 **CSSOM 规则文本含 auto** + **元素右缘贴合容器右缘**。
-8. **`getComputedStyle(el,'::after')` 返回活对象**，属性在读取时才求值。
-   必须先取普通字符串快照再加/摘类，否则会把"隐藏"读成 `1`。
-9. **`align-items:center` 对齐的是垂直中线，不是 top。** 头像 36px / 徽章 16px 高度不同，
-   比 `top` 天然差 10px，应比 `(top + height/2)`。
-10. **E2 的作用域要克制**：`.container { text-align: center }` 是气泡主题的既有默认，
-    list 主题**有意不动它**（按钮网格仍需居中）；错误地断言"容器左对齐"会把正确实现判成失败。
+1. **CRLF**：本机 `index.css` 是 `\r\n`（实测 2171 处）。反向验证驱动里若用 Node 多行模板写 `\n` 锚点，会**匹配不上**并被误判成「锚点不存在」。已加 `normalize()`：源文件含 `\r\n` 就把锚点也转成 `\r\n`。
+2. **`getComputedStyle(el, '::after')` 是活对象**，属性在读取时才求值。必须先在页面内把 `opacity / visibility / content / hasShowClass` 拷成普通字符串快照再改类名，否则「隐藏态」会被读成 `1`。
 
-> 第 7/8/9 条是同一类错误：**断言写法比被测行为更容易出错**。
-> 这 5 条 FAIL 全部排查后确认是断言侧问题、产品 CSS 一直是对的 ——
-> 教训是「先证明被测行为真的错了，再改产品代码」。
+### 答复：现在是 PWA 吗？有什么优势？
 
-### S1 — CSS 令牌化（视觉零变化）｜PASS
+**是。** 本项目自 S5（`main = 30dc328`，2026-09-20）起已完成 PWA 化，`tools/pwa.mjs`（46 断言）把它钉在 CI 里。落在仓库里的实际东西：
 
-- 分支 `codex/s1-tokenization`，提交 `3fde8d6`，已快进合并到 main 并 push
-- 改动文件：`index.css`（+121/-61）、`history.css`（+21/-21）
-- 做法：原 `:root` 的 15 个令牌一字未动；在其后新增约 45 个语义令牌
-  （表面/分隔/遮罩、文字层级、强调色、金色、状态色、深色浮层、历史页独立色源），
-  值与原硬编码逐字一致；正文 61 处 + 21 处硬编码色改为 `var(--token)`
+| 组成           | 文件                                            | 当前状态                                                                                                                                                                                                           |
+| -------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 应用清单       | `manifest.json`                                 | `display: standalone`；图标 192 / 512 PNG + 512 maskable；`theme_color` 取 `--accent`（#337ea9）、`background_color` 取 `--notion-gray`（#f7f6f3）；`start_url` / `scope` 用**相对路径**，适配 GitHub Pages 子路径 |
+| Service Worker | `sw.js`                                         | 应用代码**网络优先 + 缓存兜底**（项目无构建、无内容哈希，缓存优先会把改版后的代码挡在旧缓存后面）；icons / sounds / 版本化 CDN 缓存优先；JSONBin 只读网络不缓存；`skipWaiting` + `clients.claim`                   |
+| 注册器         | `js/sw-register.js`                             | 相对路径 `./sw.js`（用 `/sw.js` 在 Pages 子路径下会 404），load 后注册                                                                                                                                             |
+| 图标           | `icons/`（3 个 PNG）+ `tools/generate-icons.py` | 纯标准库数学光栅化 + 手写 PNG（SS=4 超采样），颜色取自 CSS 令牌，重跑可逐字节复现                                                                                                                                  |
 
-自验结果（全部达标）：
+**落到用戶身上的四条实际收益：**
 
-| 验收项                                        | 结果                                 |
-| --------------------------------------------- | ------------------------------------ |
-| `:root` 外硬编码色行数                        | 0 / 0                                |
-| `node tools/run-all.mjs`                      | 10/10 PASS，537 断言 0 失败（3m45s） |
-| `eslint .`                                    | exit 0，0 error                      |
-| `prettier --check index.css history.css`      | exit 0                               |
-| `check-worktree`                              | 未发现被删除的已跟踪文件             |
-| `git diff --check`                            | exit 0                               |
-| 视觉零变化（展开 var() 后与 HEAD 逐字符比对） | 两个文件完全一致                     |
+1. **可安装**（桌面 / 手机主屏），打开是全屏 standalone、没有浏览器地址栏 —— 对这个「点一下就发通知」的工具来说，形态上更像 App。
+2. **离线能开**：SW 预缓存了 HTML / CSS / JS / 图标 / 音效，地库 / 飞机上也能打开界面（发 webhook 当然仍需联网）。`tools/pwa.mjs` 的验证方式是**停掉静态服务器 = 真实断网**，不是 CDP 仿真。
+3. **联网永远拿最新代码**：网络优先策略避免了「改了线上不生效」这个无构建项目的经典坑。
+4. **零依赖、零构建**：没有引入任何 npm 依赖，图标也是标准库脚本生成 —— 保持了项目「无构建步骤」的约束。
 
-补充：
-
-- **prettier 不合规是本次改动引入的**，已修正——标题渐变行换用长令牌名后超过
-  printWidth 100，prettier 需折行。基线（HEAD）原本合规，未做全文重排。
-- **既有问题（本次未改，保持视觉零变化）**：`history.css:143` 的
-  `var(--notion-text-secondary)` 在 `index.css` 与 `history.css` 中**从未定义**，
-  该 `color` 声明是死规则（回落继承值）。建议 S4 组件化时清理。
-
-### S2 — 主题层（data-theme + 持久化 + 防闪）｜PASS
-
-- 分支 `codex/s2-theme-layer`，提交 `88f7f58`（实现）+ `06bd11a`（测试/文档）
-- 改动文件：`config.js`、`state.js`、新增 `theme.js`、`main.js`、`history.js`、
-  `index.html`、`history.html`、`tools/theme-layer.mjs`、`tools/run-all.mjs`、`tools/README.md`
-
-关键设计决策（两条，请主 AI 重点复核）：
-
-1. **防闪脚本不复制允许列表。** `<head>` 内联脚本只做「安全形状」校验并原样回写
-   `data-theme`，合法性由 `theme.init()` 按 `CONFIG.themes.valid` 最终裁定。
-   理由：内联脚本无法同步 import ES module，抄一份列表必然漂移；
-   而非法值不会命中任何 `[data-theme]` 选择器，外观等同默认主题 → 不会闪。
-2. **存储格式 = 纯字符串**（对齐 `appLanguage` / `buttonDisplayMode`），
-   同时兼容 JSON 字符串形式。`appTheme` 的**唯一写入者是 theme.js**，
-   state.js 只在 init 读一次并导出 `normalizeThemeName()` 复用，避免双份校验。
-
-自验结果：
-
-| 验收项                              | 结果                                                   |
-| ----------------------------------- | ------------------------------------------------------ |
-| `node tools/run-all.mjs`            | **11/11 PASS，577 断言 0 失败**（S2 新增套件 40 断言） |
-| `eslint .`                          | exit 0，0 error                                        |
-| `prettier --check`（10 个改动文件） | exit 0                                                 |
-| `check-worktree`                    | 未发现被删除的已跟踪文件                               |
-| `git diff --check`                  | exit 0                                                 |
-
-AC 逐条对照：`<html data-theme>` 有值 ✓ / 防闪脚本在 CSS 之前 ✓ /
-非法·损坏·JSON 对象·JSON 字符串四种输入均正确 ✓ / `setTheme` 刷新后保持 ✓ /
-history.html 与首页一致 ✓。
-
-**偏离任务卡 1 处（请主 AI 裁决）**：任务卡 AC 写的是「run-all 10/10（537 断言）」，
-实际为 **11/11（577 断言）** —— 因为按项目惯例为 S2 新增了回归套件
-`tools/theme-layer.mjs` 并注册进 `run-all.mjs`。套件数 8 → 9，总项数 10 → 11。
-
-### S3 — 切换入口（甲顶栏 + 新主题布局 + 历史入口不跳转）｜PASS
-
-- 分支 `codex/s3-theme-entry`（基线 `9b53128`）
-- 改动文件：
-    - `index.html`：甲顶栏（左 头像+昵称 / 右 语言胶囊 + ⋯）、⋯ 面板（编辑资料 / 编辑按钮 / 主题切换）、
-      遮罩、底部历史入口、首页内嵌历史视图（全部预埋，运行时不建节点）
-    - `index.css`：6 条主题轴令牌（默认值 = 现状外观）+ `[data-theme='list']` 覆盖块 +
-      ⋯ 面板/遮罩/历史入口样式 + 480/360 断点复核
-    - `js/modules/theme.js`：新增 ⋯ 菜单开合、主题项勾选、`setTheme` 后同步菜单
-    - `js/modules/language.js`：`updateUI()` 增加 `[data-i18n]` / `[data-i18n-title]` 声明式文案填充
-    - `js/modules/translations.js`：新增 5 个键 × 4 语言（common.more / theme.sectionTitle /
-      theme.bubble / theme.list / history.viewEntry）
-    - `js/modules/config.js`：`themes.labelKeys` 补上展示名 i18n 键
-    - `js/modules/history.js`：`render()` 拆出 `renderList(list)`、`clear(listEl)` 支持外部列表
-    - `js/modules/homeHistory.js`（**新增**）：只管首页两个视图的切换与打开时重绘
-    - `js/main.js`：删掉运行时创建跳转按钮的 `addHistoryButton()`，改为 `initHomeHistory()`
-    - `js/modules/onboarding.js`：3 个引导步骤的高亮目标与文案同步（见下）
-    - `tools/theme-entry.mjs`（**新增**，CDP 9452，77 断言）+ `tools/run-all.mjs` + `tools/README.md`
-
-关键设计决策（三条，请主 AI 重点复核）：
-
-1. **`#editProfile` / `#editButtons` 移进 ⋯ 面板，但节点留在 DOM。**
-   `element.click()` 对隐藏元素依然有效，既有套件的驱动方式不受影响；
-   ⋯ 面板的事件**委托在面板上且用捕获阶段**——因为 `buttonManager` 会对
-   `#editButtons` 做 `replaceWith(cloneNode)` 重建，且其监听里 `stopPropagation()`，
-   冒泡阶段收不到。捕获阶段保证「点菜单项 → 菜单一定关」。
-2. **配色/布局一律留在 CSS，JS 不复制第二份。** 任务卡 SCOPE 写的是
-   「config.js：themes 配置填入实际令牌覆盖值」；实际只在 `themes.labelKeys`
-   补了展示名的 i18n 键，色值仍由 `[data-theme='list']` 承载。
-   理由：与 CM-010「密码配置单一来源」同源的纪律，避免 JS/CSS 两处漂移；
-   新增主题 = config 加名字 + CSS 加令牌 + html 加菜单项，JS 不用动。
-3. **首页历史视图复用 `history` 模块，不复制渲染逻辑。**
-   `history.render()` 拆成 `renderList(list)`、`clear(listEl)` 接受外部列表节点，
-   首页内嵌视图与 history.html 走同一份安全渲染（XSS 只需审一处）。
-
-自验结果：
-
-| 验收项                              | 结果                                                   |
-| ----------------------------------- | ------------------------------------------------------ |
-| `node tools/run-all.mjs`            | **12/12 PASS，654 断言 0 失败**（S3 新增套件 77 断言） |
-| `eslint .`                          | exit 0，0 error                                        |
-| `prettier --check`（12 个改动文件） | exit 0                                                 |
-| `check-worktree`                    | 未发现被删除的已跟踪文件                               |
-| `git diff --check`                  | exit 0                                                 |
-
-AC 逐条对照：`#editButtons` 仍在 DOM ✓ / ⋯ 菜单从顶栏下方展开 + 点遮罩关闭 ✓ /
-切到 list 后布局令牌生效（圆角 10→14、图标底 30→36、内容居中→左对齐、
-标题 3.2rem→2.25rem、顶栏玻璃→白实底、主卡去掉）且切回完全恢复 ✓ /
-历史入口不跳转（URL 前后一致、首页内切视图、返回可切回）✓ /
-4 语言文案齐全且取值互不相同 ✓ / run-all 全绿 ✓ / eslint·prettier·check-worktree ✓。
-
-**偏离任务卡 2 处（请主 AI 裁决）**：
-
-1. AC 写「run-all 10/10（537 断言）」，实际 **12/12（654 断言）** —— S2、S3 各新增
-   一个回归套件并注册进 run-all，套件数 8 → 10，总项数 10 → 12。
-2. 任务卡 SCOPE 未列 `js/modules/homeHistory.js` 与 `js/modules/onboarding.js`。
-   前者是为了让首页内嵌视图能复用 `history` 的渲染（不复制一份），
-   后者是因为 `#editProfile` / `#editButtons` 收进 ⋯ 菜单后，
-   引导步骤的高亮目标会指向隐藏元素（高亮不可见）+ 文案失效 —— 属本次改动的
-   直接后果，已一并修正（3 个步骤：高亮改指 `#moreToggle` / `#historyEntry`，四语文案同步）。
-
-### S4 — 组件化｜PASS
-
-- 分支 `codex/s4-componentize`（基线 `8f97e32`），提交 `123f7f1`（实现）+ `83dd7db`（测试/文档）
-
-**评估过的候选（任务卡要求"列出可组件化的区块，至少 3 个候选"）**：
-
-| 区块                     | 现状                                                 | 复用处数 | 结论                                                      |
-| ------------------------ | ---------------------------------------------------- | -------- | --------------------------------------------------------- |
-| 弹出菜单（toggle+panel） | `language.js` 与 `theme.js` **各写一份**开合逻辑     | 2        | ✅ 抽 `popupMenu.js`                                      |
-| 模态框开关               | `profile` / `buttonEdit` / `password` / confirm 四份 | 4        | ✅ 抽 `modal.js`（password 暂不接入，见下）               |
-| 图标选择器               | 整段嵌在 `buttonManager` 里（约 200 行）             | 1        | ✅ 抽 `iconPicker.js`（代码量大 + 与按钮业务无关的纯 UI） |
-| Toast 提示条             | `notification.show()` 约 10 行                       | 1        | ❌ 太薄，抽了只是搬家                                     |
-| 回执状态条               | `notification.setReceiptStatus()` 约 15 行           | 1        | ❌ 同上                                                   |
-| 按钮列表                 | `buttonManager.renderButtons()`                      | 1        | ❌ 抽它 = 重写 buttonManager 一半，收益 < 风险            |
-| 冷却卡                   | `countdown.js`                                       | 1        | ❌ CM-006 定稿的单职责责任者，不动                        |
-| 首页历史视图             | `homeHistory.js`                                     | 1        | ❌ 已是独立模块，无需再抽                                 |
-
-改动文件：
-
-- **新增** `js/components/component.js`（基座）、`popupMenu.js`、`modal.js`、`iconPicker.js`
-- `js/modules/theme.js`：删 `openMenu/closeMenu/toggleMenu`，改为持有 popupMenu 实例
-- `js/modules/language.js`：删 5 个菜单方法，改为持有 popupMenu 实例
-- `js/modules/profile.js`：资料模态框交给 modal 组件
-- `js/modules/buttonManager.js`：编辑模态框交给 modal 组件；图标选择器改用组件
-  （删 `createIconOption` / `createIconPicker` / `pickerGlyph`）；`showConfirmDialog` 改用 `modal.confirm()`
-- `tools/components.mjs`（**新增**，CDP 9453，87 断言）+ `tools/run-all.mjs` + `tools/README.md`
-    - `tools/theme-entry.mjs`（一条断言随职责迁移更新）
-
-关键设计决策（三条，请主 AI 重点复核）：
-
-1. **差异用配置项表达，不统一 DOM 形态。** 语言下拉的遮罩是运行时 create/remove，
-   ⋯ 菜单的遮罩是预埋节点加 `show` class。组件用 `backdrop` / `createBackdrop`
-   二选一来承载这两种既有形态 —— 强行统一就要改 html 与 CSS，等于改产品行为。
-2. **组件只管开合与事件，不持有业务状态。** "选中某项意味着什么"由 `onSelect` 决定，
-   "哪一项是当前项"由 `onSync` 决定。因此 theme.js 仍是 `appTheme` 的**唯一写入者**，
-   language.js 仍是 `currentLang` 的唯一写入者 —— 组件化没有稀释既有单职责边界。
-3. **图标白名单仍是单一来源。** 允许列表 `ALLOWED_ICON_NAMES` 留在 buttonManager，
-   只有闭集判定 `resolveIconName()` 抽到组件里，由首页渲染与编辑表单共用 ——
-   避免"按钮显示某图标、打开编辑却预选另一项"。
-
-自验结果：
-
-| 验收项                         | 结果                                                   |
-| ------------------------------ | ------------------------------------------------------ |
-| `node tools/run-all.mjs`       | **13/13 PASS，741 断言 0 失败**（S4 新增套件 87 断言） |
-| `eslint .`                     | exit 0，0 error                                        |
-| `prettier --check`（改动文件） | exit 0                                                 |
-| `check-worktree`               | 未发现被删除的已跟踪文件                               |
-| `git diff --check`             | exit 0                                                 |
-
-AC 逐条对照：≥3 个区块抽成组件（4 个文件 / 3 个可实例化组件）✓ /
-接口标准化（render·mount·unmount·update，`components.mjs` 逐实例断言）✓ /
-产品行为不变（语言下拉、⋯ 菜单、两个模态框、图标选择器、确认对话框五条路径共 40+ 断言）✓ /
-eslint·prettier·check-worktree 全 0 ✓。
-另：组件可独立 import 并 render（在页面里 import 后挂到**游离容器**验证，不依赖全局状态）。
-
-**偏离任务卡 1 处（请主 AI 裁决）**：AC 写「run-all 10/10（537 断言）」，
-实际 **13/13（741 断言）** —— S2/S3/S4 各新增一个回归套件并注册进 run-all，
-套件数 8 → 12，总项数 10 → 13。
-
-**已知未接入项（请主 AI 决定是否跟进）**：
-
-1. **访问提示模态框（password.js）没有接入 modal 组件。** 它是运行时 create +
-   "强制不可关闭"（点遮罩不关），语义与标准模态框不同；接入它等于重写
-   `password-gate.mjs` 60 断言钉住的那条路径，收益低于风险。
-   组件的 `dismissible: false` 选项就是为它预留的。
-2. **`history.css:143` 的死规则** `var(--notion-text-secondary)` 仍未清理
-   （该变量在 index.css / history.css 中从未定义，声明恒回落继承值）。
-   S1 报告里提过、本次仍不在 SCOPE，未动 —— 建议并入后续卡片。
-
-### S5 — PWA 准备｜PASS
-
-- 分支 `codex/s5-pwa`（基线 `abf8d29`）
-
-改动文件：
-
-- **新增** `manifest.json`、`sw.js`、`js/sw-register.js`、`icons/`（3 个 PNG）、
-  `tools/generate-icons.py`（图标生成器）、`tools/pwa.mjs`（回归套件，CDP 9454）
-- `index.html`：接 manifest link + favicon + sw-register（head 末尾）
-- `history.html`：接 manifest link + favicon
-- `tools/run-all.mjs`、`tools/README.md`：注册第 12 个套件
-- `eslint.config.js`：给 `sw.js` 配 `globals.serviceworker` 环境（经典脚本，SW 专用全局）
-
-关键设计决策（三条，请主 AI 重点复核）：
-
-1. **应用代码网络优先，不是任务卡字面的"缓存优先"。**
-   本项目无构建步骤、资源 URL 没有内容哈希（只有手写的 `?3.3`），
-   缓存优先会让改版后的代码被旧缓存挡住（线上"改了不生效"）；
-   网络优先保证联网永远最新、断网仍可离线，AC"离线可加载"照样满足。
-   缓存优先只用于真正不可变的资源：icons / sounds / 版本化 CDN 字体。
-   副产品：解决了测试套件复用持久 Chrome profile 会被旧缓存污染的隐患 ——
-   合并后全量 14/14 全绿即是证据。
-2. **图标从零造，零依赖可复现。** 仓库原本没有任何 png/svg/ico，也不能引
-   PIL/sharp（无构建链）→ `tools/generate-icons.py` 用纯标准库做数学形状光栅化 +
-   手写 PNG（zlib/struct，SS=4 超采样抗锯齿），生成 192 / 512 any + 512 maskable
-   三个图标（铃铛剪影 + `--accent → --accent-deep` 渐变底，颜色取自 index.css 令牌）。
-   重跑该脚本即可逐字节复现。
-3. **路径全部相对。** 任务卡 IMPLEMENTATION 写 `register('/sw.js')`，但线上是
-   GitHub Pages 子路径部署（`/call-me-mvp/`），绝对路径会 404；
-   manifest 的 start_url/scope、注册路径、预缓存清单全部用相对路径，
-   本地根路径服务器与线上子路径下行为一致。
-
-自验结果：
-
-| 验收项                         | 结果                                                       |
-| ------------------------------ | ---------------------------------------------------------- |
-| `node tools/run-all.mjs`       | **14/14 PASS，787 断言 0 失败**（S5 新增套件 46 断言）     |
-| `eslint .`                     | exit 0，0 error                                            |
-| `prettier --check`（改动文件） | exit 0（`.py` 无 prettier 解析器，属预期；目录扫描会跳过） |
-| `check-worktree`               | 未发现被删除的已跟踪文件                                   |
-| DevTools 等效验证              | `pwa.mjs` 已自动化：manifest 校验 / SW 注册激活 / 离线加载 |
-
-AC 逐条对照：manifest 存在且字段达标（name/display/start_url/icons 192+512/
-theme_color·background_color=令牌值）✓ / sw.js 注册且 activated、页面被控制 ✓ /
-**离线可加载（停掉静态服务器 = 真实断网，首页/历史页/CSS 令牌/JS 模块全部来自缓存）** ✓ /
-run-all 全绿 ✓ / eslint·prettier·check-worktree ✓。
-补强项：预缓存清单从 sw.js 源码解析出来逐条验证文件存在与落地（防 addAll 整体失败）；
-JSONBin 不写缓存（实时数据）；SW 更新策略 skipWaiting + clients.claim ✓。
-
-**偏离任务卡 2 处（请主 AI 裁决）**：
-
-1. AC 写「run-all 10/10（537 断言）」，实际 **14/14（787 断言）** —— S2/S3/S4/S5
-   各新增一个回归套件并注册进 run-all，套件数 8 → 12，总项数 10 → 14。
-2. 「静态资源缓存优先」改为「应用代码网络优先 + 缓存兜底」（理由见决策 1）；
-   `register('/sw.js')` 改为相对路径 `./sw.js`（理由见决策 3）。
-
-**已知边界（非缺陷，请主 AI 知悉）**：
-
-- 离线时的 CDN 字体/图标 CSS 首次需联网成功后才进缓存（本地测试环境无外网，
-  套件只验证同源资源离线可用；CDN 走「缓存优先 + 运行时缓存」策略）。
-- 仓库 3 个 0 字节乱码未跟踪文件仍未处理（S4 已报告，待 Human 决定）。
+> 边界说明：本地测试环境无外网，套件只验证**同源资源**的离线可用；CDN 资源需首次联网成功后才进缓存。
 
 ## REVIEW RESULT
 
-### R1：`docs/HANDOFF_14_ITEMS_2026-09-20.md`（14 项改动施工图）— **已核对，已裁决**
+**主 AI 独立复核：PASS**（2026-09-20）
 
-**结论：施工图可直接用。逐条抽查 15 处代码/测试断言，全部与真实源码吻合，未发现事实性错误。**
+复核方式：不采信自述基数，重新在会话内执行了三条独立验证 —— `node tools/run-all.mjs`（15/15 PASS，930 断言 0 失败，318.8s）、`node tools/ui-layout.mjs`（80 passed / 0 failed）、`node tools/check-worktree.mjs`（无缺失）。并逐段读了四处产品改动的实际 diff（不是摘要）。
 
-核对方式：只读评估（不建分支、不改代码），逐条比对文档声称的行号与真实文件内容。
+| AC                                 | 结果 | 证据                                                                                                                       |
+| ---------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1 简约模式两主题生效               | PASS | ui-layout [2] 22 条；list/minimal 实测 `display: grid`、同排顶边一致、等高、第 3 个换行                                    |
+| 2 气泡常驻 + 真实坐标关闭          | PASS | ui-layout [5] 7 条；3.2s 后仍可见，`Input.dispatchMouseEvent` 点击后消失，再次打开重现                                     |
+| 3 宽屏 tag 不压日期                | PASS | ui-layout [4] 24 条；1000/601 × zh/en/ja/ko 全部不相交且排在右侧；390px 纵向流回归在位                                     |
+| 4 顶部对齐恒 48px                  | PASS | ui-layout [3] 22 条；1280/480/320 × bubble/list 恒为 48px，按钮数变化不影响，历史页不受影响                                |
+| 5 套件进 CI 且断言数不减           | PASS | run-all 15/15；既有 12 个套件断言数零减少（29/51/52/97/87/146/54/60/40/77/111/46）+ 新增 80 = 930                          |
+| 6 lint / prettier / check-worktree | PASS | `eslint .` exit 0；prettier 0 违规（`tools/ui-layout.mjs` 初次违规，已用 `--write` 修正后复跑全绿）；check-worktree 无缺失 |
+| 7 逐条反向验证                     | PASS | R1 9 / R2 4 / R3 14 / R4 17 / R5 3 条 FAIL，还原后 80/80 全绿                                                              |
 
-| 组 | 抽查项 | 文档声称 | 实测 | 判定 |
-| --- | --- | --- | --- | --- |
-| C1 | `.btn` 是否有 CSS 定义 | 无（根因） | `index.css` 中 `.btn` 无任何定义（仅有 `.btn-text` 785/796、`.save-btn` 1029） | ✅ 根因成立 |
-| C1 | `index.html:275` | `class="btn"` | 一致（`#resetButtons`） | ✅ |
-| C1 | 顺序风险 `#saveProfile` | `class="btn save-btn"`，`.save-btn` 在后会覆盖 | `index.html:229` 一致；`.save-btn` 在 1029 | ✅ 风险真实 |
-| B1 | `theme-entry.mjs:617-618` 硬断言旧主题名 | `气泡列表` / `按钮列表` | 逐字一致，**必须同步改** | ✅ 已改（commit 见下） |
-| B2 | `index.html:112/118` 图标 | `fa-circle` / `fa-list` | 一致 | ✅ |
-| B2 | `index.css:1238` 选择器 | 只匹配 `<i>` | `.more-item > i:first-child`，**换成 span 会失效** | ✅ |
-| B3 | `index.css:1383` 容器上边距 | `margin-top: 76px` | 实测 **1382**（差 1 行，内容一致） | ✅ 内容对 |
-| B3 | `index.css:1393` 头部下边距 | `margin-bottom: 20px` | 实测 **1392**（差 1 行） | ✅ 内容对 |
-| F1 | `history.html` body class | 无 `history-page`（死规则） | `<body>`，`history.css:327/333` 确为死规则 | ✅ |
-| F3 | `.history-toast` 无样式 | history.css 里没有 | 实测 **false**（确无）；`history.js` 自建该节点为 **true** | ✅ 双向证实 |
-| E1 | 10 个 DOM 契约 id 存在性 | 全部保留 | 10/10 全部在 `index.html` | ✅ |
-| A2 | `sounds/default-click.m4a` 存在 | 可复用 | 存在，9504 B | ✅ |
-| C2 | 现状色组数 | 只有 `2n+1` / `2n` 两组 | 实测 381/386 两行，**必须整段替换** | ✅ |
-| F1 | `body{display:flex;align-items:center}` | 根因 | `index.css:153/155` 一致 | ✅ |
-| G1 | 现有 hover | 已有 `.more-item:hover` | 1234 存在，改的是配色 | ✅ |
+**专项加分**：改造前先写一次性测量脚本拿硬数据（才有「144px / 176px」「rect 相交 = true」这些前提），而不是凭肉眼调 CSS；`AGENTS.md` 高风险区同步补了 4 条 UI-15 invariants（`--topbar-h` 令牌维护义务 / 主题不得覆盖显示模式 / tag 必须 static / tip 监听引用与捕获阶段），后续任务不会再踩。
 
-**行号偏差**：仅 B3 两处差 1 行（76px 规则在 1382 非 1383、20px 在 1392 非 1393）。
-内容全部正确，**施工时以内容定位、不要机械按行号跳转**。
-
-**基线核对**：文档称 `npm test = 14 项 / 811 断言`。实测 `--skip-browser` = 2/2 PASS、
-`lint` exit 0、`check-worktree` 缺失 0。差异说明：我的 `main = 9c00488` 已含
-`tools/password-gate.mjs`（CM-010），14 项 / 811 断言与当前套件清单一致
-（29/51/52/97/87/107/54/60/40/77/110/46 + lint + check-worktree），**基线与文档相符**。
-
-**施工顺序建议（按风险，非文档的字母序）**：
-
-1. **先做只改 CSS 的 C1/B3/G1** —— 零 DOM 风险、可独立验证，最快拿到可见收益
-2. **B1 命名** 必须与 `theme-entry.mjs:617-618` 同一次提交改，否则套件立刻红
-3. **A1 iOS 解锁** 是真实功能缺陷（非视觉），但**无法在 headless 里验证**（无真实手势解锁语义）→ 需 Human 真机确认
-4. **E1 动 DOM** 放最后，且必须跑全量（`receipt-lifecycle` 54 项钉着 `#receiptStatus` 的 className/innerHTML）
-5. **C3 若选滚动容器方案** ⇒ 单独 commit + 全量，因为会影响 `components.mjs` 的 CDP 真实坐标命中
-
-**Human 已拍板（2026-09-20 21:44）**：
-
-1. **G1 圆角** → 以施工图为准（底两角 16px）；`DESIGN_THEME_SWITCH.md:32` 已由主 AI 同步。
-2. **派发施工** → **已派发给外部 AI，并授权其自行验收 + 合并 main + push**（见 CURRENT TASK）。
-
-**范围外发现（只报告未修）**：
-
-- 仓库根有 **3 个 0 字节乱码未跟踪文件**：`本地仓库`、`来源：直接抓取线上`、`（非文本提取，含真实`
-  —— 是历次 shell 重定向被 MSYS 拆词后的残渣（同样问题在 S4/S5 报告里已记过一次，**至今未清**）。
-  它们会被 `git status` 反复列出，建议 Human 确认后删除（我不擅自动手删文件）。
-- `docs/HANDOFF_14_ITEMS_2026-09-20.md` 本身**尚未入库**（untracked）。
-
----
-
-**5 项决策已拍板**（2026-09-20）。详见 CURRENT TASK。
-
-**路线图**：S1 令牌化 → S2 主题层 → S3 切换入口 → S4 组件化 → S5 PWA（**全部已完成**）。
-
-历史验收记录见归档目录 `docs/handoff/archive/`。
+**提示（非阻塞）**：`history-language` 146 与 `components` 111 这两个数字与 `MEMORY.md` 里记的旧值不同，是 UI-14 期间自然增长，本轮未动它们；我的长期项目笔记会同步。
 
 ## NEXT ACTION
 
-**UI-14 已完成并上线（`main = 47f594f`，已 push origin）。无待办施工项。**
+- 直观上是 UI-15 收尾：本轮改动已完成、自验与反向验证通过、已按 4 个提交落在 `codex/ui-15-layout`。
+- **等待 Human 决定是否 push 到远端。** 本仓 `AGENTS.md` 规定 push 属 Human 明确门禁，本轮授权边界是「修 Bug + 自验」，未包含 push，因此**没有推送**。需要时执行（须在 Bash 工具里跑，PowerShell 下凭据助手会失败）：
 
-### 建议 Human 跟进的事项
+```bash
+git -c http.version=HTTP/1.1 -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin codex/ui-15-layout
+```
 
-1. **真机确认 A1**：iOS Safari 上首次点击是否真的能出声（headless 无法验证）。
-2. **真机确认 D2**：首次打开编辑模态框时，气泡是否显示约 2.5s 后自动消失。
-3. **视觉复核 G1 / B2 / E1**：窄屏更多面板底部圆角、四色方块图标、回执卡新版布局
-   是否与设计稿 18:38 / 24:111 一致（自动化只能验结构，观感需人眼）。
-4. **3 个 0 字节乱码文件**：本轮已按 Human 指示删除（`本地仓库` / `来源：直接抓取线上` /
-   `（非文本提取，含真实`），确认仓库根已清净。
-5. **`docs/HANDOFF_14_ITEMS_2026-09-20.md`**：该施工图此前未入库，本轮随 UI-14 一并提交。
-
-### 已知遗留（非本次引入，来自既往报告）
-
-- `history.css:143` 的死规则 `var(--notion-text-secondary)`（该变量从未定义，声明恒回落继承值）。
-  S1 报告已记、S4 报告再次提及，**至今未清**。建议并入下一张卡片。
-- **`el.click()` 盲区**：本仓套件默认用程序化 `click()`，不走浏览器命中测试；
-  凡涉及浮层/遮罩/层叠的功能，必须用 CDP 真实坐标事件 + `elementFromPoint` 验证。
-  本轮 G1（遮罩 z-index 90 < 顶栏 100）属此类，已按此纪律验。
-
-### 流程提示（供下一轮沿用）
-
-- 反向验证驱动模式已成熟：`git show <base-ref>:<file>` 覆盖 → 断言必须 FAIL → 还原 → 必须全绿。
-  **改造合并进 main 后 `BASE_REF=main` 会失效**，须显式指定改造前的 commit SHA。
-- push 必须在 **Bash 工具**里跑（PowerShell 下 `credential.helper=manager` 会 spawn `sh` 失败）。
+- 三条**自动化验不了、需要真机肉眼确认**的事项：
+    1. P4 的 48px 在 iPhone 安全区 / 刘海机型下是否偏紧（headless 只能量到几何距离）。
+    2. P2 在触屏上「点页面任意处关闭」的手感（`pointerdown` 语义在移动端是否贴合）。
+    3. P1 list 主题两列卡片的实际观感（窄卡 + 省略号是否符合设计预期）。
+- 遗留（非本轮引入，已记过两次）：`history.css` 的 `var(--notion-text-secondary)` 死规则仍未清理，建议并入下一张卡片。
