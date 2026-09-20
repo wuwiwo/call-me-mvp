@@ -1147,25 +1147,33 @@ p.subtitle {
     display: block;
 }
 
-/* ===== ⋯ 更多菜单（从顶栏下方展开，全宽浮空卡） =====
-   行高 56 保证 ≥44 的触控标准；点遮罩关闭。 */
+/* ===== ⋯ 更多菜单 =====
+   窄屏（≤768）：紧贴顶栏下沿展开，宽度与顶栏一致、四角直角 —— 对齐设计稿
+     `08 顶栏 · 更多菜单 · 顶部展开`（面板 x0 贴顶栏下沿 w375 / 项高 56 /
+     项圆角 14 / 遮罩 rgba(55,53,47,.32)、不压顶栏）。
+   宽屏（≥769）：传统下拉 —— 锚在 ⋯ 按钮下方、右对齐、圆角 14。
+   两种形态共用一套开合逻辑，只有定位基准与圆角不同。
+
+   ⚠️ 定位刻意**不写死顶栏高度**：顶栏高度随断点内容（头像 36/32、字号）在
+   72/61/57 之间浮动，硬编码会露出几像素的缝。窄屏改成以 `.top-bar` 为定位
+   基准（`top: 100%` 天然等于"顶栏下沿"），遮罩则整屏铺满、靠层级让顶栏浮在
+   上面 —— 两处都不再依赖任何高度数值。 */
+
+/* 窄屏：不设 position，让面板以 `.top-bar`（position: fixed）为定位基准 */
 .more-menu {
-    position: relative;
     display: inline-block;
 }
 
 .more-panel {
-    position: fixed;
-    top: 68px;
-    left: 12px;
-    right: 12px;
-    max-width: 456px;
-    margin: 0 auto;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
     background: var(--light);
-    border: 1px solid var(--notion-border);
-    border-radius: 20px;
-    box-shadow: var(--shadow-lg);
-    padding: 8px;
+    border: none;
+    border-radius: 0;
+    box-shadow: 0 12px 32px rgba(55, 53, 47, 0.14);
+    padding: 8px 12px 16px;
     z-index: 900;
     opacity: 0;
     visibility: hidden;
@@ -1174,6 +1182,28 @@ p.subtitle {
         opacity 0.2s var(--ease-premium),
         transform 0.2s var(--ease-premium),
         visibility 0.2s linear;
+}
+
+/* 宽屏：锚在 ⋯ 按钮正下方的传统下拉 */
+@media (min-width: 769px) {
+    .more-menu {
+        position: relative;
+    }
+
+    .more-panel {
+        top: calc(100% + 20px);
+        right: 0;
+        left: auto;
+        width: 240px;
+        border: 1px solid var(--notion-border);
+        border-radius: 14px;
+        padding: 8px;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .more-item {
+        min-height: 44px;
+    }
 }
 
 .more-panel.show {
@@ -1191,7 +1221,7 @@ p.subtitle {
     padding: 0 16px;
     background: none;
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     font-family: inherit;
     font-size: 0.95rem;
     font-weight: 500;
@@ -1245,19 +1275,35 @@ p.subtitle {
     color: var(--text-faint);
 }
 
-/* 遮罩层级低于面板（900）、高于顶栏（100） */
+/* 遮罩：整屏铺满 + 层级低于顶栏 —— 顶栏（100）会自然浮在遮罩之上，
+   于是"顶栏区域不被压暗"是层级的结果，而不是靠算高度切出来的。
+   层级 ⚠️ 必须**低于顶栏**（100）：
+     `.top-bar` 有 `backdrop-filter`，会创建独立层叠上下文 —— 面板虽写
+     `z-index: 900`，实际只在 top-bar 内部生效，整体仍处在 top-bar 的 100 层。
+     遮罩若高于 100（原先是 800）就会盖在面板之上：菜单"看得见但点不到"，
+     点任意菜单项都只命中遮罩 → 仅关闭菜单、功能永不触发。
+   因此这里取 90：< 100（面板可点击）且 > 内容区的 20/10（仍能压暗并接管点击）。 */
 .more-backdrop {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 800;
+    background: var(--scrim-modal);
+    z-index: 90;
     display: none;
 }
 
 .more-backdrop.show {
     display: block;
+}
+
+/* 宽屏沿用同一套遮罩，但只做轻压暗：传统下拉不该抢走页面的注意力。
+   必须写在基础规则**之后**才能覆盖上面的 `var(--scrim-modal)`。 */
+@media (min-width: 769px) {
+    .more-backdrop {
+        background: rgba(55, 53, 47, 0.12);
+    }
 }
 
 /* ===== 首页内历史视图 ===== */
@@ -1419,13 +1465,6 @@ p.subtitle {
         gap: 8px;
     }
 
-    .more-panel {
-        top: 62px;
-        left: 8px;
-        right: 8px;
-        border-radius: 18px;
-    }
-
     .more-item {
         min-height: 52px;
         padding: 0 12px;
@@ -1467,13 +1506,6 @@ p.subtitle {
 
     .user-info #userName {
         max-width: 34vw;
-    }
-
-    .more-panel {
-        top: 58px;
-        left: 6px;
-        right: 6px;
-        border-radius: 16px;
     }
 
     .more-item {
