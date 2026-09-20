@@ -74,6 +74,17 @@
     --danger-wash: rgba(229, 80, 80, 0.1);
     --danger-soft: rgba(229, 80, 80, 0.2);
 
+    /* 按钮图标 6 色循环（UI-14 C2）——
+       命名按**语义槽位**而非色相，日后换色只改这里。
+       前两色沿用改造前的蓝/金，视觉上与旧版衔接；后四色补齐彩虹循环。
+       图标底统一用 color-mix(… 12%, transparent) 表达，不再逐个手写 rgba。 */
+    --c1: #337ea9; /* 蓝（原 --notion-blue） */
+    --c2: #d4af37; /* 金（原 --gold-wash 基色） */
+    --c3: #0fa480; /* 薄荷 */
+    --c4: #e9a15a; /* 橙 */
+    --c5: #8a6bb1; /* 紫 */
+    --c6: #e55050; /* 红 */
+
     /* 深色浮层 */
     --overlay-scrim: rgba(0, 0, 0, 0.6);
     --overlay-shadow: rgba(0, 0, 0, 0.3);
@@ -377,15 +388,37 @@ p.subtitle {
     transform: rotate(-8deg) scale(1.08);
 }
 
-/* 色彩点缀：按钮图标交替蓝/金 */
-.bubble-btn:nth-child(2n + 1) .bubble-content i {
-    background: var(--accent-chip-strong);
-    color: var(--notion-blue);
+/* 色彩点缀：按钮图标 6 色循环（UI-14 C2）
+ *
+ * ⚠️ 这里**整段替换**了原先的 `:nth-child(2n+1)` / `(2n)` 两条蓝金交替规则。
+ * 若只在其后追加 6n 规则，两条规则特异度相同 → 靠源码顺序决胜，
+ * 后面的 6n 会覆盖前者，但**残留的 2n 规则仍会在 6n 未覆盖的槽位生效**，
+ * 结果是配色顺序错乱的隐性 bug。要加新色板就改下面这 6 行，别叠加。
+ *
+ * 图标底 = 同色 12% 透明度，用 color-mix 从 --cN 派生，避免手写 6 组 rgba。 */
+.bubble-btn:nth-child(6n + 1) .bubble-content i {
+    background: color-mix(in srgb, var(--c1) 12%, transparent);
+    color: var(--c1);
 }
-
-.bubble-btn:nth-child(2n) .bubble-content i {
-    background: var(--accent-gold-soft);
-    color: var(--gold-text);
+.bubble-btn:nth-child(6n + 2) .bubble-content i {
+    background: color-mix(in srgb, var(--c2) 12%, transparent);
+    color: var(--c2);
+}
+.bubble-btn:nth-child(6n + 3) .bubble-content i {
+    background: color-mix(in srgb, var(--c3) 12%, transparent);
+    color: var(--c3);
+}
+.bubble-btn:nth-child(6n + 4) .bubble-content i {
+    background: color-mix(in srgb, var(--c4) 12%, transparent);
+    color: var(--c4);
+}
+.bubble-btn:nth-child(6n + 5) .bubble-content i {
+    background: color-mix(in srgb, var(--c5) 12%, transparent);
+    color: var(--c5);
+}
+.bubble-btn:nth-child(6n + 6) .bubble-content i {
+    background: color-mix(in srgb, var(--c6) 12%, transparent);
+    color: var(--c6);
 }
 
 .countdown {
@@ -1059,6 +1092,18 @@ p.subtitle {
     background: rgba(55, 53, 47, 0.1);
 }
 
+/* ⚠️ 顺序补偿（UI-14 C2 引入 `.btn` 时发现的既有隐患）：
+   `#addCustomButton` 的 class 是 `"btn add-btn"`，而 `.add-btn` 定义在文件**前半部**（784）。
+   `.btn` 与 `.add-btn` 特异度相同（都是单类）→ 后定义的 `.btn` 会覆盖前者的
+   border-radius(10→8) / padding(12→10px 24px) / font-weight，
+   把「宽 100% 的虚线添加按钮」压成小号实心感按钮。这里按原值重新声明，补回顺序劣势。
+   不要删；若将来 `.add-btn` 原文移到 `.btn` 之后，本块可一并删除。 */
+.add-btn {
+    border-radius: 10px;
+    padding: 12px;
+    font-weight: 600;
+}
+
 .save-btn {
     background: var(--notion-blue);
     padding: 10px 24px;
@@ -1405,6 +1450,14 @@ p.subtitle {
     text-align: center;
     cursor: pointer;
     transition: color 0.2s ease;
+    /* UI-14 C3：按钮多到 7 个时入口会被挤出视口 → 吸底常驻。
+       低风险方案：不新建滚动容器（那会改变布局盒、影响 components.mjs 的
+       CDP 真实坐标命中断言），只让入口粘在容器底。
+       ⚠️ 背景必须不透明，否则按钮会从底下透出来。 */
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--container-bg, var(--light));
 }
 
 .history-entry:hover {
@@ -1508,6 +1561,47 @@ p.subtitle {
 
 [data-theme='list'] .history-entry {
     color: var(--text-muted);
+}
+
+/* ===== UI-14 B4：自定义按钮模态框适配 list 主题 =====
+   此前 `[data-theme='list']` **完全没覆盖模态框** —— 模态框继承 :root 的蓝/金旧配色，
+   与按钮列表主题的薄荷调脱节（这不是回归，是 S3/S4 漏做）。
+   只覆盖颜色/圆角/描边，**不动任何 DOM 与尺寸语义**。 */
+[data-theme='list'] #buttonEditModal .modal-content {
+    border-radius: 14px;
+}
+
+[data-theme='list'] .button-edit-item,
+[data-theme='list'] .custom-button-form {
+    background: #fff;
+    border: 1px solid rgba(55, 53, 47, 0.08);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+[data-theme='list'] .buttons-edit-area {
+    gap: 12px;
+}
+
+[data-theme='list'] .mode-indicator {
+    background: rgba(15, 164, 127, 0.1);
+    color: #0ba380;
+    border-radius: 999px;
+}
+
+[data-theme='list'] .add-btn {
+    background: rgba(15, 164, 127, 0.06);
+    color: #0ba380;
+    border: 1px dashed #0fa480;
+}
+
+[data-theme='list'] .modal-header {
+    border-bottom-color: rgba(55, 53, 47, 0.08);
+}
+
+/* 保存按钮在 list 主题用薄荷主色（对齐 06 屏定稿） */
+[data-theme='list'] .save-btn {
+    background: #0fa480;
 }
 
 /* 移动端优化 */
