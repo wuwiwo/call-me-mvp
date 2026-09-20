@@ -37,8 +37,10 @@ export const CONFIG = {
     // **不在 JS 里复制第二份色值**（与 CM-010 的单一来源纪律同源）。
     // `js/modules/theme.js` 只从这里读取默认主题、合法列表与展示名键。
     themes: {
-        default: 'bubble', // bubble = 现状气泡列表
-        valid: ['bubble', 'list'], // list = 按钮列表主题
+        default: 'bubble', // bubble = 全宽胶囊气泡列表（意象名「浮光絮语」）
+        valid: ['bubble', 'list'], // list = 单列按钮列表主题（意象名「青笺行」）
+        // ⚠️ 这里的 bubble/list 是**存储值**（写进 localStorage、写进 CSS 选择器），
+        // 不改；用户看到的「浮光絮语 / 青笺行」是展示名，走 labelKeys 经 i18n 渲染。
         // LocalStorage key。与 appLanguage / buttonDisplayMode 一致，存**纯字符串**
         // （不是 JSON）—— 便于手工排查与控制台验证。
         // ⚠️ 同时被两个 html 的 <head> 防闪内联脚本按字面引用，改名必须一起改。

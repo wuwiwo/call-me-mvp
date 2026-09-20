@@ -12,8 +12,10 @@ export const TRANSLATIONS = {
         },
         theme: {
             sectionTitle: '主题',
-            bubble: '气泡列表',
-            list: '按钮列表'
+            // UI-14 B1：主题改「意象命名」（Human 拍板）。
+            // 名字是**用户可见文案**，改它要同步 tools/theme-entry.mjs 的 golden 断言。
+            bubble: '浮光絮语',
+            list: '青笺行'
         },
         mainPage: {
             subtitle: '点击下方按钮，我会立即收到通知',
@@ -109,8 +111,9 @@ export const TRANSLATIONS = {
         },
         theme: {
             sectionTitle: 'Theme',
-            bubble: 'Bubble list',
-            list: 'Button list'
+            // B1：保留「光 / 纸笺」意象，不做字面直译。
+            bubble: 'Gleam Whisper',
+            list: 'Cyan Scroll'
         },
         mainPage: {
             subtitle: 'Click the button below to notify me immediately',
@@ -206,8 +209,9 @@ export const TRANSLATIONS = {
         },
         theme: {
             sectionTitle: 'テーマ',
-            bubble: 'バブルリスト',
-            list: 'ボタンリスト'
+            // B1：「浮光」（揺らめく光）／「青箋」（青い便箋）。
+            bubble: '浮光の便り',
+            list: '青箋の行'
         },
         mainPage: {
             subtitle: '下のボタンをクリックすると、すぐに通知が届きます',
@@ -303,8 +307,9 @@ export const TRANSLATIONS = {
         },
         theme: {
             sectionTitle: '테마',
-            bubble: '버블 목록',
-            list: '버튼 목록'
+            // B1：「잔물결 빛」（물결처럼 일렁이는 빛）／「푸른 전장（箋）」（푸른 편지지).
+            bubble: '잔물결 빛',
+            list: '푸른 전장'
         },
         mainPage: {
             subtitle: '아래 버튼을 클릭하면 즉시 알림이 전송됩니다',

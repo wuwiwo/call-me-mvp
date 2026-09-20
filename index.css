@@ -1290,6 +1290,21 @@ p.subtitle {
     color: var(--text-secondary);
 }
 
+/* UI-14 B2：主题图标 = 2×2 四色方块（内联 SVG，对齐设计稿 24:129）。
+   SVG 自身 16×16，箭头仍按 20px 列宽居中对齐，与 FA 图标同轴。 */
+.theme-swatch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+.theme-swatch svg {
+    display: block;
+}
+
 .more-item-label {
     flex: 1;
 }

@@ -398,7 +398,7 @@ JSONBin 不写缓存（实时数据）；SW 更新策略 skipWaiting + clients.c
 | C1 | `.btn` 是否有 CSS 定义 | 无（根因） | `index.css` 中 `.btn` 无任何定义（仅有 `.btn-text` 785/796、`.save-btn` 1029） | ✅ 根因成立 |
 | C1 | `index.html:275` | `class="btn"` | 一致（`#resetButtons`） | ✅ |
 | C1 | 顺序风险 `#saveProfile` | `class="btn save-btn"`，`.save-btn` 在后会覆盖 | `index.html:229` 一致；`.save-btn` 在 1029 | ✅ 风险真实 |
-| B1 | `theme-entry.mjs:617-618` 硬断言旧主题名 | `气泡列表` / `按钮列表` | 逐字一致，**必须同步改** | ✅ |
+| B1 | `theme-entry.mjs:617-618` 硬断言旧主题名 | `气泡列表` / `按钮列表` | 逐字一致，**必须同步改** | ✅ 已改（commit 见下） |
 | B2 | `index.html:112/118` 图标 | `fa-circle` / `fa-list` | 一致 | ✅ |
 | B2 | `index.css:1238` 选择器 | 只匹配 `<i>` | `.more-item > i:first-child`，**换成 span 会失效** | ✅ |
 | B3 | `index.css:1383` 容器上边距 | `margin-top: 76px` | 实测 **1382**（差 1 行，内容一致） | ✅ 内容对 |

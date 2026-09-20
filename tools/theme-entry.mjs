@@ -614,8 +614,10 @@ const readTexts = `(() => {
 const zhTexts = JSON.parse(await evalJs(readTexts));
 check('zh 入口文案 = 查看通知历史', zhTexts.entry === '查看通知历史', String(zhTexts.entry));
 check('zh 主题分区 = 主题', zhTexts.themeLabel === '主题', String(zhTexts.themeLabel));
-check('zh bubble = 气泡列表', zhTexts.bubble === '气泡列表', String(zhTexts.bubble));
-check('zh list = 按钮列表', zhTexts.list === '按钮列表', String(zhTexts.list));
+// UI-14 B1：主题名由「气泡列表 / 按钮列表」改为意象命名（Human 拍板），
+// 改文案必须同步这里，否则套件立刻红 —— 这是故意的耦合，防止改名漏改某一语言。
+check('zh bubble = 浮光絮语', zhTexts.bubble === '浮光絮语', String(zhTexts.bubble));
+check('zh list = 青笺行', zhTexts.list === '青笺行', String(zhTexts.list));
 
 for (const lang of ['en', 'ja', 'ko']) {
     await seed('/index.html', { appTheme: null, appLanguage: lang });
