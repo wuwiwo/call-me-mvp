@@ -4,32 +4,111 @@
 
 ## CURRENT TASK
 
-**S1-S5 主题切换全套任务卡已派发。** 外部 AI 按 [`docs/TASK_CARDS.md`](TASK_CARDS.md) 依次执行 S1→S5。
+**UI-14：14 项改动（音效 / 主题 / 按钮 / 设置模态框 / 回执冷却 / 历史页 / 顶部菜单）**
 
-- S1：CSS 令牌化（视觉零变化）← **当前**
-- S2：主题层（data-theme + 持久化 + 防闪）
-- S3：切换入口（甲顶栏重构 + 新主题布局 + 历史入口不跳转）
-- S4：组件化
-- S5：PWA 准备
+完整施工图（**开工前必读**）：[`docs/HANDOFF_14_ITEMS_2026-09-20.md`](HANDOFF_14_ITEMS_2026-09-20.md)
 
-设计定稿见 [`docs/DESIGN_THEME_SWITCH.md`](DESIGN_THEME_SWITCH.md)（Human 已逐条拍板）。
+设计稿精确规格：Ardot `727742261679190`（施工图 §1 已把关键节点的填充/圆角/间距/字重逐条抄录，
+**不需要再开画布**）。
 
-Human 5 项决策：历史入口纳入（首页内切换不跳转）/ 标题对比度暂不修 / 首发 2 主题 / prefers-color-scheme 否 / S1 独立任务卡。
+### Human 拍板（2026-09-20）
 
-Human 新增要求：页面不跳转 / 保持轻量 / 工程化组件化 / 准备接入 PWA。
+| 决策点 | 结论 |
+| --- | --- |
+| 主题中文名 | bubble = **浮光絮语**；list = **青笺行** |
+| 历史 tag | **真三态**（未回执 / 已回执 / 失败）→ 必须新增 `receipt` 字段并回写历史 |
+| G1 圆角冲突 | **以施工图为准**：窄屏面板「顶/左/右三边直角 + 底两角 16px」；`DESIGN_THEME_SWITCH.md:32` 已同步改（主 AI 已完成） |
+
+### 本轮授权（Human 2026-09-20 21:44 明示）
+
+**执行 AI 自行验收 + 合并 main + push，不需回主 AI 验收。**
+
+即：施工图 §4 的 6 个原子提交全部落在 `codex/ui-14` 分支 → 自验通过后
+`git checkout main && git merge --ff-only codex/ui-14` → push origin main。
+**这是 Human 明确给出的授权，不属越权**（区别于既往"merge-only 不含 push"的默认约束）。
+
+### SCOPE
+
+`docs/HANDOFF_14_ITEMS_2026-09-20.md` §2 的 A/B/C/D/E/F/G 共 **14 条**：
+
+- **A 音效组（4）**：A1 iOS 不生效（持久化 + unlock + 失败重试）/ A2 全局 click 音效 /
+  A3 保存成功 toast + 成功音 / A4 音效开关
+- **B 主题组（4）**：B1 改名（浮光絮语 / 青笺行）/ B2 四色方块图标 / B3 list 内容上移 /
+  B4 模态框适配 list
+- **C 按钮组（3）**：C1 恢复默认次级按钮（**根因：`.btn` 无 CSS 定义**）/ C2 六彩循环 /
+  C3 历史入口保持可见
+- **D 编辑模态框（1）**：D2「布局调整」气泡提示
+- **E 回执 / 冷却（2）**：E1 回执卡改新版（**动 DOM，风险最高**）/ E2 文案左对齐
+- **F 历史页（3）**：F1 垂直居中 + 上移 / F2 右上角三态 tag（**XSS 纪律**）/ F3 清除 toast 统一
+- **G 顶部更多栏（1）**：G1 底部圆角 + hover 淡绿
+
+### NON-GOALS
+
+- 不改 `CONFIG.password` 语义、不动密码闸门
+- 不改回执轮询节奏（`2s × 15`，`receipt-lifecycle.mjs` 钉死）
+- 不改任何 DOM 契约 id（施工图 §5 列出 10 个）
+- 不改 `zh.history.webhookLabel`（必须保持 `Webhook`，`input-safety.mjs:1024` 钉死）
+- 不为凑测试而改断言；新增断言必须**先反向验证**确认有区分力
+
+### ACCEPTANCE CRITERIA
+
+1. 14 条**逐条**实现，逐条给出验证方式（不是笼统"已完成"）
+2. `node tools/run-all.mjs` 全量 **0 失败**（基线 14 项 / 811 断言；新增断言允许，既有断言数不得减少）
+3. `eslint .` 0 error；`prettier --check` 改动文件 0；`node tools/check-worktree.mjs` 缺失 0
+4. **B1 改名必须与 `tools/theme-entry.mjs:617-618` 同一次提交**（否则套件立刻红）
+5. **E1 动 DOM 后 `receipt-lifecycle.mjs` 54 项必须全绿**
+6. **F2 的 tag 必须走闭合枚举 + `textContent`**（不得把 LocalStorage 值拼进 class）
+7. 涉及浮层/遮罩的验证**必须**用 CDP 真实坐标（`Input.dispatchMouseEvent` + `elementFromPoint`），
+   不得只用 `el.click()`
+8. **A1 无法 headless 验证** → 必须在报告里显式声明"需真机确认"，不得声称已验证
+9. 每个修复必须做**反向验证**（把 bug 放回去，确认新断言真的 FAIL）
+
+### VERIFICATION（自报告须含）
+
+- 每个 commit 的 SHA + 改动文件 + 对应施工图条目号
+- `run-all` 全量输出（项数 / 断言数 / 耗时 / 退出码）
+- 反向验证的重跑结果（改造前 vs 改造后的 pass/fail 对比）
+- 明确列出**未验证**或**有偏离**的条目及其理由
+
+### BRANCH
+
+`codex/ui-14`，基线 = 开工前实测 `main` HEAD（`git rev-parse --short HEAD` 确认；
+建分支后**立即** `node tools/check-worktree.mjs`）。
+
+### 建议施工顺序（按风险，非文档字母序）
+
+1. **C1 / B3 / G1**（只改 CSS，零 DOM 风险，最快见效）
+2. **B1 + `theme-entry.mjs:617-618`**（同提交）
+3. **B2 / C2 / B4**（CSS + 少量 html）
+4. **A 组**（音效，独立性强）
+5. **F 组**（历史页，含 XSS 纪律）
+6. **E1 放最后**（动 DOM，必须全量）
+
+---
+
+**（历史）S1-S5 主题切换全套任务卡已完成并合并推送。** 归档见
+[`docs/handoff/archive/INDEX.md`](handoff/archive/INDEX.md)。
 
 ## EXECUTION STATUS
 
 ```text
-状态：READY_FOR_REVIEW — S1–S5 全部完成并已合并 main、push；S5 待主 AI 验收
-当前分支：main（= origin/main = 30dc328）
-工作区：干净；check-worktree 缺失 0
-远端：origin/main = 30dc328（S5 已推送）
+状态：DISPATCHED — UI-14（14 项改动）已派发，等外部 AI 执行
+当前分支：main（= origin/main = 9c00488）
+工作区：干净（4 个未跟踪文件：本施工图 + 3 个 0 字节乱码残渣）
+       ；check-worktree 缺失 0；lint exit 0
+基线：run-all 14 项 / 811 断言 / 0 失败（最近全量 313.7s）
 
-外部 AI 执行流程（Human 授权自行验收 + 合并 + push）：
-  S1 → S2 → S3 → S4 → S5
-  ✓    ✓    ✓    ✓    ✓ 全部完成
+主 AI 已完成的准备（本次派发）：
+  ✓ 施工图核对（R1，见 REVIEW RESULT）—— 15 处抽查全部与源码吻合
+  ✓ G1 圆角冲突裁决并同步 DESIGN_THEME_SWITCH.md:32
+  ✓ 任务卡写入本文件 CURRENT TASK
+
+外部 AI 执行流程（Human 2026-09-20 21:44 授权：自行验收 + 合并 + push）：
+  建 codex/ui-14 → 实现 14 条 → 反向验证 → run-all 全量 → 自验收
+  → merge --ff-only main → push origin main → 回填 EXECUTION REPORT
 ```
+
+### 历史（S1–S5，已完成）
 
 S5 合并与推送实录：
 
@@ -47,8 +126,7 @@ S4 合并与推送实录：
   → `8f97e32..abf8d29 main -> main`；`ls-remote` 核对远端 = 本地 = `abf8d29`
 - checkout main 时级联再次触发（33 个文件被搬走），post-checkout 守卫全量恢复，零丢失。
 
-> 注：CURRENT TASK 区块仍写着「S1 ← 当前」，已过期 —— 按协议该区块由主 AI 维护，
-> 请主 AI 在验收时同步为「S1–S5 已完成，待验收」。
+> 注：以上 S1–S5 实录为历史记录，保留供追溯。CURRENT TASK 已更新为 UI-14。
 
 ## EXECUTION REPORT
 
@@ -309,23 +387,88 @@ JSONBin 不写缓存（实时数据）；SW 更新策略 skipWaiting + clients.c
 
 ## REVIEW RESULT
 
+### R1：`docs/HANDOFF_14_ITEMS_2026-09-20.md`（14 项改动施工图）— **已核对，已裁决**
+
+**结论：施工图可直接用。逐条抽查 15 处代码/测试断言，全部与真实源码吻合，未发现事实性错误。**
+
+核对方式：只读评估（不建分支、不改代码），逐条比对文档声称的行号与真实文件内容。
+
+| 组 | 抽查项 | 文档声称 | 实测 | 判定 |
+| --- | --- | --- | --- | --- |
+| C1 | `.btn` 是否有 CSS 定义 | 无（根因） | `index.css` 中 `.btn` 无任何定义（仅有 `.btn-text` 785/796、`.save-btn` 1029） | ✅ 根因成立 |
+| C1 | `index.html:275` | `class="btn"` | 一致（`#resetButtons`） | ✅ |
+| C1 | 顺序风险 `#saveProfile` | `class="btn save-btn"`，`.save-btn` 在后会覆盖 | `index.html:229` 一致；`.save-btn` 在 1029 | ✅ 风险真实 |
+| B1 | `theme-entry.mjs:617-618` 硬断言旧主题名 | `气泡列表` / `按钮列表` | 逐字一致，**必须同步改** | ✅ |
+| B2 | `index.html:112/118` 图标 | `fa-circle` / `fa-list` | 一致 | ✅ |
+| B2 | `index.css:1238` 选择器 | 只匹配 `<i>` | `.more-item > i:first-child`，**换成 span 会失效** | ✅ |
+| B3 | `index.css:1383` 容器上边距 | `margin-top: 76px` | 实测 **1382**（差 1 行，内容一致） | ✅ 内容对 |
+| B3 | `index.css:1393` 头部下边距 | `margin-bottom: 20px` | 实测 **1392**（差 1 行） | ✅ 内容对 |
+| F1 | `history.html` body class | 无 `history-page`（死规则） | `<body>`，`history.css:327/333` 确为死规则 | ✅ |
+| F3 | `.history-toast` 无样式 | history.css 里没有 | 实测 **false**（确无）；`history.js` 自建该节点为 **true** | ✅ 双向证实 |
+| E1 | 10 个 DOM 契约 id 存在性 | 全部保留 | 10/10 全部在 `index.html` | ✅ |
+| A2 | `sounds/default-click.m4a` 存在 | 可复用 | 存在，9504 B | ✅ |
+| C2 | 现状色组数 | 只有 `2n+1` / `2n` 两组 | 实测 381/386 两行，**必须整段替换** | ✅ |
+| F1 | `body{display:flex;align-items:center}` | 根因 | `index.css:153/155` 一致 | ✅ |
+| G1 | 现有 hover | 已有 `.more-item:hover` | 1234 存在，改的是配色 | ✅ |
+
+**行号偏差**：仅 B3 两处差 1 行（76px 规则在 1382 非 1383、20px 在 1392 非 1393）。
+内容全部正确，**施工时以内容定位、不要机械按行号跳转**。
+
+**基线核对**：文档称 `npm test = 14 项 / 811 断言`。实测 `--skip-browser` = 2/2 PASS、
+`lint` exit 0、`check-worktree` 缺失 0。差异说明：我的 `main = 9c00488` 已含
+`tools/password-gate.mjs`（CM-010），14 项 / 811 断言与当前套件清单一致
+（29/51/52/97/87/107/54/60/40/77/110/46 + lint + check-worktree），**基线与文档相符**。
+
+**施工顺序建议（按风险，非文档的字母序）**：
+
+1. **先做只改 CSS 的 C1/B3/G1** —— 零 DOM 风险、可独立验证，最快拿到可见收益
+2. **B1 命名** 必须与 `theme-entry.mjs:617-618` 同一次提交改，否则套件立刻红
+3. **A1 iOS 解锁** 是真实功能缺陷（非视觉），但**无法在 headless 里验证**（无真实手势解锁语义）→ 需 Human 真机确认
+4. **E1 动 DOM** 放最后，且必须跑全量（`receipt-lifecycle` 54 项钉着 `#receiptStatus` 的 className/innerHTML）
+5. **C3 若选滚动容器方案** ⇒ 单独 commit + 全量，因为会影响 `components.mjs` 的 CDP 真实坐标命中
+
+**Human 已拍板（2026-09-20 21:44）**：
+
+1. **G1 圆角** → 以施工图为准（底两角 16px）；`DESIGN_THEME_SWITCH.md:32` 已由主 AI 同步。
+2. **派发施工** → **已派发给外部 AI，并授权其自行验收 + 合并 main + push**（见 CURRENT TASK）。
+
+**范围外发现（只报告未修）**：
+
+- 仓库根有 **3 个 0 字节乱码未跟踪文件**：`本地仓库`、`来源：直接抓取线上`、`（非文本提取，含真实`
+  —— 是历次 shell 重定向被 MSYS 拆词后的残渣（同样问题在 S4/S5 报告里已记过一次，**至今未清**）。
+  它们会被 `git status` 反复列出，建议 Human 确认后删除（我不擅自动手删文件）。
+- `docs/HANDOFF_14_ITEMS_2026-09-20.md` 本身**尚未入库**（untracked）。
+
+---
+
 **5 项决策已拍板**（2026-09-20）。详见 CURRENT TASK。
 
-**路线图**：S1 令牌化 → S2 主题层 → S3 切换入口 → S4 组件化 → S5 PWA。
+**路线图**：S1 令牌化 → S2 主题层 → S3 切换入口 → S4 组件化 → S5 PWA（**全部已完成**）。
 
 历史验收记录见归档目录 `docs/handoff/archive/`。
 
 ## NEXT ACTION
 
-外部 AI 请读取 `docs/TASK_CARDS.md`，从 S1 开始执行：
+外部 AI 请按以下流程执行 **UI-14**（14 项改动）：
 
-1. 读 `docs/DESIGN_THEME_SWITCH.md` 第 4/5 节（令牌轴 / 硬约束）
-2. 从 main 创建 `codex/s1-tokenization`（切分支后立即 `node tools/check-worktree.mjs`）
-3. 按 S1 任务卡的 ACCEPTANCE CRITERIA 实现 + 自验
-4. `node tools/run-all.mjs` 全量复核
-5. 快进合并到 main（切 main 时若触发级联，守卫会自动恢复）
-6. push（直连失败时带代理 `git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main`）
-7. 开始 S2（从 S1 合并后的 main HEAD 创建 `codex/s2-theme-layer`）
-8. 依次完成 S2→S3→S4→S5
+1. 读 `docs/HANDOFF_14_ITEMS_2026-09-20.md`（施工图，含设计稿精确取数 —— 不需要开 Ardis 画布）
+2. 读本文件 `## CURRENT TASK` 的 SCOPE / NON-GOALS / ACCEPTANCE CRITERIA
+3. 从 main 创建 `codex/ui-14`（`git rev-parse --short HEAD` 确认基线；
+   建分支后**立即** `node tools/check-worktree.mjs`）
+4. 按建议顺序施工：**C1/B3/G1（纯 CSS） → B1+golden 断言 → B2/C2/B4 → A 组 → F 组 → E1（最后）**
+5. 每个 bug 修复做**反向验证**（把 bug 放回去确认断言 FAIL）
+6. `node tools/run-all.mjs` 全量（基线 14 项 / 811 断言，**0 失败**）
+7. `eslint .` + `prettier --check` 改动文件 + `git diff --check` + `check-worktree`
+8. **Human 已授权自行验收**：通过后 `git checkout main && git merge --ff-only codex/ui-14`
+   （切 main 若触发级联，守卫会自动恢复；合并后立即跑 `check-worktree.mjs`）
+9. push：`git -c http.version=HTTP/1.1 -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main`
+   （**必须在 Bash 工具里跑** —— PowerShell 下会 `cannot spawn sh`）
+10. 回填本文件的 `EXECUTION STATUS` / `EXECUTION REPORT`（14 条逐条给证据 +
+    明确列出未验证 / 有偏离的条目）
 
-**每张卡完成后更新本文件的 EXECUTION STATUS / EXECUTION REPORT**（简要记录：提交 SHA、改动文件、测试结果）。
+**基线与已知项**：
+
+- `main = 9c00488`；lint exit 0；check-worktree 缺失 0
+- `A1`（iOS 音频解锁）**headless 无法验证** → 必须显式声明"需真机确认"
+- 施工图 B3 两处行号偏 1（内容无误），**按内容定位**
+- `docs/DESIGN_THEME_SWITCH.md:32` 已改（G1 裁决落地），施工时勿再回改
