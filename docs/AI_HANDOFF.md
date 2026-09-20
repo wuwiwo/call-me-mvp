@@ -54,6 +54,8 @@
 
 `codex/ui-15-layout`，基线 `c2030c4`（UI-14 收尾提交，`main = origin/main`）。
 
+> 实际执行偏离：本轮命令被重复执行，三个提交直接落在 `main`，未按任务分支隔离。任务分支 `codex/ui-15-layout` 在收口时已删除（内容与 `main` 完全一致，零差异）。
+
 ## EXECUTION STATUS
 
 ```text
@@ -61,20 +63,21 @@
 分支：**main**（偏离：本轮命令重复执行，提交直接落在 main 未按任务分支隔离；**未 push**）
 提交：60bec65  产品代码（P1 显示模式归位 / P2 气泡常驻 / P3 tag 三列 / P4 顶部对齐）
       5348172  测试（tools/ui-layout.mjs + run-all 注册）
-      随 HEAD   面板换版 + UI-14 快照归档 + AGENTS.md invariants（含笔误修正）
+      45387c4  面板换版 + UI-14 快照归档 + AGENTS.md invariants（含笔误修正）
 
-改动文件（相对 c2030c4）：
-  index.css                    +100 / -11
-  history.css                  +29
+改动文件（相对 c2030c4，`git diff --numstat`）：
+  index.css                    +98 / -10
+  history.css                  +29 / -0
   index.html                   +6 / -1
-  js/modules/buttonManager.js  +44 / -13
-  AGENTS.md                    +4（UI-15 invariants）
+  js/modules/buttonManager.js  +44 / -10
+  tools/ui-layout.mjs          +715（新增，第 13 个浏览器套件）
+  tools/run-all.mjs            +4 / -3
+  AGENTS.md                    +8（UI-15 invariants）
   docs/AI_HANDOFF.md           UI-14 → UI-15 换版
-  docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-20.md   +594（UI-14 面板原文快照）
-  docs/handoff/archive/INDEX.md   +1（快照索引）
-  tools/ui-layout.mjs          +（新增，第 13 个浏览器套件）
-  tools/run-all.mjs            +2 / -2
-（不含 docs/ 的 182 insertions / 24 deletions 为产品代码侧）
+  docs/handoff/archive/AI_HANDOFF_LEGACY_2026-09-20.md   +593（UI-14 面板原文快照）
+  docs/handoff/archive/INDEX.md   +2（快照索引）
+  合计：10 files changed, 1683 insertions(+), 567 deletions(-)
+  其中产品代码侧（不含 docs/ 与 tools/）：177 insertions / 21 deletions
 
 自验（逐条 = ui-layout 套件分组）：
   [1] 源码级 5 条          PASS
@@ -84,7 +87,7 @@
   [5] 气泡常驻 7 条         PASS（含 CDP 真实坐标点击关闭）
   [6] 无 console.error      PASS
   ui-layout 合计：80 passed, 0 failed
-  全量 run-all：15/15 PASS，930 断言 0 失败，318.8s
+  全量 run-all（在最终 main = 45387c4 上复跑）：15/15 PASS，930 断言 0 失败，322.7s
   eslint . ：exit 0 / 0 error
   prettier --check（含 tools/ui-layout.mjs）：0 违规
   check-worktree：未发现被删除的已跟踪文件
