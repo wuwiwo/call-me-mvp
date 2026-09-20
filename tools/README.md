@@ -145,6 +145,7 @@ npm test            # = node tools/run-all.mjs
 | CM-007 `history-language.mjs`   | CDP `9448` |                                                                              |
 | CM-008 `receipt-lifecycle.mjs`  | CDP `9449` |                                                                              |
 | CM-010 `password-gate.mjs`      | CDP `9450` |                                                                              |
+| S2 `theme-layer.mjs`            | CDP `9451` | 主题层（data-theme + 持久化 + 防闪）                                         |
 
 **新增套件时**：挑一个未被占用的 CDP 端口（尽量避开 `9440–9500` 这类动态端口范围），
 并更新本表。若运行时报 `CDP 未就绪：Chrome 是否启动？`，**先确认端口是不是被占了**：
@@ -327,6 +328,20 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 > 它不发任何外部请求（不触网、不碰 webhook）。
 > `negative-password-gate.mjs` 会临时改写 `js/modules/password.js` 与
 > `js/modules/translations.js`，属**手工反向验证工具，不纳入普通 CI**。
+
+### S2（`theme-layer.mjs`）
+
+| 变量                   | 默认值                          | 说明                      |
+| ---------------------- | ------------------------------- | ------------------------- |
+| `THEMELAYER_PORT`      | `8899`                          | 自带服务器端口            |
+| `THEMELAYER_BASE`      | `http://127.0.0.1:8899`         | 测试站点地址              |
+| `THEMELAYER_NO_SERVER` | 未设置                          | 设为 `1` 则复用外部服务器 |
+| `THEMELAYER_CDP_PORT`  | `9451`                          | Chrome 调试端口           |
+| `THEMELAYER_CHROME`    | 由 `tools/chrome-path.mjs` 解析 | Chrome 路径               |
+
+> 首页与历史页都走「预置 LocalStorage + 重新加载」的真实 init 路径。
+> ⚠️ 脚本会先 `goto(BASE)` 再碰 `localStorage` —— 在 `about:blank` 上
+> 访问 storage 会抛 `SecurityError`（不是"storage 不可用"，别误判）。
 
 ## 覆盖的验收路径
 

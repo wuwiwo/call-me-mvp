@@ -1,6 +1,7 @@
 // /tools/run-all.mjs
 //
-// CM-009 统一测试入口：一条命令串行跑完 lint + 8 个回归套件 + 工作区完整性检查。
+// CM-009 统一测试入口：一条命令串行跑完 lint + 9 个回归套件 + 工作区完整性检查。
+// （S2 起新增 theme-layer；套件清单见下面 BROWSER_SUITES）
 //
 // 运行方式：
 //   node tools/run-all.mjs                 # 全量（含浏览器套件，约 6–10 分钟）
@@ -80,7 +81,8 @@ const BROWSER_SUITES = [
         label: 'receipt-lifecycle（CM-008）',
         argv: ['tools/receipt-lifecycle.mjs']
     },
-    { id: 'password-gate', label: 'password-gate（CM-010）', argv: ['tools/password-gate.mjs'] }
+    { id: 'password-gate', label: 'password-gate（CM-010）', argv: ['tools/password-gate.mjs'] },
+    { id: 'theme-layer', label: 'theme-layer（S2）', argv: ['tools/theme-layer.mjs'] }
 ];
 
 const WORKTREE_ITEM = {
