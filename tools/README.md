@@ -111,6 +111,8 @@ npm test            # = node tools/run-all.mjs
 | `negative-receipt-lifecycle.mjs`          | CM-008：反向验证（从基线 ref 取原文覆盖 1 个被测源码）                                                                                            |
 | `password-gate.mjs`                       | CM-010：访问提示触发语义 / 单一来源 / 诚实文案，60 项断言                                                                                         |
 | `negative-password-gate.mjs`              | CM-010：反向验证（从基线 ref 取原文覆盖 2 个被测文件）                                                                                            |
+| `theme-layer.mjs`                         | S2：主题层（data-theme + 持久化 + 防闪），40 项断言                                                                                               |
+| `theme-entry.mjs`                         | S3：切换入口（甲顶栏 / ⋯ 菜单 / 新主题布局 / 首页内历史视图），77 项断言                                                                          |
 | `check-worktree.mjs`                      | 环境防护（手动）：检出「已跟踪文件在工作区被删除」，`--fix` 可从 HEAD 恢复                                                                        |
 | `worktree-guard.mjs`（已移至 `scripts/`） | 环境防护（自动）：由 `.githooks/{post-checkout,post-merge,post-commit}` 驱动，自动识别并恢复级联误伤。**不在 `tools/` 下** —— 见下节 GOV-002 说明 |
 | `ACCEPTANCE.md`                           | CM-002 / CM-003 / CM-004 / CM-005 的完整验收报告                                                                                                  |
@@ -146,6 +148,7 @@ npm test            # = node tools/run-all.mjs
 | CM-008 `receipt-lifecycle.mjs`  | CDP `9449` |                                                                              |
 | CM-010 `password-gate.mjs`      | CDP `9450` |                                                                              |
 | S2 `theme-layer.mjs`            | CDP `9451` | 主题层（data-theme + 持久化 + 防闪）                                         |
+| S3 `theme-entry.mjs`            | CDP `9452` | 切换入口（甲顶栏 / ⋯ 菜单 / 新主题布局 / 首页内历史视图）                    |
 
 **新增套件时**：挑一个未被占用的 CDP 端口（尽量避开 `9440–9500` 这类动态端口范围），
 并更新本表。若运行时报 `CDP 未就绪：Chrome 是否启动？`，**先确认端口是不是被占了**：
@@ -342,6 +345,21 @@ netstat -ano | findstr :<port>     # 看是不是别的进程把它当源端口�
 > 首页与历史页都走「预置 LocalStorage + 重新加载」的真实 init 路径。
 > ⚠️ 脚本会先 `goto(BASE)` 再碰 `localStorage` —— 在 `about:blank` 上
 > 访问 storage 会抛 `SecurityError`（不是"storage 不可用"，别误判）。
+
+### S3（`theme-entry.mjs`）
+
+| 变量                   | 默认值                          | 说明                      |
+| ---------------------- | ------------------------------- | ------------------------- |
+| `THEMEENTRY_PORT`      | `8899`                          | 自带服务器端口            |
+| `THEMEENTRY_BASE`      | `http://127.0.0.1:8899`         | 测试站点地址              |
+| `THEMEENTRY_NO_SERVER` | 未设置                          | 设为 `1` 则复用外部服务器 |
+| `THEMEENTRY_CDP_PORT`  | `9452`                          | Chrome 调试端口           |
+| `THEMEENTRY_CHROME`    | 由 `tools/chrome-path.mjs` 解析 | Chrome 路径               |
+
+> 读取 4 语言文案时直接 `await import('../js/modules/translations.js')`，
+> 与页面看到的同一份数据，不在脚本里复制一份期望值。
+> ⚠️ ⋯ 菜单有 0.2s 展开过渡（`visibility` 是离散插值，点完立刻读仍是 `hidden`），
+> 量测前必须先 `sleep(320)`，否则会读到"菜单没打开"的假阴性。
 
 ## 覆盖的验收路径
 
