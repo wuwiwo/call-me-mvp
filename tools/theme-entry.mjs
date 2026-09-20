@@ -321,8 +321,11 @@ check(
     !/window\.location\.href\s*=\s*'history\.html'/.test(mainSrc)
 );
 check(
-    'theme.js 拥有菜单开合逻辑',
-    /openMenu\s*\(/.test(themeSrc) && /closeMenu\s*\(/.test(themeSrc)
+    '⋯ 菜单的开合由 popupMenu 组件承载，theme.js 只注入主题语义',
+    /components\/popupMenu\.js/.test(themeSrc) &&
+        /createPopupMenu\s*\(/.test(themeSrc) &&
+        /onSelect/.test(themeSrc) &&
+        /onSync/.test(themeSrc)
 );
 check('index.css 含 [data-theme="list"] 布局块', /\[data-theme=['"]list['"]\]/.test(indexCss));
 
