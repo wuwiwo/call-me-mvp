@@ -23,6 +23,66 @@
     --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
     /* 统一缓动 */
     --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+    /* ===== 语义令牌（S1 令牌化：值与原硬编码值完全一致） ===== */
+    /* 表面 / 分隔 / 遮罩 —— 暖黑基色 */
+    --surface-hairline: rgba(55, 53, 47, 0.025);
+    --surface-faint: rgba(55, 53, 47, 0.03);
+    --surface-quiet: rgba(55, 53, 47, 0.05);
+    --surface-soft: rgba(55, 53, 47, 0.06);
+    --surface-subtle: rgba(55, 53, 47, 0.08);
+    --surface-strong: rgba(55, 53, 47, 0.12);
+    --scrim-modal: rgba(55, 53, 47, 0.32);
+    --surface-toast: rgba(55, 53, 47, 0.82);
+
+    /* 文字层级 —— 暖黑基色 */
+    --text-faint: rgba(55, 53, 47, 0.5);
+    --text-muted: rgba(55, 53, 47, 0.6);
+    --text-secondary: rgba(55, 53, 47, 0.65);
+    --text-soft: rgba(55, 53, 47, 0.7);
+    --text-strong: rgba(55, 53, 47, 0.8);
+
+    /* 强调色 —— 蓝基色 */
+    --accent-trace-faint: rgba(51, 126, 169, 0.01);
+    --accent-trace: rgba(51, 126, 169, 0.02);
+    --accent-faint: rgba(51, 126, 169, 0.05);
+    --accent-wash: rgba(51, 126, 169, 0.06);
+    --accent-chip: rgba(51, 126, 169, 0.08);
+    --accent-soft: rgba(51, 126, 169, 0.1);
+    --accent-chip-strong: rgba(51, 126, 169, 0.12);
+    --accent-tint: rgba(51, 126, 169, 0.13);
+    --accent-glow: rgba(51, 126, 169, 0.5);
+    --accent-glow-strong: rgba(51, 126, 169, 0.7);
+    --accent-deep: #2a6a8f;
+
+    /* 金色 —— 标题渐变 / 徽章 */
+    --title-metal-dark: #2a2a2a;
+    --gold-text: #b8932f;
+    --gold-text-strong: #9a7d1f;
+    --gold-wash: rgba(212, 175, 55, 0.14);
+    --gold-glow: rgba(212, 175, 55, 0.07);
+
+    /* 状态色 */
+    --success-border: #4caf50;
+    --success-text: #6cd47e;
+    --danger-solid: #e55050;
+    --danger-soft-border: #ff6b81;
+    --danger-text-strong: #ff4757;
+    --danger-light: #ff7b7b;
+    --danger-trace-faint: rgba(229, 80, 80, 0.01);
+    --danger-trace: rgba(229, 80, 80, 0.02);
+    --danger-faint: rgba(229, 80, 80, 0.05);
+    --danger-wash: rgba(229, 80, 80, 0.1);
+    --danger-soft: rgba(229, 80, 80, 0.2);
+
+    /* 深色浮层 */
+    --overlay-scrim: rgba(0, 0, 0, 0.6);
+    --overlay-shadow: rgba(0, 0, 0, 0.3);
+    --overlay-border: rgba(255, 255, 255, 0.12);
+
+    /* 历史页原有独立色源（history.css 迁移） */
+    --list-divider: #eee;
+    --text-muted-solid: #666;
+    --surface-inset: #f8f9fa;
 }
 
 * {
@@ -54,8 +114,8 @@ body {
         'Segoe UI',
         sans-serif;
     background:
-        radial-gradient(120% 80% at 50% -10%, rgba(212, 175, 55, 0.07), transparent 60%),
-        radial-gradient(100% 60% at 100% 110%, rgba(51, 126, 169, 0.06), transparent 55%),
+        radial-gradient(120% 80% at 50% -10%, var(--gold-glow), transparent 60%),
+        radial-gradient(100% 60% at 100% 110%, var(--accent-wash), transparent 55%),
         var(--notion-gray);
     background-attachment: fixed;
     min-height: 100vh;
@@ -100,7 +160,7 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 24px;
-    background: rgba(55, 53, 47, 0.08);
+    background: var(--surface-subtle);
     border: 1px solid var(--notion-border);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     cursor: pointer;
@@ -131,7 +191,7 @@ body {
 }
 
 .icon-btn:hover {
-    background: rgba(55, 53, 47, 0.08);
+    background: var(--surface-subtle);
 }
 
 .container {
@@ -168,7 +228,12 @@ body {
     letter-spacing: -0.5px;
     position: relative;
     display: inline-block;
-    background: linear-gradient(110deg, #2a2a2a 0%, #d4af37 50%, #2a2a2a 100%);
+    background: linear-gradient(
+        110deg,
+        var(--title-metal-dark) 0%,
+        var(--accent-gold) 50%,
+        var(--title-metal-dark) 100%
+    );
     background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
@@ -184,7 +249,7 @@ body {
 
 p.subtitle {
     font-size: 1rem;
-    color: rgba(55, 53, 47, 0.65);
+    color: var(--text-secondary);
     margin-bottom: 8px;
     font-weight: 500;
 }
@@ -277,17 +342,17 @@ p.subtitle {
 
 /* 色彩点缀：按钮图标交替蓝/金 */
 .bubble-btn:nth-child(2n + 1) .bubble-content i {
-    background: rgba(51, 126, 169, 0.12);
+    background: var(--accent-chip-strong);
     color: var(--notion-blue);
 }
 
 .bubble-btn:nth-child(2n) .bubble-content i {
     background: var(--accent-gold-soft);
-    color: #b8932f;
+    color: var(--gold-text);
 }
 
 .countdown {
-    background: rgba(55, 53, 47, 0.03);
+    background: var(--surface-faint);
     border-radius: 12px;
     padding: 16px;
     margin-top: 20px;
@@ -307,7 +372,7 @@ p.subtitle {
     align-items: center;
     gap: 12px;
     font-size: 0.9rem;
-    color: rgba(55, 53, 47, 0.7);
+    color: var(--text-soft);
 }
 
 /* 已读回执状态条（药丸徽章，醒目） */
@@ -322,8 +387,8 @@ p.subtitle {
     width: fit-content;
     font-size: 0.85rem;
     font-weight: 700;
-    background: rgba(55, 53, 47, 0.06);
-    color: rgba(55, 53, 47, 0.65);
+    background: var(--surface-soft);
+    color: var(--text-secondary);
     transition: all 0.3s var(--ease-premium);
 }
 
@@ -370,7 +435,7 @@ p.subtitle {
 
 /* 已读：蓝色 + 弹出 */
 .receipt-status.read {
-    background: rgba(51, 126, 169, 0.13);
+    background: var(--accent-tint);
     color: var(--notion-blue);
     animation: receiptPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -390,26 +455,26 @@ p.subtitle {
 
 /* 超时：可能不在，琥珀色 */
 .receipt-status.timeout {
-    background: rgba(212, 175, 55, 0.14);
-    color: #9a7d1f;
+    background: var(--gold-wash);
+    color: var(--gold-text-strong);
 }
 
 .receipt-status.timeout i {
-    color: #b8932f;
+    color: var(--gold-text);
 }
 
 .notification {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: rgba(55, 53, 47, 0.82);
+    background: var(--surface-toast);
     backdrop-filter: blur(12px) saturate(160%);
     -webkit-backdrop-filter: blur(12px) saturate(160%);
     color: white;
     padding: 14px 24px;
     border-radius: 10px;
     box-shadow: var(--shadow-lg);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--overlay-border);
     transform: translateX(150%);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 1000;
@@ -425,19 +490,19 @@ p.subtitle {
 }
 
 .notification.sent {
-    border-left: 4px solid #4caf50;
+    border-left: 4px solid var(--success-border);
 }
 
 .notification.sent i {
-    color: #6cd47e;
+    color: var(--success-text);
 }
 
 .notification.error {
-    border-left: 4px solid #e55050;
+    border-left: 4px solid var(--danger-solid);
 }
 
 .notification.error i {
-    color: #ff7b7b;
+    color: var(--danger-light);
 }
 
 .modal {
@@ -447,7 +512,7 @@ p.subtitle {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(55, 53, 47, 0.32);
+    background: var(--scrim-modal);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 1000;
@@ -501,7 +566,7 @@ p.subtitle {
 }
 
 .mode-toggle {
-    background: rgba(55, 53, 47, 0.08);
+    background: var(--surface-subtle);
     border: 1px solid var(--notion-border);
     width: 36px;
     height: 36px;
@@ -515,7 +580,7 @@ p.subtitle {
 }
 
 .mode-toggle:hover {
-    background: rgba(55, 53, 47, 0.12);
+    background: var(--surface-strong);
     transform: rotate(90deg);
 }
 
@@ -528,7 +593,7 @@ p.subtitle {
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: rgba(55, 53, 47, 0.6);
+    color: var(--text-muted);
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -551,7 +616,7 @@ p.subtitle {
     justify-content: center;
     margin-bottom: 20px;
     padding: 8px 16px;
-    background: rgba(51, 126, 169, 0.08);
+    background: var(--accent-chip);
     border-radius: 20px;
     font-size: 0.85rem;
     color: var(--notion-blue);
@@ -611,7 +676,7 @@ p.subtitle {
 .buttons-edit-area.minimal-mode .button-edit-item:hover,
 .buttons-edit-area.minimal-mode .custom-button-form:hover {
     border-color: var(--notion-blue);
-    box-shadow: 0 2px 8px rgba(51, 126, 169, 0.1);
+    box-shadow: 0 2px 8px var(--accent-soft);
 }
 
 .buttons-edit-area.minimal-mode .form-header {
@@ -624,7 +689,7 @@ p.subtitle {
 .buttons-edit-area.minimal-mode .form-header label {
     font-size: 0.8rem;
     font-weight: 600;
-    color: rgba(55, 53, 47, 0.7);
+    color: var(--text-soft);
     margin-bottom: 0;
 }
 
@@ -648,7 +713,7 @@ p.subtitle {
 
 .add-btn {
     width: 100%;
-    background: rgba(51, 126, 169, 0.06);
+    background: var(--accent-wash);
     color: var(--notion-blue);
     border: 1px dashed var(--notion-blue);
     padding: 12px;
@@ -663,7 +728,7 @@ p.subtitle {
 }
 
 .add-btn:hover {
-    background: rgba(51, 126, 169, 0.12);
+    background: var(--accent-chip-strong);
     border-color: var(--notion-blue);
 }
 
@@ -694,7 +759,7 @@ p.subtitle {
 .btn-text:focus {
     border-color: var(--notion-blue);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(51, 126, 169, 0.1);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .icon-selector {
@@ -713,7 +778,7 @@ p.subtitle {
 .icon-selector:focus {
     border-color: var(--notion-blue);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(51, 126, 169, 0.1);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* 图标选择器（带预览的网格弹出） */
@@ -755,7 +820,7 @@ p.subtitle {
 
 .icon-picker-caret {
     font-size: 0.7rem;
-    color: rgba(55, 53, 47, 0.5);
+    color: var(--text-faint);
     transition: transform 0.2s var(--ease-premium);
 }
 
@@ -797,7 +862,7 @@ p.subtitle {
     cursor: pointer;
     font-family: inherit;
     font-size: 0.72rem;
-    color: rgba(55, 53, 47, 0.65);
+    color: var(--text-secondary);
     transition: all 0.15s var(--ease-premium);
     text-align: center;
 }
@@ -808,12 +873,12 @@ p.subtitle {
 }
 
 .icon-picker-option:hover {
-    background: rgba(51, 126, 169, 0.06);
+    background: var(--accent-wash);
     border-color: var(--accent-gold-soft);
 }
 
 .icon-picker-option.selected {
-    background: rgba(51, 126, 169, 0.1);
+    background: var(--accent-soft);
     border-color: var(--notion-blue);
     color: var(--notion-blue);
 }
@@ -835,7 +900,7 @@ p.subtitle {
 }
 
 .remove-btn {
-    background: rgba(229, 80, 80, 0.1);
+    background: var(--danger-wash);
     border: none;
     width: 32px;
     height: 32px;
@@ -844,19 +909,19 @@ p.subtitle {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #e55050;
+    color: var(--danger-solid);
     transition: all 0.2s ease;
 }
 
 .remove-btn:hover {
-    background: rgba(229, 80, 80, 0.2);
+    background: var(--danger-soft);
     transform: scale(1.1);
 }
 
 /* 按钮表单项（默认与自定义统一卡片样式） */
 .button-edit-item,
 .custom-button-form {
-    background: rgba(55, 53, 47, 0.025);
+    background: var(--surface-hairline);
     padding: 16px;
     border-radius: 10px;
     border: 1px solid var(--notion-border);
@@ -879,19 +944,19 @@ p.subtitle {
     font-size: 28px;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: rgba(55, 53, 47, 0.05);
+    background: var(--surface-quiet);
     border: 2px solid transparent;
 }
 
 .emoji-option.active {
     border-color: var(--notion-blue);
     transform: scale(1.15);
-    background: rgba(51, 126, 169, 0.1);
+    background: var(--accent-soft);
 }
 
 .modal-footer {
     padding: 16px 24px;
-    background: rgba(55, 53, 47, 0.03);
+    background: var(--surface-faint);
     display: flex;
     justify-content: flex-end;
 }
@@ -939,7 +1004,7 @@ p.subtitle {
 }
 
 .language-toggle {
-    background: rgba(55, 53, 47, 0.08);
+    background: var(--surface-subtle);
     border: 1px solid var(--notion-border);
     border-radius: 18px;
     padding: 8px 16px;
@@ -957,7 +1022,7 @@ p.subtitle {
 }
 
 .language-toggle:hover {
-    background: rgba(55, 53, 47, 0.12);
+    background: var(--surface-strong);
     transform: translateY(-1px);
 }
 
@@ -1011,11 +1076,11 @@ p.subtitle {
 }
 
 .language-option:hover {
-    background: rgba(55, 53, 47, 0.05);
+    background: var(--surface-quiet);
 }
 
 .language-option.active {
-    background: rgba(51, 126, 169, 0.1);
+    background: var(--accent-soft);
     color: var(--notion-blue);
 }
 
@@ -1103,7 +1168,7 @@ p.subtitle {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--overlay-scrim);
     z-index: 9998;
     backdrop-filter: blur(2px);
 }
@@ -1119,7 +1184,7 @@ p.subtitle {
     max-width: 500px;
     width: 90%;
     z-index: 9999;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px var(--overlay-shadow);
     animation: slideUp 0.3s ease;
 }
 
@@ -1150,7 +1215,7 @@ p.subtitle {
 .onboarding-body p {
     font-size: 1rem;
     line-height: 1.6;
-    color: rgba(55, 53, 47, 0.8);
+    color: var(--text-strong);
 }
 
 .onboarding-footer {
@@ -1203,7 +1268,7 @@ p.subtitle {
 }
 
 .onboarding-btn-primary:hover {
-    background: #2a6a8f;
+    background: var(--accent-deep);
     transform: translateY(-1px);
 }
 
@@ -1214,7 +1279,7 @@ p.subtitle {
 }
 
 .onboarding-btn-secondary:hover {
-    background: rgba(55, 53, 47, 0.05);
+    background: var(--surface-quiet);
 }
 
 /* 高亮元素 */
@@ -1223,7 +1288,7 @@ p.subtitle {
     z-index: 10000;
     box-shadow:
         0 0 0 4px var(--notion-blue),
-        0 0 20px rgba(51, 126, 169, 0.5);
+        0 0 20px var(--accent-glow);
     border-radius: 8px;
     animation: pulse 2s infinite;
 }
@@ -1233,13 +1298,13 @@ p.subtitle {
     100% {
         box-shadow:
             0 0 0 4px var(--notion-blue),
-            0 0 20px rgba(51, 126, 169, 0.5);
+            0 0 20px var(--accent-glow);
     }
 
     50% {
         box-shadow:
             0 0 0 6px var(--notion-blue),
-            0 0 30px rgba(51, 126, 169, 0.7);
+            0 0 30px var(--accent-glow-strong);
     }
 }
 
@@ -1249,13 +1314,13 @@ p.subtitle {
 }
 
 .password-error {
-    color: #e55050;
+    color: var(--danger-solid);
     font-size: 0.85rem;
     margin-top: 8px;
     padding: 8px 12px;
-    background: rgba(229, 80, 80, 0.05);
+    background: var(--danger-faint);
     border-radius: 6px;
-    border-left: 3px solid #e55050;
+    border-left: 3px solid var(--danger-solid);
 }
 
 .password-hint {
@@ -1263,11 +1328,11 @@ p.subtitle {
     align-items: center;
     gap: 8px;
     padding: 12px;
-    background: rgba(51, 126, 169, 0.05);
+    background: var(--accent-faint);
     border-radius: 8px;
     margin-top: 16px;
     font-size: 0.85rem;
-    color: rgba(55, 53, 47, 0.7);
+    color: var(--text-soft);
 }
 
 .password-hint i {

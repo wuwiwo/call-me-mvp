@@ -29,7 +29,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(55, 53, 47, 0.05);
+    background: var(--surface-quiet);
 }
 
 .history-content {
@@ -47,7 +47,7 @@
 }
 
 .history-time {
-    color: rgba(55, 53, 47, 0.6);
+    color: var(--text-muted);
     font-size: 0.85rem;
 }
 
@@ -67,7 +67,7 @@
 }
 
 .history-status .fa-times {
-    color: #e55050;
+    color: var(--danger-solid);
 }
 
 .history-item.success {
@@ -75,13 +75,13 @@
 }
 
 .history-item.error {
-    border-left: 3px solid #e55050;
+    border-left: 3px solid var(--danger-solid);
 }
 
 .empty-state {
     text-align: center;
     padding: 8px 0;
-    color: rgba(55, 53, 47, 0.6);
+    color: var(--text-muted);
 }
 /* 历史记录容器 */
 .history-item {
@@ -89,7 +89,7 @@
     align-items: flex-start; /* 顶部对齐 */
     gap: 12px; /* 元素间距 */
     padding: 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--list-divider);
 }
 
 /* 头像/emoji区域 */
@@ -124,7 +124,7 @@
 
 /* 时间显示 */
 .history-time {
-    color: #666;
+    color: var(--text-muted-solid);
     font-size: 0.85em;
     white-space: nowrap;
 }
@@ -155,7 +155,7 @@
 }
 
 .history-item {
-    background: #f8f9fa;
+    background: var(--surface-inset);
     border-radius: 8px;
     padding: 15px;
     margin-bottom: 10px;
@@ -171,16 +171,16 @@
 .empty-state {
     text-align: center;
     padding: 40px;
-    color: #666;
+    color: var(--text-muted-solid);
 }
 
 /* 错误状态特殊样式 */
 .history-item.error {
-    border-left: 4px solid #ff6b81;
+    border-left: 4px solid var(--danger-soft-border);
 }
 
 .history-error {
-    color: #ff4757;
+    color: var(--danger-text-strong);
     font-size: 12px;
     margin-top: 5px;
 }
@@ -267,7 +267,7 @@
 }
 
 .history-time {
-    color: rgba(55, 53, 47, 0.6);
+    color: var(--text-muted);
     font-size: 0.85rem;
     flex-shrink: 0;
 }
@@ -282,14 +282,14 @@
 
 /* 错误信息样式 */
 .history-error {
-    color: #e55050;
+    color: var(--danger-solid);
     font-size: 0.8rem;
     margin-top: 8px;
     font-family: monospace;
-    background: rgba(229, 80, 80, 0.05);
+    background: var(--danger-faint);
     padding: 6px 8px;
     border-radius: 4px;
-    border-left: 3px solid #e55050;
+    border-left: 3px solid var(--danger-solid);
 }
 
 /* 状态指示器 */
@@ -297,18 +297,18 @@
     border-left: 3px solid var(--notion-blue);
     background: linear-gradient(
         to right,
-        rgba(51, 126, 169, 0.02) 0%,
-        rgba(51, 126, 169, 0.01) 3%,
+        var(--accent-trace) 0%,
+        var(--accent-trace-faint) 3%,
         white 10%
     );
 }
 
 .history-item.error {
-    border-left: 3px solid #e55050;
+    border-left: 3px solid var(--danger-solid);
     background: linear-gradient(
         to right,
-        rgba(229, 80, 80, 0.02) 0%,
-        rgba(229, 80, 80, 0.01) 3%,
+        var(--danger-trace) 0%,
+        var(--danger-trace-faint) 3%,
         white 10%
     );
 }
@@ -317,7 +317,7 @@
 .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: rgba(55, 53, 47, 0.5);
+    color: var(--text-faint);
     font-size: 1.1rem;
     max-width: 400px;
     margin: 40px auto;
